@@ -12,12 +12,15 @@ import {
 import SupplierTable from "@/components/suplyer/TabelSuplyer";
 import DialogTambahSupplier from "@/components/suplyer/DialogTambahSuplyer";
 import EditSupplierDialog from "@/components/suplyer/EditSupplierDialog";
+import { DialogHapusSupplier } from "@/components/suplyer/DialogHapusSupplier";
 
 export default function SupplierPage() {
   const [data, setData] = useState<Supplier[]>([]);
   const [open, setOpen] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
   const [selected, setSelected] = useState<Supplier | null>(null);
+  const [selectedDelete, setSelectedDelete] = useState<Supplier | null>(null);
   const fetchData = async () => {
     const res = await getAllSuppliers();
     setData(res);
@@ -27,10 +30,17 @@ export default function SupplierPage() {
     fetchData();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin ingin menghapus supplier ini?")) return;
-    await deleteSupplier(id);
+  const handleDelete = (supplier: Supplier) => {
+    console.log("handleDelete called with supplier:", supplier);
+    setSelectedDelete(supplier);
+    setOpenDelete(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedDelete) return;
+    await deleteSupplier(selectedDelete.id);
     fetchData();
+    setSelectedDelete(null);
   };
 
   const handleEdit = (supplier: Supplier) => {
@@ -65,10 +75,18 @@ export default function SupplierPage() {
         onOpenChange={setOpenEdit}
         supplier={selected}
         onSave={async (supplier) => {
-          // update supplier
-          await updateSupplier(supplier.id, supplier);
+          // update supplier - extract only the form data fields
+          const { id, created_at, updated_at, ...supplierData } = supplier;
+          await updateSupplier(supplier.id, supplierData);
           fetchData();
         }}
+      />
+
+      <DialogHapusSupplier
+        open={openDelete}
+        onOpenChange={setOpenDelete}
+        supplier={selectedDelete}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

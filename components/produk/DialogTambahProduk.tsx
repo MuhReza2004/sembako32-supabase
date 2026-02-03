@@ -13,14 +13,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ProdukFormData } from "@/app/types/produk";
-import { getNewKodeProduk } from "@/app/services/produk.service";
+import { Produk, ProdukFormData } from "@/app/types/produk";
+import {
+  getNewKodeProduk,
+  addProduk,
+  getProdukByName,
+  updateProdukStok,
+  getProdukById,
+} from "@/app/services/produk.service";
+import { DialogProdukDuplikat } from "./DialogProdukDuplikat"; // Import the duplicate dialog
 
 interface DialogTambahProdukProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: ProdukFormData) => Promise<void>;
-  isLoading?: boolean;
+  // onSubmit: (data: ProdukFormData) => Promise<void>; // This will be handled internally now
+  onProductAdded: () => void; // Callback for when a product is successfully added or stock updated
+  isLoading?: boolean; // Prop from parent for overall loading state
 }
 
 const SATUAN_OPTIONS = [
@@ -34,17 +42,24 @@ const SATUAN_OPTIONS = [
 export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
   open,
   onOpenChange,
-  onSubmit,
-  isLoading = false,
+  onProductAdded,
+  isLoading: parentLoading = false,
 }) => {
-  const [hargaJualFormatted, setHargaJualFormatted] = useState("");
+  const [hargaJualFormatted, setHargaJualFormatted] = useState(""); // This seems unused, consider removing
+  const [isSubmitting, setIsSubmitting] = useState(false); // Internal loading state for this dialog
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [existingProductData, setExistingProductData] = useState<Produk | null>(
+    null,
+  );
+  const [newDataForDuplicate, setNewDataForDuplicate] =
+    useState<ProdukFormData | null>(null);
 
   const {
     register,
     handleSubmit,
     reset,
-
     formState: { errors },
+    watch,
   } = useForm<ProdukFormData>({
     defaultValues: {
       kode: "",
@@ -52,121 +67,216 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
       satuan: "Pcs",
       kategori: "",
       status: "aktif",
+      stok: 0, // Ensure stok has a default value
     },
   });
+
+  const watchNama = watch("nama"); // Watch nama field for duplicate check
 
   useEffect(() => {
     if (open) {
       reset(); // Reset form on open
+      setExistingProductData(null);
+      setNewDataForDuplicate(null);
+      setShowDuplicateDialog(false);
     }
   }, [open, reset]);
 
   const onSubmitForm = async (data: ProdukFormData) => {
-    const kode = await getNewKodeProduk();
-    const dataWithKode = { ...data, kode };
-    await onSubmit(dataWithKode);
-    reset();
+    setIsSubmitting(true);
+    try {
+      const existingProduct = await getProdukByName(data.nama);
+
+      if (existingProduct) {
+        setExistingProductData(existingProduct);
+        setNewDataForDuplicate(data);
+        setShowDuplicateDialog(true);
+      } else {
+        // No duplicate, proceed to add new product
+        const kode = await getNewKodeProduk();
+        await addProduk({ ...data, kode });
+        onOpenChange(false);
+        onProductAdded();
+      }
+    } catch (error) {
+      console.error("Failed to add produk:", error);
+      // TODO: Show an alert or toast for the error
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+  const handleAddToExistingStock = async () => {
+    if (!existingProductData || !newDataForDuplicate) return;
+
+    setIsSubmitting(true);
+    try {
+      const updatedStok = existingProductData.stok + newDataForDuplicate.stok;
+      await updateProdukStok(existingProductData.id, updatedStok);
+      onOpenChange(false);
+      onProductAdded();
+    } catch (error) {
+      console.error("Failed to update stock:", error);
+      // TODO: Show an alert or toast for the error
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddNewDuplicate = async () => {
+    if (!newDataForDuplicate) return;
+
+    setIsSubmitting(true);
+    try {
+      const kode = await getNewKodeProduk();
+      await addProduk({ ...newDataForDuplicate, kode });
+      onOpenChange(false);
+      onProductAdded();
+    } catch (error) {
+      console.error("Failed to add new duplicate produk:", error);
+      // TODO: Show an alert or toast for the error
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const currentLoading = parentLoading || isSubmitting;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Tambah Produk Baru</DialogTitle>
-          <DialogDescription>
-            Isi informasi produk di bawah ini. Kode Produk akan dibuat otomatis.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Produk Baru</DialogTitle>
+            <DialogDescription>
+              Isi informasi produk di bawah ini. Kode Produk akan dibuat
+              otomatis.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="nama" className="font-semibold">
-              Nama Produk *
-            </Label>
-            <Input
-              id="nama"
-              placeholder="Masukkan nama produk"
-              {...register("nama", {
-                required: "Nama produk wajib diisi",
-                minLength: { value: 3, message: "Minimal 3 karakter" },
-              })}
-              className={errors.nama ? "border-red-500" : ""}
-            />
-            {errors.nama && (
-              <p className="text-sm text-red-500">{errors.nama.message}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="satuan" className="font-semibold">
-                Satuan *
-              </Label>
-              <select
-                id="satuan"
-                {...register("satuan", { required: "Satuan wajib dipilih" })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {SATUAN_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {errors.satuan && (
-                <p className="text-sm text-red-500">{errors.satuan.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="kategori" className="font-semibold">
-                Kategori *
+              <Label htmlFor="nama" className="font-semibold">
+                Nama Produk *
               </Label>
               <Input
-                id="kategori"
-                placeholder="Masukkan kategori"
-                {...register("kategori", {
-                  required: "Kategori wajib diisi",
+                id="nama"
+                placeholder="Masukkan nama produk"
+                {...register("nama", {
+                  required: "Nama produk wajib diisi",
+                  minLength: { value: 3, message: "Minimal 3 karakter" },
                 })}
-                className={errors.kategori ? "border-red-500" : ""}
+                className={errors.nama ? "border-red-500" : ""}
               />
-              {errors.kategori && (
-                <p className="text-sm text-red-500">
-                  {errors.kategori.message}
-                </p>
+              {errors.nama && (
+                <p className="text-sm text-red-500">{errors.nama.message}</p>
               )}
             </div>
-          </div>
+            {/* Added Stock Input */}
+            <div className="space-y-2">
+              <Label htmlFor="stok" className="font-semibold">
+                Stok Awal *
+              </Label>
+              <Input
+                id="stok"
+                type="number"
+                min={0}
+                placeholder="Masukkan jumlah stok awal"
+                {...register("stok", {
+                  required: "Stok awal wajib diisi",
+                  min: { value: 0, message: "Stok tidak bisa negatif" },
+                  valueAsNumber: true,
+                })}
+                className={errors.stok ? "border-red-500" : ""}
+              />
+              {errors.stok && (
+                <p className="text-sm text-red-500">{errors.stok.message}</p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="status" className="font-semibold">
-              Status *
-            </Label>
-            <select
-              id="status"
-              {...register("status")}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Nonaktif</option>
-            </select>
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="satuan" className="font-semibold">
+                  Satuan *
+                </Label>
+                <select
+                  id="satuan"
+                  {...register("satuan", { required: "Satuan wajib dipilih" })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {SATUAN_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.satuan && (
+                  <p className="text-sm text-red-500">
+                    {errors.satuan.message}
+                  </p>
+                )}
+              </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Batal
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Menyimpan..." : "Tambah Produk"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+              <div className="space-y-2">
+                <Label htmlFor="kategori" className="font-semibold">
+                  Kategori *
+                </Label>
+                <Input
+                  id="kategori"
+                  placeholder="Masukkan kategori"
+                  {...register("kategori", {
+                    required: "Kategori wajib diisi",
+                  })}
+                  className={errors.kategori ? "border-red-500" : ""}
+                />
+                {errors.kategori && (
+                  <p className="text-sm text-red-500">
+                    {errors.kategori.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status" className="font-semibold">
+                Status *
+              </Label>
+              <select
+                id="status"
+                {...register("status")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="aktif">Aktif</option>
+                <option value="nonaktif">Nonaktif</option>
+              </select>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={currentLoading}
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={currentLoading}>
+                {currentLoading ? "Menyimpan..." : "Tambah Produk"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <DialogProdukDuplikat
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        existingProduct={existingProductData}
+        newData={newDataForDuplicate}
+        onAddStok={handleAddToExistingStock}
+        onAddNew={handleAddNewDuplicate}
+        isLoading={currentLoading}
+      />
+    </>
   );
 };

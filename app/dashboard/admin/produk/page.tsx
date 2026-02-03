@@ -29,11 +29,11 @@ export default function ProdukAdminPage() {
   const [dialogHapusOpen, setDialogHapusOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Produk | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
   const [perPage, setPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // For pagination control
-
 
   // Filter & Search
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,7 +51,7 @@ export default function ProdukAdminPage() {
       .order("created_at", { ascending: false });
 
     if (searchTerm) {
-        queryBuilder = queryBuilder.ilike("nama", `%${searchTerm}%`); // Case-insensitive search
+      queryBuilder = queryBuilder.ilike("nama", `%${searchTerm}%`); // Case-insensitive search
     }
 
     const { data, error, count } = await queryBuilder.range(from, to);
@@ -83,7 +83,7 @@ export default function ProdukAdminPage() {
         },
         (payload) => {
           fetchProducts(); // Re-fetch the current page on any change
-        }
+        },
       )
       .subscribe();
 
@@ -100,9 +100,8 @@ export default function ProdukAdminPage() {
   const fetchPrev = () => {
     setPage((prevPage) => Math.max(0, prevPage - 1));
   };
-  
-  const hasNextPage = (page + 1) * perPage < totalCount;
 
+  const hasNextPage = (page + 1) * perPage < totalCount;
 
   // Show success message
   const showSuccess = (message: string) => {
@@ -153,11 +152,11 @@ export default function ProdukAdminPage() {
 
     // Optional: check duplicate name only if name changed AND is not current product
     if (data.nama !== selectedProduct.nama) {
-        const isDuplicate = await checkDuplicateProduct(data.nama);
-        if (isDuplicate) {
-            setError("Produk dengan nama yang sama sudah terdaftar");
-            return;
-        }
+      const isDuplicate = await checkDuplicateProduct(data.nama);
+      if (isDuplicate) {
+        setError("Produk dengan nama yang sama sudah terdaftar");
+        return;
+      }
     }
 
     try {
@@ -183,6 +182,7 @@ export default function ProdukAdminPage() {
   // Handle delete produk
   const handleDeleteClick = (product: Produk) => {
     setSelectedProduct(product);
+    setDeletingId(product.id);
     setDialogHapusOpen(true);
   };
 
@@ -196,9 +196,11 @@ export default function ProdukAdminPage() {
       showSuccess("Produk berhasil dihapus");
       setDialogHapusOpen(false);
       setSelectedProduct(null);
+      setDeletingId(null);
     } catch (err) {
       setError("Gagal menghapus produk");
       console.error("Error deleting product:", err);
+      setDeletingId(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -262,6 +264,7 @@ export default function ProdukAdminPage() {
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
         searchTerm={searchTerm}
+        deletingId={deletingId}
       />
 
       <div className="flex justify-end gap-4 mt-4">
@@ -277,7 +280,7 @@ export default function ProdukAdminPage() {
       <DialogTambahProduk
         open={dialogTambahOpen}
         onOpenChange={setDialogTambahOpen}
-        onSubmit={handleTambahSubmit}
+        onProductAdded={fetchProducts}
         isLoading={isSubmitting}
       />
 

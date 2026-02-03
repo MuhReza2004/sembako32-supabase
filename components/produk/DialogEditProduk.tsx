@@ -141,6 +141,26 @@ export const DialogEditProduk: React.FC<DialogEditProdukProps> = ({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="stok" className="font-semibold">
+              Stok *
+            </Label>
+            <Input
+              id="stok"
+              type="number"
+              placeholder="Masukkan jumlah stok"
+              {...register("stok", {
+                required: "Stok wajib diisi",
+                min: { value: 0, message: "Stok tidak boleh negatif" },
+                valueAsNumber: true,
+              })}
+              className={errors.stok ? "border-red-500" : ""}
+            />
+            {errors.stok && (
+              <p className="text-sm text-red-500">{errors.stok.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="status" className="font-semibold">
               Status *
             </Label>

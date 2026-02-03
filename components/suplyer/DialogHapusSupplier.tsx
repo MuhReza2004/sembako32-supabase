@@ -10,25 +10,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Produk } from "@/app/types/produk";
+import { Supplier } from "@/app/types/suplyer";
 import { AlertCircle } from "lucide-react";
 
-interface DialogHapusProdukProps {
+interface DialogHapusSupplierProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => Promise<void>;
-  produk: Produk | null;
+  supplier: Supplier | null;
   isLoading?: boolean;
 }
 
-export const DialogHapusProduk: React.FC<DialogHapusProdukProps> = ({
+export const DialogHapusSupplier: React.FC<DialogHapusSupplierProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  produk,
-  isLoading = false, // isLoading from parent for overall state
+  supplier,
+  isLoading = false,
 }) => {
-  const [isDeleting, setIsDeleting] = useState(false); // Internal loading state for this dialog
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -36,8 +36,8 @@ export const DialogHapusProduk: React.FC<DialogHapusProdukProps> = ({
       await onConfirm();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error confirming product deletion:", error);
-      // Optionally, display an error message to the user
+      console.error("Error confirming supplier deletion:", error);
+      // Error handling can be improved with toast notifications
     } finally {
       setIsDeleting(false);
     }
@@ -51,28 +51,27 @@ export const DialogHapusProduk: React.FC<DialogHapusProdukProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <AlertCircle className="w-5 h-5" />
-            Hapus Produk
+            Hapus Supplier
           </DialogTitle>
           <DialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Data produk akan dihapus secara
-            permanen.
+            Tindakan ini tidak dapat dibatalkan. Data supplier akan dihapus
+            secara permanen beserta data terkait.
           </DialogDescription>
         </DialogHeader>
 
-        {produk && (
+        {supplier && (
           <div className="bg-red-50 border border-red-200 rounded p-4">
             <p className="text-sm text-gray-600">
-              <span className="font-semibold">ID Produk:</span>{" "}
-              {produk.id}
+              <span className="font-semibold">Kode:</span> {supplier.kode}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              <span className="font-semibold">Nama:</span> {produk.nama}
+              <span className="font-semibold">Nama:</span> {supplier.nama}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              <span className="font-semibold">Kode:</span> {produk.kode}
+              <span className="font-semibold">Telepon:</span> {supplier.telp}
             </p>
             <p className="text-sm text-red-600 mt-3 font-semibold">
-              Apakah Anda yakin ingin menghapus produk ini?
+              Apakah Anda yakin ingin menghapus supplier ini?
             </p>
           </div>
         )}
@@ -92,7 +91,7 @@ export const DialogHapusProduk: React.FC<DialogHapusProdukProps> = ({
             onClick={handleDelete}
             disabled={currentLoading}
           >
-            {currentLoading ? "Menghapus..." : "Hapus Produk"}
+            {currentLoading ? "Menghapus..." : "Hapus Supplier"}
           </Button>
         </DialogFooter>
       </DialogContent>

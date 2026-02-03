@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 interface Props {
   data: Supplier[];
   onEdit: (supplier: Supplier) => void;
-  onDelete: (id: string) => void;
+  onDelete: (supplier: Supplier) => void;
   onDetail: (supplier: Supplier) => void;
 }
 
@@ -63,8 +63,8 @@ export default function SupplierTable({
                   </Button>
                   <Button
                     size="sm"
-                    variant="remove"
-                    onClick={() => onDelete(supplier.id)}
+                    variant="destructive"
+                    onClick={() => onDelete(supplier)}
                   >
                     Hapus
                   </Button>

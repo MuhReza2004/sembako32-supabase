@@ -25,7 +25,7 @@ export const getNewKodeProduk = async (): Promise<string> => {
    ============================= */
 export const addProduk = async (data: ProdukFormData): Promise<string> => {
   // 'id' and timestamps (created_at, updated_at) are handled by Supabase
-  const { kode, nama, kategori, satuan, status } = data;
+  const { kode, nama, kategori, satuan, stok, status } = data;
   const { data: newProduk, error } = await supabase
     .from("produk")
     .insert({
@@ -33,7 +33,7 @@ export const addProduk = async (data: ProdukFormData): Promise<string> => {
       nama,
       kategori,
       satuan,
-      stok: 0, // Initialize stock to 0
+      stok,
       status,
     })
     .select("id")
@@ -79,6 +79,23 @@ export const getProdukById = async (id: string): Promise<Produk | null> => {
   return data as Produk;
 };
 
+export const getProdukByName = async (nama: string): Promise<Produk | null> => {
+  const { data, error } = await supabase
+    .from("produk")
+    .select("*")
+    .eq("nama", nama)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") { // No rows found
+      return null;
+    }
+    console.error("Error fetching produk by name:", error);
+    throw error;
+  }
+  return data as Produk;
+};
+
 /* =============================
    UPDATE & DELETE
    ============================= */
@@ -119,7 +136,7 @@ export const deleteProduk = async (id: string): Promise<void> => {
     .eq("id", id);
 
   if (error) {
-    console.error("Error deleting produk:", error);
+    console.error("Error deleting produk:", JSON.stringify(error, null, 2));
     throw error;
   }
 };

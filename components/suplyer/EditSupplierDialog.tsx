@@ -71,7 +71,6 @@ export default function EditSupplierDialog({
       alamat,
       telp,
       status,
-      updatedAt: new Date(),
     });
 
     onOpenChange(false);

@@ -197,12 +197,14 @@ CREATE POLICY "Allow users to insert their own user record" ON users FOR INSERT 
 CREATE POLICY "Allow authenticated users to read produk" ON produk FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert produk" ON produk FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update produk" ON produk FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow authenticated users to delete produk" ON produk FOR DELETE TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to read pelanggan" ON pelanggan FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert pelanggan" ON pelanggan FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update pelanggan" ON pelanggan FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to read suppliers" ON suppliers FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert suppliers" ON suppliers FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update suppliers" ON suppliers FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow authenticated users to delete suppliers" ON suppliers FOR DELETE TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to read supplier_produk" ON supplier_produk FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert supplier_produk" ON supplier_produk FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update supplier_produk" ON supplier_produk FOR UPDATE TO authenticated USING (true);

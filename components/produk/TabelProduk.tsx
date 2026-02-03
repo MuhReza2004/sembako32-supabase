@@ -19,6 +19,7 @@ interface TabelProdukNewProps {
   onEdit: (product: Produk) => void;
   onDelete: (product: Produk) => void;
   searchTerm?: string;
+  deletingId?: string | null;
 }
 
 export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
@@ -27,9 +28,8 @@ export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
   onEdit,
   onDelete,
   searchTerm = "",
+  deletingId = null,
 }) => {
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
   // Filter berdasarkan search
   const filteredProducts = useMemo(() => {
     if (!searchTerm.trim()) return products;
@@ -138,10 +138,7 @@ export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
                     <Button
                       size="sm"
                       variant="remove"
-                      onClick={() => {
-                        setDeletingId(product.id);
-                        onDelete(product);
-                      }}
+                      onClick={() => onDelete(product)}
                       disabled={deletingId === product.id}
                       className="h-8 px-2"
                       title="Hapus"

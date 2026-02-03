@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ interface DialogProdukDuplikatProps {
   newData: ProdukFormData | null;
   onAddStok: () => Promise<void>;
   onAddNew: () => Promise<void>;
-  isLoading?: boolean;
+  isLoading?: boolean; // Prop from parent for overall loading state
 }
 
 export const DialogProdukDuplikat: React.FC<DialogProdukDuplikatProps> = ({
@@ -30,21 +30,40 @@ export const DialogProdukDuplikat: React.FC<DialogProdukDuplikatProps> = ({
   newData,
   onAddStok,
   onAddNew,
-  isLoading = false,
+  isLoading: parentLoading = false,
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false); // Internal loading state for this dialog
+
   const handleAddStok = async () => {
-    await onAddStok();
-    onOpenChange(false);
+    setIsProcessing(true);
+    try {
+      await onAddStok();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error adding to existing stock:", error);
+      // TODO: Show an alert or toast for the error
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleAddNew = async () => {
-    await onAddNew();
-    onOpenChange(false);
+    setIsProcessing(true);
+    try {
+      await onAddNew();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error adding new duplicate product:", error);
+      // TODO: Show an alert or toast for the error
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!existingProduct || !newData) return null;
 
   const totalStokBaru = existingProduct.stok + newData.stok;
+  const currentLoading = parentLoading || isProcessing;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,7 +142,7 @@ export const DialogProdukDuplikat: React.FC<DialogProdukDuplikatProps> = ({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isLoading}
+            disabled={currentLoading}
           >
             Batal
           </Button>
@@ -131,17 +150,17 @@ export const DialogProdukDuplikat: React.FC<DialogProdukDuplikatProps> = ({
             type="button"
             variant="destructive"
             onClick={handleAddNew}
-            disabled={isLoading}
+            disabled={currentLoading}
           >
-            {isLoading ? "Memproses..." : "Tambah Baru"}
+            {currentLoading ? "Memproses..." : "Tambah Baru"}
           </Button>
           <Button
             type="button"
             className="bg-green-600 hover:bg-green-700"
             onClick={handleAddStok}
-            disabled={isLoading}
+            disabled={currentLoading}
           >
-            {isLoading ? "Memproses..." : "Tambah Stok"}
+            {currentLoading ? "Memproses..." : "Tambah Stok"}
           </Button>
         </DialogFooter>
       </DialogContent>
