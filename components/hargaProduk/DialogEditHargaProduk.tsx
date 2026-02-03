@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,11 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { SupplierProduk, SupplierProdukFormData } from "@/app/types/suplyer";
+import { SupplierProduk, SupplierProdukFormData } from "@/app/types/supplier";
 import { updateSupplierProduk } from "@/app/services/supplierProduk.service";
-import { getAllSuppliers } from "@/app/services/supplyer.service";
+import { getAllSuppliers } from "@/app/services/supplier.service";
 import { getAllProduk } from "@/app/services/produk.service";
-import { Supplier } from "@/app/types/suplyer";
+import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
 
@@ -49,40 +47,41 @@ export default function DialogEditHargaProduk({
   const [marginPercentage, setMarginPercentage] = useState(0);
 
   const [formData, setFormData] = useState<SupplierProdukFormData>({
-    supplierId: "",
-    produkId: "",
-    hargaBeli: 0,
-    hargaJual: 0,
+    supplier_id: "",
+    produk_id: "",
+    harga_beli: 0,
+    harga_jual: 0,
     stok: 0,
   });
 
+  const fetchData = useCallback(async () => {
+    const [sups, prods] = await Promise.all([
+      getAllSuppliers(),
+      getAllProduk(),
+    ]);
+    setSuppliers(sups);
+    setProducts(prods);
+  }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
-      const [sups, prods] = await Promise.all([
-        getAllSuppliers(),
-        getAllProduk(),
-      ]);
-      setSuppliers(sups);
-      setProducts(prods);
-    };
     if (open) fetchData();
-  }, [open]);
+  }, [open, fetchData]);
 
   useEffect(() => {
     if (item) {
       setFormData({
-        supplierId: item.supplierId,
-        produkId: item.produkId,
-        hargaBeli: item.hargaBeli,
-        hargaJual: item.hargaJual,
+        supplier_id: item.supplier_id,
+        produk_id: item.produk_id,
+        harga_beli: item.harga_beli,
+        harga_jual: item.harga_jual,
         stok: item.stok,
       });
-      setDisplayPrice(formatRupiah(item.hargaBeli));
-      setDisplaySellPrice(formatRupiah(item.hargaJual));
-      const newMargin = item.hargaJual - item.hargaBeli;
+      setDisplayPrice(formatRupiah(item.harga_beli));
+      setDisplaySellPrice(formatRupiah(item.harga_jual));
+      const newMargin = item.harga_jual - item.harga_beli;
       setMargin(newMargin);
       setMarginPercentage(
-        item.hargaBeli > 0 ? (newMargin / item.hargaBeli) * 100 : 0,
+        item.harga_beli > 0 ? (newMargin / item.harga_beli) * 100 : 0,
       );
     }
   }, [item]);
@@ -93,12 +92,12 @@ export default function DialogEditHargaProduk({
     const numberValue = parseInt(numericValue) || 0;
 
     setFormData((p) => {
-      const newFormData = { ...p, hargaBeli: numberValue };
-      const newMargin = newFormData.hargaJual - newFormData.hargaBeli;
+      const newFormData = { ...p, harga_beli: numberValue };
+      const newMargin = newFormData.harga_jual - newFormData.harga_beli;
       setMargin(newMargin);
       setMarginPercentage(
-        newFormData.hargaBeli > 0
-          ? (newMargin / newFormData.hargaBeli) * 100
+        newFormData.harga_beli > 0
+          ? (newMargin / newFormData.harga_beli) * 100
           : 0,
       );
       return newFormData;
@@ -112,12 +111,12 @@ export default function DialogEditHargaProduk({
     const numberValue = parseInt(numericValue) || 0;
 
     setFormData((p) => {
-      const newFormData = { ...p, hargaJual: numberValue };
-      const newMargin = newFormData.hargaJual - newFormData.hargaBeli;
+      const newFormData = { ...p, harga_jual: numberValue };
+      const newMargin = newFormData.harga_jual - newFormData.harga_beli;
       setMargin(newMargin);
       setMarginPercentage(
-        newFormData.hargaBeli > 0
-          ? (newMargin / newFormData.hargaBeli) * 100
+        newFormData.harga_beli > 0
+          ? (newMargin / newFormData.harga_beli) * 100
           : 0,
       );
       return newFormData;
@@ -149,9 +148,9 @@ export default function DialogEditHargaProduk({
           <div>
             <Label>Supplier *</Label>
             <Select
-              value={formData.supplierId}
+              value={formData.supplier_id}
               onValueChange={(val) =>
-                setFormData((p) => ({ ...p, supplierId: val }))
+                setFormData((p) => ({ ...p, supplier_id: val }))
               }
             >
               <SelectTrigger>
@@ -170,9 +169,9 @@ export default function DialogEditHargaProduk({
           <div>
             <Label>Produk *</Label>
             <Select
-              value={formData.produkId}
+              value={formData.produk_id}
               onValueChange={(val) =>
-                setFormData((p) => ({ ...p, produkId: val }))
+                setFormData((p) => ({ ...p, produk_id: val }))
               }
             >
               <SelectTrigger>

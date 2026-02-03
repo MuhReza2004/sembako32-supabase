@@ -23,13 +23,6 @@ interface DialogEditPelangganProps {
   isLoading?: boolean;
 }
 
-const SATUAN_OPTIONS = [
-  { value: "sak", label: "Sak" },
-  { value: "pcs", label: "Pcs" },
-  { value: "kg", label: "Kg" },
-  { value: "liter", label: "Liter" },
-];
-
 export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
   open,
   onOpenChange,
@@ -44,10 +37,12 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
     formState: { errors },
   } = useForm<PelangganFormData>({
     defaultValues: pelanggan || {
-      namaPelanggan: "",
-      kodePelanggan: "",
+      nama_pelanggan: "",
+      kode_pelanggan: "",
+      nama_toko: "",
+      nib: "",
       alamat: "",
-      noTelp: "",
+      no_telp: "",
       email: "",
       status: "aktif",
     },
@@ -77,7 +72,7 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
           <div className="mb-4 p-3 bg-gray-100 rounded text-sm text-gray-700">
             ID Pelanggan:{" "}
             <span className="font-mono font-semibold">
-              {pelanggan.idPelanggan}
+              {pelanggan.id_pelanggan}
             </span>
           </div>
         )}
@@ -86,32 +81,32 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
           {/* Row 1: Nama & Kode */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="namaPelanggan" className="font-semibold">
+              <Label htmlFor="nama_pelanggan" className="font-semibold">
                 Nama Pelanggan *
               </Label>
               <Input
-                id="namaPelanggan"
+                id="nama_pelanggan"
                 placeholder="Masukkan nama pelanggan"
-                {...register("namaPelanggan", {
+                {...register("nama_pelanggan", {
                   required: "Nama pelanggan wajib diisi",
                   minLength: { value: 3, message: "Minimal 3 karakter" },
                 })}
-                className={errors.namaPelanggan ? "border-red-500" : ""}
+                className={errors.nama_pelanggan ? "border-red-500" : ""}
               />
-              {errors.namaPelanggan && (
+              {errors.nama_pelanggan && (
                 <p className="text-sm text-red-500">
-                  {errors.namaPelanggan.message}
+                  {errors.nama_pelanggan.message}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="kodePelanggan" className="font-semibold">
+              <Label htmlFor="kode_pelanggan" className="font-semibold">
                 Kode Pelanggan
               </Label>
               <Input
-                id="kodePelanggan"
-                {...register("kodePelanggan")}
+                id="kode_pelanggan"
+                {...register("kode_pelanggan")}
                 readOnly
                 className="bg-gray-100 cursor-not-allowed"
               />
@@ -122,21 +117,21 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
           {/* Row 2: Nama Toko & NIB*/}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="namaToko" className="font-semibold">
+              <Label htmlFor="nama_toko" className="font-semibold">
                 Nama Toko *
               </Label>
               <Input
-                id="namaToko"
+                id="nama_toko"
                 placeholder="Misal: Toko ABC"
-                {...register("namaToko", {
+                {...register("nama_toko", {
                   required: "Nama toko wajib diisi",
                   minLength: { value: 3, message: "Minimal 3 karakter" },
                 })}
-                className={errors.namaToko ? "border-red-500" : ""}
+                className={errors.nama_toko ? "border-red-500" : ""}
               />
-              {errors.namaToko && (
+              {errors.nama_toko && (
                 <p className="text-sm text-red-500">
-                  {errors.namaToko.message}
+                  {errors.nama_toko.message}
                 </p>
               )}
             </div>
@@ -162,20 +157,20 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
           {/* Row 2: No Telp & Email */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="noTelp" className="font-semibold">
+              <Label htmlFor="no_telp" className="font-semibold">
                 Nomor Telepon *
               </Label>
               <Input
-                id="noTelp"
+                id="no_telp"
                 placeholder="Misal: 081234567890"
-                {...register("noTelp", {
+                {...register("no_telp", {
                   required: "Nomor telepon wajib diisi",
                   minLength: { value: 10, message: "Minimal 10 angka" },
                 })}
-                className={errors.noTelp ? "border-red-500" : ""}
+                className={errors.no_telp ? "border-red-500" : ""}
               />
-              {errors.noTelp && (
-                <p className="text-sm text-red-500">{errors.noTelp.message}</p>
+              {errors.no_telp && (
+                <p className="text-sm text-red-500">{errors.no_telp.message}</p>
               )}
             </div>
 

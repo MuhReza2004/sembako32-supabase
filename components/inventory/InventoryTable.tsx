@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { InventoryData } from "@/app/dashboard/admin/inventory/page";
+import { InventoryData } from "@/app/types/inventory";
 
 interface InventoryTableProps {
   inventoryData: InventoryData[];

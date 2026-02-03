@@ -201,6 +201,7 @@ CREATE POLICY "Allow authenticated users to delete produk" ON produk FOR DELETE 
 CREATE POLICY "Allow authenticated users to read pelanggan" ON pelanggan FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert pelanggan" ON pelanggan FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update pelanggan" ON pelanggan FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow authenticated users to delete pelanggan" ON pelanggan FOR DELETE TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to read suppliers" ON suppliers FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert suppliers" ON suppliers FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update suppliers" ON suppliers FOR UPDATE TO authenticated USING (true);
@@ -208,6 +209,7 @@ CREATE POLICY "Allow authenticated users to delete suppliers" ON suppliers FOR D
 CREATE POLICY "Allow authenticated users to read supplier_produk" ON supplier_produk FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert supplier_produk" ON supplier_produk FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update supplier_produk" ON supplier_produk FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow authenticated users to delete supplier_produk" ON supplier_produk FOR DELETE TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to read inventory" ON inventory FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert inventory" ON inventory FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update inventory" ON inventory FOR UPDATE TO authenticated USING (true);

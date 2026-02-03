@@ -55,7 +55,7 @@ export default function PiutangPage() {
     } else {
       const mappedData: Penjualan[] = data.map((item: any) => ({
         ...item,
-        namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
+        nama_pelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
         items:
           item.penjualan_detail?.map((detail: any) => ({
             ...detail,

@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Penjualan } from "@/app/types/penjualan";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { addPiutangPayment } from "@/app/services/penjualan.service";
 import { formatRupiah } from "@/helper/format";
 
@@ -28,71 +29,66 @@ interface DialogBayarPiutangProps {
   onSuccess: () => void;
 }
 
+type FormData = {
+  tanggal: string;
+  jumlah: number;
+  metode_pembayaran: string;
+  atas_nama: string;
+};
+
 export default function DialogBayarPiutang({
   isOpen,
   onClose,
   piutang,
   onSuccess,
 }: DialogBayarPiutangProps) {
-  const [tanggalBayar, setTanggalBayar] = useState(
-    new Date().toISOString().split("T")[0],
-  );
-  const [jumlahBayar, setJumlahBayar] = useState(0);
-  const [jumlahBayarInput, setJumlahBayarInput] = useState("");
-  const [metodePembayaran, setMetodePembayaran] = useState("Transfer");
-  const [atasNama, setAtasNama] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>();
 
   const totalDibayar = piutang.total_dibayar || 0;
   const sisaUtang = (piutang.total_akhir || piutang.total) - totalDibayar;
 
   useEffect(() => {
-    // Reset state when dialog opens or piutang changes
-    setJumlahBayar(sisaUtang);
-    setJumlahBayarInput(formatRupiah(sisaUtang));
-    setTanggalBayar(new Date().toISOString().split("T")[0]);
-    setAtasNama(piutang.namaPelanggan || "");
-    setError(null);
-  }, [isOpen, piutang, sisaUtang]);
+    if (isOpen) {
+      reset({
+        tanggal: new Date().toISOString().split("T")[0],
+        jumlah: sisaUtang,
+        metode_pembayaran: "Transfer",
+        atas_nama: piutang.nama_pelanggan || "",
+      });
+    }
+  }, [isOpen, piutang, sisaUtang, reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-
-    if (jumlahBayar <= 0) {
-      setError("Jumlah bayar harus lebih dari nol.");
-      setIsSubmitting(false);
+  const onSubmit = async (data: FormData) => {
+    if (data.jumlah <= 0) {
+      alert("Jumlah bayar harus lebih dari nol.");
       return;
     }
-    if (jumlahBayar > sisaUtang) {
-      setError(
+    if (data.jumlah > sisaUtang) {
+      alert(
         `Jumlah bayar tidak boleh melebihi sisa utang (${formatRupiah(
           sisaUtang,
         )}).`,
       );
-      setIsSubmitting(false);
       return;
     }
     if (!piutang.id) {
-      setError("ID Penjualan tidak ditemukan.");
-      setIsSubmitting(false);
+      alert("ID Penjualan tidak ditemukan.");
       return;
     }
 
     try {
-      await addPiutangPayment(piutang.id, {
-        tanggal: tanggalBayar,
-        jumlah: jumlahBayar,
-        metode_pembayaran: metodePembayaran,
-        atas_nama: atasNama,
-      });
+      await addPiutangPayment(piutang.id, data);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan pembayaran.");
-    } finally {
-      setIsSubmitting(false);
+      alert(err.message || "Gagal menyimpan pembayaran.");
     }
   };
 
@@ -103,11 +99,10 @@ export default function DialogBayarPiutang({
           <DialogTitle>Pembayaran Piutang ({piutang.no_invoice})</DialogTitle>
         </DialogHeader>
         <div className="space-y-6">
-          {/* Informasi Transaksi */}
           <div className="space-y-4">
             <div>
               <Label>Nama Pelanggan</Label>
-              <Input value={piutang.namaPelanggan || ""} disabled />
+              <Input value={piutang.nama_pelanggan || ""} disabled />
             </div>
             <div>
               <Label>Sisa Utang</Label>
@@ -115,7 +110,6 @@ export default function DialogBayarPiutang({
             </div>
           </div>
 
-          {/* Daftar Produk */}
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <h3 className="font-semibold text-lg mb-3">Daftar Produk</h3>
             {piutang.items && piutang.items.length > 0 ? (
@@ -141,7 +135,7 @@ export default function DialogBayarPiutang({
                     {piutang.items.map((item, index) => (
                       <TableRow key={index} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
-                          {item.namaProduk || "Produk Tidak Ditemukan"}
+                          {item.nama_produk || "Produk Tidak Ditemukan"}
                         </TableCell>
                         <TableCell className="text-center">
                           {item.qty} {item.satuan || ""}
@@ -164,43 +158,43 @@ export default function DialogBayarPiutang({
             )}
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="tanggalBayar">Tanggal Bayar</Label>
+                <Label htmlFor="tanggal">Tanggal Bayar</Label>
                 <Input
-                  id="tanggalBayar"
+                  id="tanggal"
                   type="date"
-                  value={tanggalBayar}
-                  onChange={(e) => setTanggalBayar(e.target.value)}
-                  required
+                  {...register("tanggal", { required: true })}
                 />
               </div>
               <div>
-                <Label htmlFor="jumlahBayar">Jumlah Bayar (Rp)</Label>
-                <Input
-                  id="jumlahBayar"
-                  type="text"
-                  value={jumlahBayarInput}
-                  onChange={(e) => {
-                    const input = e.target.value;
-                    const numeric = input.replace(/[^0-9]/g, "");
-                    const numericValue = Number(numeric);
-                    setJumlahBayar(numericValue);
-                    setJumlahBayarInput(formatRupiah(numericValue));
-                  }}
-                  placeholder={`Maksimal: ${formatRupiah(sisaUtang)}`}
-                  required
+                <Label htmlFor="jumlah">Jumlah Bayar (Rp)</Label>
+                <Controller
+                  name="jumlah"
+                  control={control}
+                  rules={{ required: true, min: 1 }}
+                  render={({ field }) => (
+                    <Input
+                      id="jumlah"
+                      type="text"
+                      value={formatRupiah(field.value)}
+                      onChange={(e) => {
+                        const input = e.target.value;
+                        const numeric = input.replace(/[^0-9]/g, "");
+                        field.onChange(Number(numeric));
+                      }}
+                      placeholder={`Maksimal: ${formatRupiah(sisaUtang)}`}
+                    />
+                  )}
                 />
               </div>
               <div>
-                <Label htmlFor="metodePembayaran">Metode Pembayaran</Label>
+                <Label htmlFor="metode_pembayaran">Metode Pembayaran</Label>
                 <select
-                  id="metodePembayaran"
-                  value={metodePembayaran}
-                  onChange={(e) => setMetodePembayaran(e.target.value)}
+                  id="metode_pembayaran"
+                  {...register("metode_pembayaran", { required: true })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  required
                 >
                   <option value="Transfer">Transfer</option>
                   <option value="Cash">Cash</option>
@@ -209,17 +203,19 @@ export default function DialogBayarPiutang({
                 </select>
               </div>
               <div>
-                <Label htmlFor="atasNama">Atas Nama</Label>
+                <Label htmlFor="atas_nama">Atas Nama</Label>
                 <Input
-                  id="atasNama"
+                  id="atas_nama"
                   type="text"
-                  value={atasNama}
-                  onChange={(e) => setAtasNama(e.target.value)}
+                  {...register("atas_nama", { required: true })}
                   placeholder="Masukkan nama pembayar"
-                  required
                 />
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {errors.jumlah && (
+                <p className="text-red-500 text-sm">
+                  {errors.jumlah.message}
+                </p>
+              )}
             </div>
             <DialogFooter className="mt-4">
               <Button

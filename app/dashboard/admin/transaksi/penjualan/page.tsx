@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Penjualan } from "@/app/types/penjualan";
+import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
 import PenjualanTabel from "@/components/penjualan/PenjualanTabel";
 import { DialogDetailPenjualan } from "@/components/penjualan/DialogDetailPenjualan";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
@@ -30,7 +30,7 @@ export default function PenjualanPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
-  const [perPage, setPerPage] = useState(10);
+  const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
 
 
@@ -84,16 +84,16 @@ export default function PenjualanPage() {
       setError("Gagal memuat data penjualan.");
       setData([]);
     } else {
-      const mappedData: Penjualan[] = data.map((item: any) => ({
+      const mappedData: Penjualan[] = data.map((item: Penjualan) => ({
         ...item,
-        namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
-        alamatPelanggan: item.pelanggan?.alamat || "",
+        nama_pelanggan: (item.pelanggan as any)?.nama_pelanggan || "Unknown",
+        alamat_pelanggan: (item.pelanggan as any)?.alamat || "",
         items:
-          item.penjualan_detail?.map((detail: any) => ({
+          item.penjualan_detail?.map((detail: PenjualanDetail) => ({
             ...detail,
-            namaProduk:
-              detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-            satuan: detail.supplier_produk?.produk?.satuan || "",
+            nama_produk:
+              (detail.supplier_produk as any)?.produk?.nama || "Produk Tidak Ditemukan",
+            satuan: (detail.supplier_produk as any)?.produk?.satuan || "",
           })) || [],
       }));
       setData(mappedData);
@@ -115,7 +115,7 @@ export default function PenjualanPage() {
           schema: "public",
           table: "penjualan",
         },
-        (payload) => {
+        () => {
           fetchData(); // Re-fetch the current page on any change
         },
       )

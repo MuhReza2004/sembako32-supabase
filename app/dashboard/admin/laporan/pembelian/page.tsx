@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Pembelian } from "@/app/types/pembelian";
+import { Pembelian, PembelianDetail } from "@/app/types/pembelian";
 import { supabase } from "@/app/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatRupiah } from "@/helper/format";
 import { Download, Calendar, FileText } from "lucide-react";
-import * as ExcelJS from "exceljs";
 import {
   Table,
   TableBody,
@@ -66,12 +65,12 @@ export default function PembelianReportPage() {
 
         const formattedData = pembelianData.map((item) => ({
           ...item,
-          namaSupplier: item.supplier?.nama,
-          items: item.items.map((detail: any) => ({
+          nama_supplier: item.supplier?.nama,
+          items: item.items.map((detail: PembelianDetail) => ({
             ...detail,
             namaProduk:
-              detail.supplier_produk?.produk?.nama || "Produk tidak ditemukan",
-            satuan: detail.supplier_produk?.produk?.satuan || "",
+              (detail.supplier_produk as any)?.produk?.nama || "Produk tidak ditemukan",
+            satuan: (detail.supplier_produk as any)?.produk?.satuan || "",
             harga: detail.harga,
             qty: detail.qty,
           })),
@@ -79,9 +78,10 @@ export default function PembelianReportPage() {
 
         setData(formattedData);
         setHasMore(pembelianData.length === PAGE_SIZE);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
         console.error("Error fetching purchases:", err);
-        setError("Gagal memuat data pembelian: " + err.message);
+        setError("Gagal memuat data pembelian: " + errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -300,7 +300,7 @@ export default function PembelianReportPage() {
                           <li>{purchase.no_npb || "-"}</li>
                         </ul>
                       </TableCell>
-                      <TableCell>{purchase.namaSupplier}</TableCell>
+                      <TableCell>{purchase.nama_supplier}</TableCell>
                       <TableCell>
                         {purchase.items && purchase.items.length > 0 ? (
                           <ul className="list-disc pl-4 text-xs">

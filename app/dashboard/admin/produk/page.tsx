@@ -7,9 +7,8 @@ import { DialogTambahProduk } from "@/components/produk/DialogTambahProduk";
 import { DialogEditProduk } from "@/components/produk/DialogEditProduk";
 import { DialogHapusProduk } from "@/components/produk/DialogHapusProduk";
 
-import { TabelProdukNew } from "@/components/produk/TabelProduk";
+import { TabelProduk } from "@/components/produk/TabelProduk";
 import {
-  addProduk,
   updateProduk,
   deleteProduk,
 } from "@/app/services/produk.service";
@@ -32,7 +31,7 @@ export default function ProdukAdminPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
-  const [perPage, setPerPage] = useState(10);
+  const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // For pagination control
 
   // Filter & Search
@@ -51,7 +50,9 @@ export default function ProdukAdminPage() {
       .order("created_at", { ascending: false });
 
     if (searchTerm) {
-      queryBuilder = queryBuilder.ilike("nama", `%${searchTerm}%`); // Case-insensitive search
+      queryBuilder = queryBuilder.or(
+        `kode.ilike.%${searchTerm}%,nama.ilike.%${searchTerm}%`
+      );
     }
 
     const { data, error, count } = await queryBuilder.range(from, to);
@@ -81,7 +82,7 @@ export default function ProdukAdminPage() {
           schema: "public",
           table: "produk",
         },
-        (payload) => {
+        () => {
           fetchProducts(); // Re-fetch the current page on any change
         },
       )
@@ -109,8 +110,7 @@ export default function ProdukAdminPage() {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  // Cek apakah produk dengan nama yang sama sudah ada
-  const checkDuplicateProduct = async (nama: string): Promise<boolean> => {
+    const checkDuplicateProduct = async (nama: string): Promise<boolean> => {
     if (!nama) return false;
     const { data, error } = await supabase
       .from("produk")
@@ -125,26 +125,7 @@ export default function ProdukAdminPage() {
     return !!data;
   };
 
-  // Handle tambah produk dengan validasi duplikasi
-  const handleTambahSubmit = async (data: ProdukFormData) => {
-    const isDuplicate = await checkDuplicateProduct(data.nama);
-    if (isDuplicate) {
-      setError("Produk dengan nama yang sama sudah terdaftar");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      await addProduk(data);
-      showSuccess("Produk berhasil ditambahkan");
-      setDialogTambahOpen(false);
-    } catch (err) {
-      setError("Gagal menambah produk");
-      console.error("Error adding product:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  
 
   // Handle edit produk
   const handleEditSubmit = async (data: ProdukFormData) => {
@@ -258,12 +239,11 @@ export default function ProdukAdminPage() {
       </div>
 
       {/* Products Table */}
-      <TabelProdukNew
+      <TabelProduk
         products={products}
         isLoading={isLoading}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
-        searchTerm={searchTerm}
         deletingId={deletingId}
       />
 

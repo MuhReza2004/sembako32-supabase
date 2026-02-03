@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SupplierProduk } from "@/app/types/suplyer";
+import { SupplierProduk } from "@/app/types/supplier";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getAllSuppliers } from "@/app/services/supplyer.service";
+import { getAllSuppliers } from "@/app/services/supplier.service";
 import { getAllProduk } from "@/app/services/produk.service";
-import { Supplier } from "@/app/types/suplyer";
+import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
 
 interface Props {
   data: SupplierProduk[];
   onEdit: (item: SupplierProduk) => void;
-  onDelete: (id: string) => void;
+  onDelete: (item: SupplierProduk) => void;
   onAddProduct: (supplierId: string) => void;
 }
 
@@ -112,7 +112,7 @@ export default function TabelHargaProduk({
                         <Button
                           size="sm"
                           variant="remove"
-                          onClick={() => onDelete(item.id)}
+                          onClick={() => onDelete(item)}
                         >
                           Hapus
                         </Button>

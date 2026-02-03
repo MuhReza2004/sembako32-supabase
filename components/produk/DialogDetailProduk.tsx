@@ -56,8 +56,8 @@ export default function DialogDetailProduk({
               Dibuat Pada
             </label>
             <p>
-              {produk.createdAt
-                ? new Date(produk.createdAt).toLocaleDateString("id-ID")
+              {produk.created_at
+                ? new Date(produk.created_at).toLocaleDateString("id-ID")
                 : "-"}
             </p>
           </div>
@@ -67,8 +67,8 @@ export default function DialogDetailProduk({
               Diubah Pada
             </label>
             <p>
-              {produk.updatedAt
-                ? new Date(produk.updatedAt).toLocaleDateString("id-ID")
+              {produk.updated_at
+                ? new Date(produk.updated_at).toLocaleDateString("id-ID")
                 : "-"}
             </p>
           </div>

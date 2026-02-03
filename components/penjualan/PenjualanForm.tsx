@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import {
   createPenjualan,
   updatePenjualan,
@@ -21,751 +23,455 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ComboboxProduk } from "@/components/ui/combobox-produk";
-import { Card } from "@/components/ui/card";
-import { supabase } from "@/app/lib/supabase"; // Import Supabase client
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRupiah } from "@/helper/format";
-import {
-  AlertCircle,
-  Plus,
-  Trash2,
-  Receipt,
-  User,
-  Package,
-  CreditCard,
-  CheckCircle2,
-  Truck,
-} from "lucide-react";
+import { AlertCircle, Plus, Trash2, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-
+import { Switch } from "@/components/ui/switch";
+import { ComboboxPelanggan } from "@/components/ui/combobox-pelanggan";
+import { ComboboxSupplierProduk } from "@/components/ui/combobox-supplier-produk";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+type PenjualanFormData = Omit<Penjualan, "id" | "created_at" | "updated_at">;
 
 interface PenjualanFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  products: Produk[];
+  supplierProduks: any[];
+  pelangganList: Pelanggan[];
   editingPenjualan?: Penjualan | null;
 }
 
-export default function PenjualanForm({
-  open,
-  onOpenChange,
-  onSuccess,
+export function PenjualanForm({
+  pelangganList,
+  supplierProduks,
+  products,
   editingPenjualan,
 }: PenjualanFormProps) {
-  const [pelanggan_id, setPelangganId] = useState("");
-  const [nama_pelanggan, setNamaPelanggan] = useState("");
-  const [nama_toko, setNamaToko] = useState("");
-  const [alamat_pelanggan, setAlamatPelanggan] = useState("");
-  const [no_invoice, setInvoiceNumber] = useState("");
-  const [no_npb, setNpbNumber] = useState("");
-  const [no_do, setDoNumber] = useState("");
-  const [produkList, setProdukList] = useState<Produk[]>([]);
-  const [pelangganList, setPelangganList] = useState<Pelanggan[]>([]);
-  const [items, setItems] = useState<PenjualanDetail[]>([]);
-  const [status, setStatus] = useState<"Lunas" | "Belum Lunas">("Lunas");
-  const [metode_pembayaran, setMetodePembayaran] = useState<
-    "Tunai" | "Transfer"
-  >("Tunai");
-  const [metode_pengambilan, setMetodePengambilan] = useState<
-    "Ambil Langsung" | "Diantar"
-  >("Ambil Langsung");
-  const [nomor_rekening, setNomorRekening] = useState("");
-  const [nama_bank, setNamaBank] = useState("");
-  const [nama_pemilik_rekening, setNamaPemilikRekening] = useState("");
-  const [diskon, setDiskon] = useState(0);
-  const [pajak_enabled, setPajakEnabled] = useState(true);
-  const [tanggal_jatuh_tempo, setTanggalJatuhTempo] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<PenjualanFormData>({
+    defaultValues: editingPenjualan
+      ? {
+          ...editingPenjualan,
+          items: editingPenjualan.items || [],
+        }
+      : {
+          tanggal: new Date().toISOString().split("T")[0],
+          status: "Lunas",
+          items: [],
+          metode_pengambilan: "Ambil Langsung",
+          pajak_enabled: false,
+          diskon: 0,
+        },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
+
   const [error, setError] = useState<string | null>(null);
 
-  const resetForm = () => {
-    setPelangganId("");
-    setNamaPelanggan("");
-    setNamaToko("");
-    setAlamatPelanggan("");
-    setItems([]);
-    setStatus("Lunas");
-    setMetodePembayaran("Tunai");
-    setMetodePengambilan("Ambil Langsung");
-    setNomorRekening("1953017106");
-    setNamaBank("BNI");
-    setNamaPemilikRekening("RIZAL");
-    setDiskon(0);
-    setPajakEnabled(true);
-    setTanggalJatuhTempo("");
-    setError(null);
-    if (!editingPenjualan) {
-      generateInvoiceNumber().then(setInvoiceNumber);
-      generateNPBNumber().then(setNpbNumber);
-      generateDONumber().then(setDoNumber);
-    }
-  };
-
   useEffect(() => {
-    if (open) {
-      if (editingPenjualan) {
-        // Populate form with existing data for editing
-        const penj = editingPenjualan as Penjualan;
-        setPelangganId(penj.pelanggan_id);
-        setNamaPelanggan(penj.namaPelanggan || ""); // Keep for display
-        setNamaToko(penj.namaPelanggan || ""); // Assuming namaToko maps to namaPelanggan if not present
-        setAlamatPelanggan(penj.alamatPelanggan || ""); // Keep for display
-        setInvoiceNumber(penj.no_invoice || "");
-        setNpbNumber(penj.no_npb || "");
-        setDoNumber(penj.no_do || "");
-        setMetodePengambilan(penj.metode_pengambilan || "Ambil Langsung");
-        setItems(penj.items || []);
-        setStatus((penj.status as "Lunas" | "Belum Lunas") || "Lunas");
-        setMetodePembayaran(
-          (penj.metode_pembayaran as "Tunai" | "Transfer") || "Tunai",
-        );
-        setNomorRekening(penj.nomor_rekening || "");
-        setNamaBank(penj.nama_bank || "");
-        setNamaPemilikRekening(penj.nama_pemilik_rekening || "");
-        setDiskon(penj.diskon || 0);
-        setPajakEnabled(penj.pajak_enabled ?? true);
-        setTanggalJatuhTempo(penj.tanggal_jatuh_tempo || "");
-        setError(null);
-      } else {
-        resetForm();
-      }
-    }
-
-    // Supabase real-time subscription for produkList
-    const fetchProduk = async () => {
-      const { data, error } = await supabase
-        .from("produk")
-        .select("*")
-        .order("nama", { ascending: true });
-      if (error) {
-        console.error("Error fetching produk:", error);
-      } else {
-        setProdukList(data.filter((p) => p.status === "aktif") as Produk[]);
+    const generateNumbers = async () => {
+      if (!editingPenjualan) {
+        const [invoiceNum, npbNum, doNum] = await Promise.all([
+          generateInvoiceNumber(),
+          generateNPBNumber(),
+          generateDONumber(),
+        ]);
+        setValue("no_invoice", invoiceNum);
+        setValue("no_npb", npbNum);
+        setValue("no_do", doNum);
       }
     };
+    generateNumbers();
+  }, [editingPenjualan, setValue]);
 
-    const produkSubscription = supabase
-      .from("produk")
-      .on("*", (payload) => {
-        fetchProduk(); // Re-fetch all produk on any change
-      })
-      .subscribe();
+  const watchItems = watch("items");
+  const watchPajakEnabled = watch("pajak_enabled");
+  const watchDiskon = watch("diskon");
+  const watchStatus = watch("status");
+  const watchMetodePembayaran = watch("metode_pembayaran");
 
-    fetchProduk(); // Initial fetch
+  const { subTotal, totalPajak, total } = useMemo(() => {
+    const subTotal = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
+    const totalSetelahDiskon = subTotal - (watchDiskon || 0);
+    const totalPajak = watchPajakEnabled ? totalSetelahDiskon * 0.11 : 0;
+    const total = totalSetelahDiskon + totalPajak;
+    return { subTotal, totalPajak, total };
+  }, [watchItems, watchDiskon, watchPajakEnabled]);
 
-    // Supabase real-time subscription for pelangganList
-    const fetchPelanggan = async () => {
-      const { data, error } = await supabase
-        .from("pelanggan")
-        .select("*")
-        .order("nama_pelanggan", { ascending: true });
-      if (error) {
-        console.error("Error fetching pelanggan:", error);
-      } else {
-        setPelangganList(data as Pelanggan[]);
-      }
-    };
-
-    const pelangganSubscription = supabase
-      .from("pelanggan")
-      .on("*", (payload) => {
-        fetchPelanggan(); // Re-fetch all pelanggan on any change
-      })
-      .subscribe();
-
-    fetchPelanggan(); // Initial fetch
-
-    return () => {
-      supabase.removeSubscription(produkSubscription);
-      supabase.removeSubscription(pelangganSubscription);
-    };
-  }, [open, editingPenjualan]);
-
-  const addItem = () => {
-    setItems([
-      ...items,
-      {
-        supplier_produk_id: "",
-        namaProduk: "",
-        satuan: "",
-        harga: 0,
-        qty: 1,
-        subtotal: 0,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-  };
-
-  const updateItem = (i: number, field: string, value: any) => {
-    const newItems = [...items];
-    const item = newItems[i];
-    (item as any)[field] = value;
-
-    // Use `supplier_produk_id` here
-    const produk = produkList.find((p) => p.id === item.supplier_produk_id);
-
-    if (field === "supplier_produk_id" && produk) {
-      item.namaProduk = produk.nama;
-      item.harga = (produk as any).harga_jual || 0; // Assuming produk also has harga_jual now or fetch it
-      item.satuan = produk.satuan;
-    }
-
-    if (produk && item.qty > produk.stok) {
-      setError(`Stok ${produk.nama} tidak mencukupi (sisa: ${produk.stok})`);
-      item.qty = produk.stok;
-    } else {
-      setError(null);
-    }
-
-    item.subtotal = item.harga * item.qty;
-    setItems(newItems);
-  };
-
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, idx) => idx !== index));
-  };
-
-  const subtotal = useMemo(
-    () => items.reduce((sum, i) => sum + i.subtotal, 0),
-    [items],
-  );
-
-  const pajak = useMemo(() => {
-    if (!pajak_enabled) return 0;
-    return (subtotal - diskon) * 0.11;
-  }, [subtotal, diskon, pajak_enabled]);
-
-  const totalAkhir = useMemo(
-    () => subtotal - diskon + pajak,
-    [subtotal, diskon, pajak],
-  );
-
-  const submit = async () => {
+  const onSubmit = async (data: PenjualanFormData) => {
     setError(null);
-    if (!pelanggan_id) {
-      setError("Pilih pelanggan terlebih dahulu");
-      return;
-    }
-    if (
-      items.length === 0 ||
-      items.some((item) => !item.supplier_produk_id || !item.qty)
-    ) {
-      setError("Pastikan ada produk yang dipilih dan kuantitas terisi");
-      return;
+    if (data.items.length === 0)
+      return setError("Pastikan ada produk yang dipilih");
+    if (data.status === "Belum Lunas" && !data.tanggal_jatuh_tempo) {
+      return setError(
+        "Tanggal Jatuh Tempo harus diisi jika status belum lunas.",
+      );
     }
 
-    if (status === "Belum Lunas" && !tanggal_jatuh_tempo) {
-      setError("Tanggal jatuh tempo harus diisi jika status belum lunas");
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const penjualanData: Penjualan = {
-        no_invoice: no_invoice,
-        no_npb: no_npb,
-        pelanggan_id: pelanggan_id,
-        tanggal: editingPenjualan
-          ? editingPenjualan.tanggal
-          : new Date().toISOString().split('T')[0], // Format to YYYY-MM-DD
-        items: items,
-        total: subtotal,
-        diskon: diskon,
-        pajak: pajak,
-        total_akhir: totalAkhir,
-        status: status,
-        metode_pembayaran: metode_pembayaran,
-        metode_pengambilan: metode_pengambilan,
-        pajak_enabled: pajak_enabled,
-        catatan: editingPenjualan?.catatan, // Assuming catatan might exist or needs to be added
-        // id, created_at, updated_at will be set by Supabase or backend
-        id: editingPenjualan?.id || '', 
-        created_at: editingPenjualan?.created_at || new Date().toISOString(),
-        updated_at: editingPenjualan?.updated_at || new Date().toISOString(),
+      const finalData = {
+        ...data,
+        total: subTotal,
+        pajak: totalPajak,
+        total_akhir: total,
       };
 
-      if (metode_pengambilan === "Diantar") {
-        penjualanData.no_do = no_do;
-      }
-
-      // Only include bank details if payment method is Transfer
-      if (metode_pembayaran === "Transfer") {
-        penjualanData.nomor_rekening = nomor_rekening;
-        penjualanData.nama_bank = nama_bank;
-        penjualanData.nama_pemilik_rekening = nama_pemilik_rekening;
-      }
-
-      // Include tanggal_jatuh_tempo if status is Belum Lunas
-      if (status === "Belum Lunas") {
-        penjualanData.tanggal_jatuh_tempo = tanggal_jatuh_tempo;
-      }
-
-      if (editingPenjualan && editingPenjualan.id) {
-        await updatePenjualan(editingPenjualan.id, penjualanData);
+      if (editingPenjualan?.id) {
+        await updatePenjualan(editingPenjualan.id, finalData);
         alert("Penjualan berhasil diperbarui!");
       } else {
-        await createPenjualan(penjualanData);
+        await createPenjualan(finalData);
         alert("Penjualan berhasil disimpan!");
       }
-
-      onSuccess();
+      router.push("/dashboard/admin/transaksi/penjualan");
     } catch (error: any) {
-      console.error(error);
+      console.error("Error during submit:", JSON.stringify(error, null, 2));
       setError(error.message || "Gagal menyimpan penjualan");
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="space-y-3 pb-4 border-b">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {error && (
+        <Card className="border-red-300 bg-red-50 p-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500 rounded-lg">
-              <Receipt className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <DialogTitle className="text-2xl">
-                Transaksi Penjualan Baru
-              </DialogTitle>
-              <DialogDescription className="text-sm mt-1">
-                Isi detail transaksi penjualan kepada pelanggan
-              </DialogDescription>
-            </div>
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <h4 className="font-semibold text-red-800">Terjadi Kesalahan</h4>
           </div>
-        </DialogHeader>
+          <p className="text-sm text-red-700 mt-2 ml-8">{error}</p>
+        </Card>
+      )}
 
-        <div className="space-y-6 py-4">
-          {/* ERROR ALERT */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
-
-          {/* INFO SECTION */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Invoice */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-gray-600" />
-                Nomor Invoice
-              </Label>
-              <Input
-                value={no_invoice}
-                readOnly
-                className="bg-gray-50 font-mono font-semibold"
-              />
-            </div>
-            {/* NPB */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-gray-600" />
-                Nomor Pengambilan Barang (NPB)
-              </Label>
-              <Input
-                value={no_npb}
-                readOnly
-                className="bg-gray-50 font-mono font-semibold"
-              />
-            </div>
-            {/* Delivery Order */}
-            {metode_pengambilan === "Diantar" && (
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-gray-600" />
-                  Nomor Delivery Order (DO)
-                </Label>
-                <Input
-                  value={no_do}
-                  readOnly
-                  className="bg-gray-50 font-mono font-semibold"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>1. Informasi Pelanggan & Pengiriman</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pelanggan_id">Pelanggan</Label>
+                <Controller
+                  name="pelanggan_id"
+                  control={control}
+                  rules={{ required: "Pelanggan wajib dipilih" }}
+                  render={({ field }) => (
+                    <ComboboxPelanggan
+                      pelangganList={pelangganList}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
               </div>
-            )}
-
-            {/* Pelanggan */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <User className="h-4 w-4 text-gray-600" />
-                Pelanggan
-              </Label>
-              <Select
-                onValueChange={(val) => {
-                  const p = pelangganList.find((x) => x.id === val);
-                  if (p && p.id) {
-                    setPelangganId(p.id as string);
-                    setNamaPelanggan(p.nama_pelanggan as string);
-                    setNamaToko(p.nama_toko as string);
-                    setAlamatPelanggan(p.alamat as string);
-                  }
-                }}
-                value={pelanggan_id}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Pelanggan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pelangganList
-                    .filter(
-                      (p): p is Pelanggan & { id: string } =>
-                        p.id !== undefined,
-                    )
-                    .map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nama_pelanggan || ""} - {p.nama_toko || ""}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status Pembayaran */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-gray-600" />
-                Status Pembayaran
-              </Label>
-              <Select onValueChange={(v: any) => setStatus(v)} value={status}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Lunas">Lunas</SelectItem>
-                  <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Metode Pengambilan */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Truck className="h-4 w-4 text-gray-600" />
-                Metode Pengambilan
-              </Label>
-              <Select
-                onValueChange={(v: any) => setMetodePengambilan(v)}
-                value={metode_pengambilan}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Ambil Langsung">Ambil Langsung</SelectItem>
-                  <SelectItem value="Diantar">Diantar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Tanggal Jatuh Tempo - hanya muncul jika Belum Lunas */}
-            {status === "Belum Lunas" && (
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-foreground">
-                  Tanggal Jatuh Tempo
-                </Label>
-                <Input
-                  type="date"
-                  value={tanggal_jatuh_tempo}
-                  onChange={(e) => setTanggalJatuhTempo(e.target.value)}
-                  placeholder="Pilih tanggal jatuh tempo"
-                />
-              </div>
-            )}
-
-            {/* Metode Pembayaran */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-gray-600" />
-                Metode Pembayaran
-              </Label>
-              <Select
-                onValueChange={(v: any) => {
-                  setMetodePembayaran(v);
-                  if (v === "Tunai") {
-                    setNomorRekening("");
-                  }
-                }}
-                value={metode_pembayaran}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Tunai">Tunai</SelectItem>
-                  <SelectItem value="Transfer">Transfer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Bank Details - hanya muncul jika Transfer */}
-            {metode_pembayaran === "Transfer" && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-foreground">
-                    Nama Bank
-                  </Label>
-                  <Input
-                    value={nama_bank}
-                    onChange={(e) => setNamaBank(e.target.value)}
-                    placeholder="Masukkan nama bank"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-foreground">
-                    Nama Pemilik Rekening
-                  </Label>
-                  <Input
-                    value={nama_pemilik_rekening}
-                    onChange={(e) => setNamaPemilikRekening(e.target.value)}
-                    placeholder="Masukkan nama pemilik rekening"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-foreground">
-                    Nomor Rekening
-                  </Label>
-                  <Input
-                    value={nomor_rekening}
-                    onChange={(e) => setNomorRekening(e.target.value)}
-                    placeholder="Masukkan nomor rekening"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Diskon */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground">
-                Diskon (Rp)
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                value={diskon}
-                onChange={(e) => setDiskon(Number(e.target.value))}
-                placeholder="0"
-              />
-            </div>
-
-            {/* Pajak Toggle */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-foreground">
-                Pajak PPN 11%
-              </Label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="pajak-toggle"
-                  checked={pajak_enabled}
-                  onChange={(e) => setPajakEnabled(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <Label htmlFor="pajak-toggle" className="text-sm text-gray-700">
-                  {pajak_enabled ? "Aktif" : "Nonaktif"}
-                </Label>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* ITEMS SECTION */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-gray-600" />
-                <Label className="text-base font-semibold text-foreground">
-                  Daftar Produk
-                </Label>
-              </div>
-              <Button onClick={addItem} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah Produk
-              </Button>
-            </div>
-
-            {items.length > 0 ? (
-              <div className="space-y-3">
-                {/* Table Header */}
-                <div className="hidden md:grid md:grid-cols-12 gap-3 px-4 py-3 bg-gray-50 rounded-lg font-medium text-sm text-foreground">
-                  <div className="col-span-4">Produk</div>
-                  <div className="col-span-1">Qty</div>
-                  <div className="col-span-2">Satuan</div>
-                  <div className="col-span-2">Harga</div>
-                  <div className="col-span-2">Subtotal</div>
-                  <div className="col-span-1"></div>
-                </div>
-
-                {/* Table Body */}
-                {items.map((item, i) => {
-                  const selectedProduk = produkList.find(
-                    (p) => p.id === item.supplier_produk_id,
-                  );
-                  return (
-                    <Card
-                      key={i}
-                      className="p-4 hover:shadow-md transition-shadow"
+              <div>
+                <Label htmlFor="metode_pengambilan">Metode Pengambilan</Label>
+                <Controller
+                  name="metode_pengambilan"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                        {/* Produk */}
-                        <div className="md:col-span-4 space-y-1">
-                          <Label className="md:hidden text-xs text-gray-600">
-                            Produk
-                          </Label>
-                          <ComboboxProduk
-                            produkList={produkList}
-                            value={item.supplier_produk_id}
-                            onChange={(val) =>
-                              updateItem(i, "supplier_produk_id", val)
-                            }
-                          />
-                        </div>
-
-                        {/* Qty */}
-                        <div className="md:col-span-1 space-y-1">
-                          <Label className="md:hidden text-xs text-gray-600">
-                            Qty
-                          </Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={selectedProduk?.stok}
-                            value={item.qty}
-                            onChange={(e) =>
-                              updateItem(i, "qty", Number(e.target.value))
-                            }
-                            disabled={!item.supplier_produk_id}
-                            className="w-full"
-                          />
-                        </div>
-
-                        {/* Satuan */}
-                        <div className="md:col-span-2 space-y-1">
-                          <Label className="md:hidden text-xs text-gray-600">
-                            Satuan
-                          </Label>
-                          <div className="font-medium text-foreground px-3 py-2 bg-gray-50 rounded-md">
-                            {item.satuan || "-"}
-                          </div>
-                        </div>
-
-                        {/* Harga */}
-                        <div className="md:col-span-2 space-y-1">
-                          <Label className="md:hidden text-xs text-gray-600">
-                            Harga Satuan
-                          </Label>
-                          <div className="font-medium text-foreground px-3 py-2 bg-gray-50 rounded-md">
-                            {formatRupiah(item.harga || 0)}
-                          </div>
-                        </div>
-
-                        {/* Subtotal */}
-                        <div className="md:col-span-2 space-y-1">
-                          <Label className="md:hidden text-xs text-gray-600">
-                            Subtotal
-                          </Label>
-                          <div className="font-semibold text-green-600 px-3 py-2 bg-green-50 rounded-md">
-                            {formatRupiah(item.subtotal)}
-                          </div>
-                        </div>
-
-                        {/* Delete */}
-                        <div className="md:col-span-1 flex md:justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeItem(i)}
-                            className="hover:bg-red-50 hover:text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
+                      <SelectTrigger id="metode_pengambilan">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ambil Langsung">
+                          Ambil Langsung
+                        </SelectItem>
+                        <SelectItem value="Diantar">Diantar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
-            ) : (
-              <div className="border-2 border-dashed rounded-lg p-12 text-center">
-                <Package className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-600 font-medium">
-                  Belum ada produk ditambahkan
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Klik tombol "Tambah Produk" untuk memulai
-                </p>
-              </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
 
-          <Separator />
+          <Card>
+            <CardHeader>
+              <CardTitle>2. Tambah Produk</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AddItemForm
+                supplierProduks={supplierProduks}
+                onAddItem={(item) => append(item)}
+              />
+            </CardContent>
+          </Card>
 
-          {/* TOTAL SECTION */}
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 space-y-3">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>Subtotal:</div>
-              <div className="text-right">{formatRupiah(subtotal)}</div>
-              <div>Diskon:</div>
-              <div className="text-right text-red-600">
-                -{formatRupiah(diskon)}
-              </div>
-              {pajak_enabled && (
-                <>
-                  <div>PPN 11%:</div>
-                  <div className="text-right">{formatRupiah(pajak)}</div>
-                </>
-              )}
-            </div>
-            <Separator />
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-700">
-                Total Akhir
-              </span>
-              <span className="text-3xl font-bold text-green-600">
-                {formatRupiah(totalAkhir)}
-              </span>
-            </div>
-          </div>
+          {fields.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Daftar Produk ({fields.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produk</TableHead>
+                      <TableHead>Jumlah</TableHead>
+                      <TableHead>Harga</TableHead>
+                      <TableHead>Subtotal</TableHead>
+                      <TableHead>Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fields.map((item, index) => {
+                      const produk = products.find(p => p.id === supplierProduks.find(sp => sp.id === item.supplier_produk_id)?.produk_id);
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>{produk?.nama || "..."}</TableCell>
+                          <TableCell>{item.qty}</TableCell>
+                          <TableCell>{formatRupiah(item.harga)}</TableCell>
+                          <TableCell>{formatRupiah(item.subtotal)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        <DialogFooter className="border-t pt-4">
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Pembayaran & Total</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Metode Pembayaran</Label>
+                <Controller
+                  name="metode_pembayaran"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Metode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Tunai">Tunai</SelectItem>
+                        <SelectItem value="Transfer">Transfer Bank</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              {watchMetodePembayaran === "Transfer" && (
+                <>
+                  <div>
+                    <Label htmlFor="nama_bank">Nama Bank</Label>
+                    <Input id="nama_bank" {...register("nama_bank")} />
+                  </div>
+                  <div>
+                    <Label htmlFor="nama_pemilik_rekening">
+                      Nama Pemilik Rekening
+                    </Label>
+                    <Input
+                      id="nama_pemilik_rekening"
+                      {...register("nama_pemilik_rekening")}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nomor_rekening">Nomor Rekening</Label>
+                    <Input
+                      id="nomor_rekening"
+                      {...register("nomor_rekening")}
+                    />
+                  </div>
+                </>
+              )}
+              <div>
+                <Label>Status Pembayaran</Label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Lunas">Lunas</SelectItem>
+                        <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              {watchStatus === "Belum Lunas" && (
+                <div>
+                  <Label>Tanggal Jatuh Tempo</Label>
+                  <Input
+                    type="date"
+                    {...register("tanggal_jatuh_tempo")}
+                  />
+                </div>
+              )}
+              <Separator />
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">
+                    {formatRupiah(subTotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <Label>Diskon (Rp)</Label>
+                  <Controller
+                    name="diskon"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        {...field}
+                        className="w-28 h-8 text-right"
+                      />
+                    )}
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <Label>Pajak 11%</Label>
+                  <Controller
+                    name="pajak_enabled"
+                    control={control}
+                    render={({ field }) => (
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+                {watchPajakEnabled && (
+                  <div className="flex justify-between items-center">
+                    <span></span>
+                    <span className="text-sm">
+                      + {formatRupiah(totalPajak)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <Separator />
+              <div className="flex justify-between items-center font-bold text-lg">
+                <span>Total Akhir</span>
+                <span>{formatRupiah(total)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
           <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full h-12 text-lg"
           >
-            Batal
+            <Save className="h-5 w-5 mr-2" />
+            {editingPenjualan ? "Perbarui Transaksi" : "Simpan Transaksi"}
           </Button>
-          <Button
-            onClick={submit}
-            disabled={isLoading || !pelanggan_id || items.length === 0}
-            className="min-w-[150px]"
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Memproses...
-              </>
-            ) : (
-              <>
-                <Receipt className="h-4 w-4 mr-2" />
-                Proses
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function AddItemForm({
+  supplierProduks,
+  onAddItem,
+}: {
+  supplierProduks: any[];
+  onAddItem: (item: PenjualanDetail) => void;
+}) {
+  const [supplierProdukId, setSupplierProdukId] = useState("");
+  const [qty, setQty] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAddItem = () => {
+    setError(null);
+    if (!supplierProdukId || qty <= 0) {
+      return setError("Pilih produk dan masukkan jumlah yang valid");
+    }
+    const supplierProduk = supplierProduks.find(
+      (sp) => sp.id === supplierProdukId,
+    );
+    if (!supplierProduk) return setError("Produk tidak ditemukan");
+    if (qty > supplierProduk.stok) {
+      return setError(
+        `Stok ${supplierProduk.produk?.nama || "Produk"} tidak mencukupi (sisa: ${
+          supplierProduk.stok
+        })`,
+      );
+    }
+    onAddItem({
+      id: "",
+      penjualan_id: "",
+      supplier_produk_id: supplierProdukId,
+      qty,
+      harga: supplierProduk.harga_jual,
+      subtotal: supplierProduk.harga_jual * qty,
+      created_at: new Date().toISOString(),
+    });
+    setSupplierProdukId("");
+    setQty(1);
+  };
+
+  return (
+    <div className="space-y-4">
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="md:col-span-2">
+          <Label>Pilih Produk</Label>
+          <ComboboxSupplierProduk
+            supplierProdukList={supplierProduks}
+            value={supplierProdukId}
+            onChange={setSupplierProdukId}
+          />
+        </div>
+        <div>
+          <Label>Jumlah</Label>
+          <Input
+            type="number"
+            min={1}
+            value={qty}
+            onChange={(e) => setQty(Number(e.target.value))}
+            placeholder="1"
+          />
+        </div>
+      </div>
+      <Button onClick={handleAddItem} className="w-full">
+        <Plus className="h-4 w-4 mr-2" />
+        Tambah Produk ke Daftar
+      </Button>
+    </div>
   );
 }

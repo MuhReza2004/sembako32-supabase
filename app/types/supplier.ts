@@ -20,6 +20,9 @@ export interface SupplierProduk {
   harga_jual: number;
   stok: number;
   created_at: string;
+  supplierNama?: string;
+  produkNama?: string;
+  produkSatuan?: string;
 }
 
 export interface SupplierProdukFormData {

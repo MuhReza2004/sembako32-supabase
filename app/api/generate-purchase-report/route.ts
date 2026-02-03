@@ -31,7 +31,7 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
     throw error;
   }
 
-  const pembelianList: Pembelian[] = data.map((item: any) => ({
+  const pembelianList: Pembelian[] = data.map((item: Pembelian) => ({
     id: item.id,
     supplier_id: item.supplier_id,
     tanggal: item.tanggal,
@@ -42,7 +42,7 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
     status: item.status,
     created_at: item.created_at,
     updated_at: item.updated_at,
-    namaSupplier: item.supplier?.nama || "Supplier Tidak Diketahui",
+    nama_supplier: item.supplier?.nama || "Supplier Tidak Diketahui",
     items: item.items.map((detail: any) => ({
       id: detail.id,
       pembelian_id: detail.pembelian_id,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
                       <td>${index + 1}</td>
                       <td>${new Date(p.tanggal).toLocaleDateString("id-ID")}</td>
                       <td>${p.invoice || "-"}</td>
-                      <td>${p.namaSupplier}</td>
+                      <td>${p.nama_supplier}</td>
                       <td>${formatRupiah(p.total)}</td>
                       <td>${p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline"}</td>
                     </tr>
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       try {
         const execPath = await chrome.executablePath;
         if (execPath) return execPath;
-      } catch (e) {
+      } catch {
         // ignore
       }
       const defaultPaths = [
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
         try {
           await fs.access(p);
           return p;
-        } catch (e) {
+        } catch {
           // continue
         }
       }
@@ -321,8 +321,8 @@ export async function POST(request: NextRequest) {
       try {
         console.log("Closing browser...");
         await browser.close();
-      } catch (e) {
-        console.warn("Failed to close browser:", e);
+      } catch {
+        console.warn("Failed to close browser:");
       }
     }
 

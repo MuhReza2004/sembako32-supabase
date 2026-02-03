@@ -96,7 +96,7 @@ export default function PiutangTable({
               <TableRow key={p.id}>
                 <TableCell>{p.no_invoice}</TableCell>
                 <TableCell>{formatTanggal(p.tanggal)}</TableCell>
-                <TableCell>{p.namaPelanggan}</TableCell>
+                <TableCell>{p.nama_pelanggan}</TableCell>
                 <TableCell>{formatRupiah(p.total_akhir)}</TableCell>
                 <TableCell>{formatRupiah(totalDibayar)}</TableCell>
                 <TableCell>{formatRupiah(sisaUtang)}</TableCell>

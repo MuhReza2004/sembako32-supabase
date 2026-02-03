@@ -10,23 +10,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Supplier } from "@/app/types/suplyer";
+import { SupplierProduk } from "@/app/types/supplier";
 import { AlertCircle } from "lucide-react";
+import { formatRupiah } from "@/helper/format";
 
-interface DialogHapusSupplierProps {
+interface DialogHapusHargaProdukProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => Promise<void>;
-  supplier: Supplier | null;
+  item: SupplierProduk | null;
   isLoading?: boolean;
+  supplierName?: string;
+  productName?: string;
 }
 
-export const DialogHapusSupplier: React.FC<DialogHapusSupplierProps> = ({
+export const DialogHapusHargaProduk: React.FC<DialogHapusHargaProdukProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  supplier,
+  item,
   isLoading = false,
+  supplierName = "",
+  productName = "",
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -36,7 +41,7 @@ export const DialogHapusSupplier: React.FC<DialogHapusSupplierProps> = ({
       await onConfirm();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error confirming supplier deletion:", error);
+      console.error("Error confirming supplier produk deletion:", error);
       // Error handling can be improved with toast notifications
     } finally {
       setIsDeleting(false);
@@ -51,27 +56,34 @@ export const DialogHapusSupplier: React.FC<DialogHapusSupplierProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <AlertCircle className="w-5 h-5" />
-            Hapus Supplier
+            Hapus Harga Produk
           </DialogTitle>
           <DialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Data supplier akan dihapus
-            secara permanen beserta data terkait.
+            Tindakan ini tidak dapat dibatalkan. Data harga produk akan dihapus
+            secara permanen.
           </DialogDescription>
         </DialogHeader>
 
-        {supplier && (
+        {item && (
           <div className="bg-red-50 border border-red-200 rounded p-4">
             <p className="text-sm text-gray-600">
-              <span className="font-semibold">Kode:</span> {supplier.kode}
+              <span className="font-semibold">Supplier:</span>{" "}
+              {item.supplierNama || supplierName || item.supplier_id}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              <span className="font-semibold">Nama:</span> {supplier.nama}
+              <span className="font-semibold">Produk:</span>{" "}
+              {item.produkNama || productName || item.produk_id}
             </p>
             <p className="text-sm text-gray-600 mt-2">
-              <span className="font-semibold">Telepon:</span> {supplier.telp}
+              <span className="font-semibold">Harga Beli:</span>{" "}
+              {formatRupiah(item.harga_beli)}
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              <span className="font-semibold">Harga Jual:</span>{" "}
+              {formatRupiah(item.harga_jual)}
             </p>
             <p className="text-sm text-red-600 mt-3 font-semibold">
-              Apakah Anda yakin ingin menghapus supplier ini?
+              Apakah Anda yakin ingin menghapus harga produk ini?
             </p>
           </div>
         )}
@@ -91,7 +103,7 @@ export const DialogHapusSupplier: React.FC<DialogHapusSupplierProps> = ({
             onClick={handleDelete}
             disabled={currentLoading}
           >
-            {currentLoading ? "Menghapus..." : "Hapus Supplier"}
+            {currentLoading ? "Menghapus..." : "Hapus Harga Produk"}
           </Button>
         </DialogFooter>
       </DialogContent>

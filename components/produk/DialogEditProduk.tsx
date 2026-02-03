@@ -81,22 +81,35 @@ export const DialogEditProduk: React.FC<DialogEditProdukProps> = ({
         )}
 
         <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="nama" className="font-semibold">
-              Nama Produk *
-            </Label>
-            <Input
-              id="nama"
-              placeholder="Masukkan nama produk"
-              {...register("nama", {
-                required: "Nama produk wajib diisi",
-                minLength: { value: 3, message: "Minimal 3 karakter" },
-              })}
-              className={errors.nama ? "border-red-500" : ""}
-            />
-            {errors.nama && (
-              <p className="text-sm text-red-500">{errors.nama.message}</p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="kode" className="font-semibold">
+                Kode Produk
+              </Label>
+              <Input
+                id="kode"
+                {...register("kode")}
+                readOnly
+                className="bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nama" className="font-semibold">
+                Nama Produk *
+              </Label>
+              <Input
+                id="nama"
+                placeholder="Masukkan nama produk"
+                {...register("nama", {
+                  required: "Nama produk wajib diisi",
+                  minLength: { value: 3, message: "Minimal 3 karakter" },
+                })}
+                className={errors.nama ? "border-red-500" : ""}
+              />
+              {errors.nama && (
+                <p className="text-sm text-red-500">{errors.nama.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

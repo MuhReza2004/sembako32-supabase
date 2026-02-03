@@ -87,7 +87,7 @@ export default function PenjualanTabel({
                 </TableCell>
                 <TableCell>{penjualan.metode_pengambilan}</TableCell>
                 <TableCell>{formatTanggal(penjualan.tanggal)}</TableCell>
-                <TableCell>{penjualan.namaPelanggan}</TableCell>
+                <TableCell>{penjualan.nama_pelanggan}</TableCell>
                 <TableCell className="text-center">
                   {formatRupiah(penjualan.total)}
                 </TableCell>
@@ -97,8 +97,8 @@ export default function PenjualanTabel({
                       penjualan.status === "Lunas"
                         ? "primary"
                         : penjualan.status === "Batal"
-                          ? "remove"
-                          : "destructive"
+                        ? "remove"
+                        : "secondary"
                     }
                   >
                     {penjualan.status}
@@ -119,9 +119,9 @@ export default function PenjualanTabel({
                       >
                         Lihat Detail
                       </DropdownMenuItem>
-                      {/* <DropdownMenuItem onClick={() => onEdit(penjualan)}>
+                      <DropdownMenuItem onClick={() => onEdit(penjualan)}>
                         Edit
-                      </DropdownMenuItem> */}
+                      </DropdownMenuItem>
 
                       <DropdownMenuItem
                         className="text-red-600"

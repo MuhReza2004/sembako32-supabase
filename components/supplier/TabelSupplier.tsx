@@ -1,20 +1,18 @@
 "use client";
 
-import { Supplier } from "@/app/types/suplyer";
+import { Supplier } from "@/app/types/supplier";
 import { Button } from "@/components/ui/button";
 
 interface Props {
   data: Supplier[];
   onEdit: (supplier: Supplier) => void;
   onDelete: (supplier: Supplier) => void;
-  onDetail: (supplier: Supplier) => void;
 }
 
-export default function SupplierTable({
+export default function TabelSupplier({
   data,
   onEdit,
   onDelete,
-  onDetail,
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-lg border bg-white">

@@ -31,7 +31,7 @@ export default function PelangganAdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
-  const [perPage, setPerPage] = useState(10);
+  const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // For pagination control
 
 
@@ -84,7 +84,7 @@ export default function PelangganAdminPage() {
           schema: "public",
           table: "pelanggan",
         },
-        (payload) => {
+        () => {
           fetchCustomers(); // Re-fetch the current page on any change
         },
       )
@@ -271,7 +271,6 @@ export default function PelangganAdminPage() {
         isLoading={isLoading}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
-        searchTerm={searchTerm}
       />
 
       <div className="flex justify-end gap-4 mt-4">

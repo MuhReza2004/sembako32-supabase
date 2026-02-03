@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { Penjualan } from "@/app/types/penjualan";
-import { getPelangganById } from "@/app/services/pelanggan.service";
+
 
 function numberToWords(num: number): string {
   const units = [
@@ -93,9 +93,9 @@ function numberToWords(num: number): string {
 }
 
 async function generatePdf(
-  penjualan: Penjualan & { namaToko?: string },
-): Promise<Uint8Array> {
-  // The customer store name ('namaToko') is now passed directly in the 'penjualan' object.
+  penjualan: Penjualan & { nama_toko?: string },
+): Promise<Buffer> {
+  // The customer store name ('nama_toko') is now passed directly in the 'penjualan' object.
 
   // Calculate total amount for terbilang
   const subTotal = (penjualan.items || []).reduce(
@@ -628,11 +628,11 @@ async function generatePdf(
           <p>Kepada Yth.</p>
           <div class="customer-item">
             <span class="label">Nama</span>
-            <span class="value">${penjualan.namaPelanggan}</span>
+            <span class="value">${penjualan.nama_pelanggan}</span>
           </div>
           <div class="customer-item">
             <span class="label">Toko</span>
-            <span class="value">${penjualan.namaToko || "-"}</span>
+            <span class="value">${penjualan.nama_toko || "-"}</span>
           </div>
           <div class="customer-item">
             <span class="label">Status</span>
@@ -668,7 +668,7 @@ async function generatePdf(
               (item, i) => `
             <tr>
               <td class="text-center">${i + 1}</td>
-              <td><strong>${item.namaProduk}</strong></td>
+              <td><strong>${item.nama_produk}</strong></td>
               <td class="text-center">${item.qty}</td>
               <td class="text-center">${item.satuan}</td>
               <td class="text-right">Rp ${((item.hargaJual ?? item.harga) || 0).toLocaleString("id-ID")}</td>
@@ -737,7 +737,7 @@ async function generatePdf(
         </div>
         <div class="signature-box">
           <p>Diterima Oleh,</p>
-          <div class="signature-line">( ${penjualan.namaPelanggan} )</div>
+          <div class="signature-line">( ${penjualan.nama_pelanggan} )</div>
         </div>
       </div>
 
@@ -772,12 +772,12 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (
       !penjualan.no_invoice ||
-      !penjualan.namaPelanggan ||
+      !penjualan.nama_pelanggan ||
       !penjualan.items ||
       penjualan.items.length === 0
     ) {
       throw new Error(
-        "Missing required fields: no_invoice, namaPelanggan, or items",
+        "Missing required fields: no_invoice, nama_pelanggan, or items",
       );
     }
 
@@ -786,7 +786,7 @@ export async function POST(request: NextRequest) {
       // Accept both hargaJual and harga field names
       const priceValue = item.hargaJual ?? item.harga;
       if (
-        !item.namaProduk ||
+        !item.nama_produk ||
         typeof item.qty !== "number" ||
         typeof priceValue !== "number"
       ) {
@@ -796,7 +796,7 @@ export async function POST(request: NextRequest) {
 
     const pdfData = await generatePdf(penjualan);
 
-    return new NextResponse(pdfData as any, {
+    return new NextResponse(pdfData, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="Invoice_${penjualan.no_invoice}.pdf"`,

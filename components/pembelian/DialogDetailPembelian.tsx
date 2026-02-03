@@ -12,10 +12,10 @@ import { formatRupiah } from "@/helper/format";
 import { useEffect, useState } from "react";
 import { getPembelianDetails } from "@/app/services/pembelian.service";
 import { PembelianDetail } from "@/app/types/pembelian";
-import { getAllSuppliers } from "@/app/services/supplyer.service";
+import { getAllSuppliers } from "@/app/services/supplier.service";
 import { getAllProduk } from "@/app/services/produk.service";
 import { getAllSupplierProduk } from "@/app/services/supplierProduk.service";
-import { Supplier, SupplierProduk } from "@/app/types/suplyer";
+import { Supplier, SupplierProduk } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 
 interface Props {

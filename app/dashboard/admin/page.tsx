@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { LowStockAlerts } from "@/components/dashboard/LowStockAlerts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
@@ -27,9 +27,9 @@ interface DashboardData {
   totalPurchases: number;
   totalRevenue: number;
   totalExpenses: number;
-  lowStockItems: any[];
-  recentSales: any[];
-  recentPurchases: any[];
+  lowStockItems: unknown[];
+  recentSales: unknown[];
+  recentPurchases: unknown[];
   totalPiutang: number;
   totalNominalPiutang: number;
 }

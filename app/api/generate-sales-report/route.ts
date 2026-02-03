@@ -32,7 +32,7 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
   }
 
   // Manually map the data to match the Penjualan type, especially for nested objects
-  const penjualanList: Penjualan[] = data.map((item: any) => ({
+  const penjualanList: Penjualan[] = data.map((item: Penjualan) => ({
     id: item.id,
     tanggal: item.tanggal,
     pelanggan_id: item.pelanggan_id,
@@ -55,9 +55,9 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
     total_akhir: item.total_akhir,
     created_at: item.created_at,
     updated_at: item.updated_at,
-    namaPelanggan:
+    nama_pelanggan:
       item.pelanggan?.nama_pelanggan || "Pelanggan Tidak Diketahui",
-    alamatPelanggan: item.pelanggan?.alamat || "",
+    alamat_pelanggan: item.pelanggan?.alamat || "",
     items: (item.items || []).map((detail: any) => ({
       id: detail.id,
       penjualan_id: detail.penjualan_id,
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
                       <td>${index + 1}</td>
                       <td>${sale.no_invoice}</td>
                       <td>${new Date(sale.tanggal).toLocaleDateString("id-ID")}</td>
-                      <td>${sale.namaPelanggan || "Pelanggan Tidak Diketahui"}</td>
+                      <td>${sale.nama_pelanggan || "Pelanggan Tidak Diketahui"}</td>
                       <td>${formatRupiah(sale.total)}</td>
                       <td>${sale.status}</td>
                     </tr>
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       try {
         const execPath = await chrome.executablePath;
         if (execPath) return execPath;
-      } catch (e) {
+      } catch {
         // ignore
       }
       const defaultPaths = [
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
         try {
           await fs.access(p);
           return p;
-        } catch (e) {
+        } catch {
           // continue
         }
       }
@@ -347,8 +347,8 @@ export async function POST(request: NextRequest) {
     } finally {
       try {
         await browser.close();
-      } catch (e) {
-        console.warn("Failed to close browser:", e);
+      } catch {
+        console.warn("Failed to close browser:");
       }
     }
 

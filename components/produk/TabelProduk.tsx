@@ -13,35 +13,23 @@ import { Button } from "@/components/ui/button";
 import { Produk } from "@/app/types/produk";
 import { Edit2, Trash2 } from "lucide-react";
 
-interface TabelProdukNewProps {
+interface TabelProdukProps {
   products: Produk[];
   isLoading?: boolean;
   onEdit: (product: Produk) => void;
   onDelete: (product: Produk) => void;
-  searchTerm?: string;
   deletingId?: string | null;
+  searchTerm?: string;
 }
 
-export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
+export const TabelProduk: React.FC<TabelProdukProps> = ({
   products,
   isLoading = false,
   onEdit,
   onDelete,
-  searchTerm = "",
   deletingId = null,
+  searchTerm = "",
 }) => {
-  // Filter berdasarkan search
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return products;
-
-    const search = searchTerm.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.nama.toLowerCase().includes(search) ||
-        p.satuan.toLowerCase().includes(search),
-    );
-  }, [products, searchTerm]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -50,14 +38,10 @@ export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
     );
   }
 
-  if (filteredProducts.length === 0) {
+  if (products.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">
-          {products.length === 0
-            ? "Belum ada produk"
-            : "Produk tidak ditemukan"}
-        </div>
+        <div className="text-gray-500">"Produk tidak ditemukan"</div>
       </div>
     );
   }
@@ -90,7 +74,7 @@ export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredProducts.map((product, index) => {
+          {products.map((product, index) => {
             const statusColor =
               product.status === "aktif"
                 ? "text-green-600 bg-green-50"
@@ -155,9 +139,8 @@ export const TabelProdukNew: React.FC<TabelProdukNewProps> = ({
 
       {/* Footer dengan info */}
       <div className="bg-gray-50 px-6 py-3 border-t text-sm text-gray-600">
-        Menampilkan{" "}
-        <span className="font-semibold">{filteredProducts.length}</span> dari{" "}
-        <span className="font-semibold">{products.length}</span> produk
+        Menampilkan <span className="font-semibold">{products.length}</span>{" "}
+        dari <span className="font-semibold">{products.length}</span> produk
         {searchTerm && ` (Pencarian: "${searchTerm}")`}
       </div>
     </div>

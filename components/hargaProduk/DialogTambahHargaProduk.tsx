@@ -19,14 +19,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { SupplierProdukFormData } from "@/app/types/suplyer";
+import { SupplierProdukFormData } from "@/app/types/supplier";
 import {
   addSupplierProduk,
   checkSupplierProdukExists,
 } from "@/app/services/supplierProduk.service";
-import { getAllSuppliers } from "@/app/services/supplyer.service";
+import { getAllSuppliers } from "@/app/services/supplier.service";
 import { getAllProduk } from "@/app/services/produk.service";
-import { Supplier } from "@/app/types/suplyer";
+import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
 

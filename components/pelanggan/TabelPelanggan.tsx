@@ -18,7 +18,6 @@ interface TabelPelangganProps {
   isLoading?: boolean;
   onEdit: (customer: Pelanggan) => void;
   onDelete: (customer: Pelanggan) => void;
-  searchTerm?: string;
 }
 
 export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
@@ -30,21 +29,6 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
 }) => {
   const [deletingId, setDeleteingId] = useState<string | null>(null);
 
-  // Filter berdasarkan search
-  const filteredCustomers = useMemo(() => {
-    if (!searchTerm.trim()) return customers;
-
-    const search = searchTerm.toLowerCase();
-    return customers.filter(
-      (c) =>
-        c.nama_pelanggan.toLowerCase().includes(search) ||
-        c.kode_pelanggan.toLowerCase().includes(search) ||
-        c.id_pelanggan.toLowerCase().includes(search) ||
-        c.nib.toLowerCase().includes(search) ||
-        c.no_telp.toLowerCase().includes(search),
-    );
-  }, [customers, searchTerm]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -53,14 +37,10 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
     );
   }
 
-  if (filteredCustomers.length === 0) {
+  if (customers.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">
-          {customers.length === 0
-            ? "Belum ada pelanggan"
-            : "Pelanggan tidak ditemukan"}
-        </div>
+        <div className="text-gray-500">"Pelanggan tidak ditemukan"</div>
       </div>
     );
   }
@@ -98,7 +78,7 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredCustomers.map((customer, index) => {
+          {customers.map((customer, index) => {
             const statusColor =
               customer.status === "aktif"
                 ? "text-green-600 bg-green-50"
@@ -172,9 +152,8 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
 
       {/* Footer dengan info */}
       <div className="bg-gray-50 px-6 py-3 border-t text-sm text-gray-600">
-        Menampilkan{" "}
-        <span className="font-semibold">{filteredCustomers.length}</span> dari{" "}
-        <span className="font-semibold">{customers.length}</span> pelanggan
+        Menampilkan <span className="font-semibold">{customers.length}</span>{" "}
+        pelanggan
         {searchTerm && ` (Pencarian: "${searchTerm}")`}
       </div>
     </div>

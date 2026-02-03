@@ -1,5 +1,5 @@
 import { supabase } from "@/app/lib/supabase";
-import { SupplierProduk, SupplierProdukFormData } from "@/app/types/suplyer";
+import { SupplierProduk, SupplierProdukFormData } from "@/app/types/supplier";
 
 /* ======================
    CREATE
@@ -68,9 +68,9 @@ export const getAllSupplierProduk = async (): Promise<SupplierProduk[]> => {
     harga_jual: item.harga_jual,
     stok: item.stok,
     created_at: item.created_at, // Use as string
-    supplierNama: item.suppliers?.nama,
-    produkNama: item.produk?.nama,
-    produkSatuan: item.produk?.satuan,
+    supplierNama: (item.suppliers as any)?.nama,
+    produkNama: (item.produk as any)?.nama,
+    produkSatuan: (item.produk as any)?.satuan,
   }));
 };
 
@@ -115,9 +115,9 @@ export const getSupplierProdukById = async (
     harga_jual: data.harga_jual,
     stok: data.stok,
     created_at: data.created_at, // Use as string
-    supplierNama: data.suppliers?.nama,
-    produkNama: data.produk?.nama,
-    produkSatuan: data.produk?.satuan,
+    supplierNama: (data.suppliers as any)?.nama,
+    produkNama: (data.produk as any)?.nama,
+    produkSatuan: (data.produk as any)?.satuan,
   };
 };
 
@@ -154,7 +154,7 @@ export const deleteSupplierProduk = async (id: string): Promise<void> => {
     .eq("id", id);
 
   if (error) {
-    console.error("Error deleting supplier produk:", error);
+    console.error("Error deleting supplier produk:", error.message || error);
     throw error;
   }
 };

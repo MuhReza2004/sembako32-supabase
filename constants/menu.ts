@@ -26,7 +26,7 @@ export const dashboardMenus: MenuItem[] = [
       },
       {
         label: "Supplier",
-        href: "/dashboard/admin/supplyer",
+        href: "/dashboard/admin/supplier",
         roles: ["admin"],
       },
       {

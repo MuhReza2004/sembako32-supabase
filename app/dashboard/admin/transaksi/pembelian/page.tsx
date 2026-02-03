@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Calendar, FileText } from "lucide-react";
-import PembelianTable from "@/components/pembelian/pembelianTabel";
+import { Plus, Calendar } from "lucide-react";
+import { PembelianTabel } from "@/components/pembelian/pembelianTabel";
 import { Pembelian } from "@/app/types/pembelian";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { getAllPembelian } from "@/app/services/pembelian.service";
+import { supabase } from "@/app/lib/supabase";
 
 export default function PembelianPage() {
   const router = useRouter();
@@ -20,38 +20,93 @@ export default function PembelianPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const refreshData = async () => {
+  const [page, setPage] = useState(0);
+  const [perPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const fetchPembelian = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const allPembelian = await getAllPembelian();
+    setError(null);
 
-      // Filter by date range if specified
-      let filteredPembelian = allPembelian;
-      if (startDate) {
-        filteredPembelian = filteredPembelian.filter(
-          (p) => new Date(p.tanggal) >= new Date(startDate),
-        );
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        filteredPembelian = filteredPembelian.filter(
-          (p) => new Date(p.tanggal) <= end,
-        );
-      }
+    const from = page * perPage;
+    const to = from + perPage - 1;
 
-      setPembelianData(filteredPembelian);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Error fetching pembelian:", err);
-      setError("Gagal memuat data pembelian.");
-      setIsLoading(false);
+    let queryBuilder = supabase
+      .from("pembelian")
+      .select(
+        `
+        *,
+        suppliers (nama),
+        pembelian_detail (
+          qty,
+          harga,
+          subtotal,
+          supplier_produk (
+            produk (
+              nama
+            )
+          )
+        )
+      `,
+        { count: "exact" },
+      )
+      .order("tanggal", { ascending: false });
+
+    if (searchTerm) {
+      queryBuilder = queryBuilder.or(
+        `invoice.ilike.%${searchTerm}%,no_do.ilike.%${searchTerm}%,suppliers.nama.ilike.%${searchTerm}%`
+      );
     }
-  };
+    if (startDate) {
+      queryBuilder = queryBuilder.gte("tanggal", startDate);
+    }
+    if (endDate) {
+      queryBuilder = queryBuilder.lte("tanggal", endDate);
+    }
+
+    const { data, error, count } = await queryBuilder.range(from, to);
+
+    if (error) {
+      console.error("Error fetching pembelian:", error);
+      setError("Gagal memuat data pembelian.");
+      setPembelianData([]);
+    } else {
+      setPembelianData(data as Pembelian[]);
+      setTotalCount(count || 0);
+    }
+    setIsLoading(false);
+  }, [page, perPage, searchTerm, startDate, endDate]);
 
   useEffect(() => {
-    refreshData();
-  }, [startDate, endDate]); // Re-run when date filters change
+    fetchPembelian();
+
+    const channel = supabase
+      .channel("pembelian-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pembelian",
+        },
+        () => fetchPembelian(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchPembelian]);
+
+  const fetchNext = () => {
+    setPage((prevPage) => prevPage + 1);
+  };
+
+  const fetchPrev = () => {
+    setPage((prevPage) => Math.max(0, prevPage - 1));
+  };
+
+  const hasNextPage = (page + 1) * perPage < totalCount;
 
   if (error) {
     return <div className="p-8 text-center text-red-500">{error}</div>;
@@ -71,7 +126,6 @@ export default function PembelianPage() {
         </Button>
       </div>
 
-      {/* Filter Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -118,13 +172,16 @@ export default function PembelianPage() {
         </CardContent>
       </Card>
 
-      <PembelianTable
-        data={pembelianData}
-        searchTerm={searchTerm}
-        startDate={startDate}
-        endDate={endDate}
-        refreshData={refreshData}
-      />
+      <PembelianTabel data={pembelianData} isLoading={isLoading} />
+
+      <div className="flex justify-end gap-4 mt-4">
+        <Button onClick={fetchPrev} disabled={page === 0 || isLoading}>
+          Previous
+        </Button>
+        <Button onClick={fetchNext} disabled={!hasNextPage || isLoading}>
+          Next
+        </Button>
+      </div>
     </div>
   );
 }
