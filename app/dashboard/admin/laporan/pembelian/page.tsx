@@ -30,25 +30,28 @@ export default function PembelianReportPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  
-  const fetchPembelian = useCallback(async (pageIndex: number) => {
-    setIsLoading(true);
-    setError(null);
-    try {
+
+  const fetchPembelian = useCallback(
+    async (pageIndex: number) => {
+      setIsLoading(true);
+      setError(null);
+      try {
         let query = supabase
-            .from("pembelian")
-            .select(`
+          .from("pembelian")
+          .select(
+            `
                 *,
                 supplier:supplier_id(*),
                 items:pembelian_detail(*, supplier_produk:supplier_produk_id(*, produk:produk_id(*)))
-            `)
-            .order("tanggal", { ascending: false });
+            `,
+          )
+          .order("tanggal", { ascending: false });
 
         if (startDate) {
-            query = query.gte("tanggal", startDate);
+          query = query.gte("tanggal", startDate);
         }
         if (endDate) {
-            query = query.lte("tanggal", endDate);
+          query = query.lte("tanggal", endDate);
         }
 
         const from = pageIndex * PAGE_SIZE;
@@ -58,31 +61,33 @@ export default function PembelianReportPage() {
         const { data: pembelianData, error: pembelianError } = await query;
 
         if (pembelianError) {
-            throw pembelianError;
+          throw pembelianError;
         }
-        
-        const formattedData = pembelianData.map(item => ({
-            ...item,
-            namaSupplier: item.supplier?.nama,
-            items: item.items.map((detail: any) => ({
-                ...detail,
-                namaProduk: detail.supplier_produk?.produk?.nama || "Produk tidak ditemukan",
-                satuan: detail.supplier_produk?.produk?.satuan || "",
-                harga: detail.harga,
-                qty: detail.qty,
-            }))
+
+        const formattedData = pembelianData.map((item) => ({
+          ...item,
+          namaSupplier: item.supplier?.nama,
+          items: item.items.map((detail: any) => ({
+            ...detail,
+            namaProduk:
+              detail.supplier_produk?.produk?.nama || "Produk tidak ditemukan",
+            satuan: detail.supplier_produk?.produk?.satuan || "",
+            harga: detail.harga,
+            qty: detail.qty,
+          })),
         })) as Pembelian[];
 
         setData(formattedData);
         setHasMore(pembelianData.length === PAGE_SIZE);
-
-    } catch (err: any) {
+      } catch (err: any) {
         console.error("Error fetching purchases:", err);
         setError("Gagal memuat data pembelian: " + err.message);
-    } finally {
+      } finally {
         setIsLoading(false);
-    }
-  }, [startDate, endDate]);
+      }
+    },
+    [startDate, endDate],
+  );
 
   useEffect(() => {
     setPage(0);
@@ -90,18 +95,18 @@ export default function PembelianReportPage() {
   }, [startDate, endDate, fetchPembelian]);
 
   const fetchNext = () => {
-    if(hasMore) {
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchPembelian(nextPage);
+    if (hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPembelian(nextPage);
     }
   };
 
   const fetchPrev = () => {
     if (page > 0) {
-        const prevPage = page - 1;
-        setPage(prevPage);
-        fetchPembelian(prevPage);
+      const prevPage = page - 1;
+      setPage(prevPage);
+      fetchPembelian(prevPage);
     }
   };
 
@@ -148,7 +153,8 @@ export default function PembelianReportPage() {
     (purchase) => purchase.status === "Completed",
   ).length;
   const unpaidPurchases = data.filter(
-    (purchase) => purchase.status === "Pending" || purchase.status === "Decline",
+    (purchase) =>
+      purchase.status === "Pending" || purchase.status === "Decline",
   ).length;
 
   if (isLoading && page === 0 && data.length === 0) {
@@ -281,7 +287,7 @@ export default function PembelianReportPage() {
                 <TableBody>
                   {data.map((purchase, index) => (
                     <TableRow key={purchase.id}>
-                      <TableCell>{(page * PAGE_SIZE) + index + 1}</TableCell>
+                      <TableCell>{page * PAGE_SIZE + index + 1}</TableCell>
                       <TableCell>
                         {new Date(purchase.tanggal).toLocaleDateString("id-ID")}
                       </TableCell>
@@ -336,7 +342,7 @@ export default function PembelianReportPage() {
         <span className="text-sm">Halaman {page + 1}</span>
         <Button onClick={fetchNext} disabled={!hasMore || isLoading}>
           Berikutnya
-        Button>
+        </Button>
       </div>
     </div>
   );

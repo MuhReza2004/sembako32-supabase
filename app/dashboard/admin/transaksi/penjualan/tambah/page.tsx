@@ -181,7 +181,9 @@ function TambahPenjualanForm() {
     if (!supplierProduk) return setError("Produk tidak ditemukan");
     const produk = (supplierProduk as any).produk;
     if (currentItem.qty > supplierProduk.stok) {
-      return setError(`Stok ${produk?.nama || 'Produk'} tidak mencukupi (sisa: ${supplierProduk.stok})`);
+      return setError(
+        `Stok ${produk?.nama || "Produk"} tidak mencukupi (sisa: ${supplierProduk.stok})`,
+      );
     }
 
     const existingIndex = items.findIndex(
@@ -191,7 +193,8 @@ function TambahPenjualanForm() {
     if (existingIndex >= 0) {
       const newItems = [...items];
       newItems[existingIndex].qty += currentItem.qty;
-      newItems[existingIndex].subtotal = newItems[existingIndex].harga * newItems[existingIndex].qty;
+      newItems[existingIndex].subtotal =
+        newItems[existingIndex].harga * newItems[existingIndex].qty;
       setItems(newItems);
     } else {
       setItems([
@@ -212,7 +215,7 @@ function TambahPenjualanForm() {
     setCurrentItem({ supplier_produk_id: "", qty: 1 });
     setError(null);
   };
-  
+
   const removeItem = (index: number) => {
     setItems(items.filter((_, idx) => idx !== index));
   };
@@ -229,11 +232,12 @@ function TambahPenjualanForm() {
     setError(null);
     if (!pelangganId) return setError("Pilih pelanggan terlebih dahulu");
     if (items.length === 0) return setError("Pastikan ada produk yang dipilih");
-    
+
     setIsLoading(true);
     try {
       const penjualanData = {
-        tanggal: editingPenjualan?.tanggal || new Date().toISOString().split("T")[0],
+        tanggal:
+          editingPenjualan?.tanggal || new Date().toISOString().split("T")[0],
         pelanggan_id: pelangganId,
         catatan: catatan,
         no_invoice: noInvoice,
@@ -266,7 +270,7 @@ function TambahPenjualanForm() {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
@@ -292,9 +296,7 @@ function TambahPenjualanForm() {
           <Card className="border-red-300 bg-red-50 p-4 mb-6">
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <h4 className="font-semibold text-red-800">
-                Terjadi Kesalahan
-              </h4>
+              <h4 className="font-semibold text-red-800">Terjadi Kesalahan</h4>
             </div>
             <p className="text-sm text-red-700 mt-2 ml-8">{error}</p>
           </Card>
@@ -358,7 +360,7 @@ function TambahPenjualanForm() {
                   <div>
                     <Label>Jumlah</Label>
                     <Input
-                      type="number"
+                      type="text"
                       min={1}
                       value={currentItem.qty}
                       onChange={(e) =>
@@ -425,45 +427,53 @@ function TambahPenjualanForm() {
                 <CardTitle>3. Pembayaran & Total</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                 <div>
-                    <Label>Metode Pembayaran</Label>
-                    <Select onValueChange={setMetodePembayaran} value={metodePembayaran}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih Metode"/>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Tunai">Tunai</SelectItem>
-                        <SelectItem value="Transfer">Transfer Bank</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label>Metode Pembayaran</Label>
+                  <Select
+                    onValueChange={setMetodePembayaran}
+                    value={metodePembayaran}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Metode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Tunai">Tunai</SelectItem>
+                      <SelectItem value="Transfer">Transfer Bank</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Status Pembayaran</Label>
+                  <Select
+                    onValueChange={(v: any) => setStatus(v)}
+                    value={status}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Lunas">Lunas</SelectItem>
+                      <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {status === "Belum Lunas" && (
                   <div>
-                    <Label>Status Pembayaran</Label>
-                    <Select onValueChange={(v: any) => setStatus(v)} value={status}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Lunas">Lunas</SelectItem>
-                        <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Tanggal Jatuh Tempo</Label>
+                    <Input
+                      type="date"
+                      value={tanggalJatuhTempo}
+                      onChange={(e) => setTanggalJatuhTempo(e.target.value)}
+                    />
                   </div>
-                 {status === "Belum Lunas" && (
-                     <div>
-                       <Label>Tanggal Jatuh Tempo</Label>
-                       <Input
-                         type="date"
-                         value={tanggalJatuhTempo}
-                         onChange={(e) => setTanggalJatuhTempo(e.target.value)}
-                       />
-                     </div>
-                  )}
+                )}
                 <Separator />
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span>Subtotal</span>
-                    <span className="font-semibold">{formatRupiah(subTotal)}</span>
+                    <span className="font-semibold">
+                      {formatRupiah(subTotal)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <Label>Diskon (Rp)</Label>
@@ -484,7 +494,9 @@ function TambahPenjualanForm() {
                   {pajakEnabled && (
                     <div className="flex justify-between items-center">
                       <span></span>
-                      <span className="text-sm">+ {formatRupiah(totalPajak)}</span>
+                      <span className="text-sm">
+                        + {formatRupiah(totalPajak)}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -495,10 +507,12 @@ function TambahPenjualanForm() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Button
               onClick={submit}
-              disabled={isLoading || !isFormReady || !pelangganId || items.length === 0}
+              disabled={
+                isLoading || !isFormReady || !pelangganId || items.length === 0
+              }
               className="w-full h-12 text-lg"
             >
               <Save className="h-5 w-5 mr-2" />

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chrome from "chrome-aws-lambda";
 import { formatRupiah } from "@/helper/format";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -36,10 +37,10 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
     tanggal: item.tanggal,
     pelanggan_id: item.pelanggan_id,
     catatan: item.catatan,
-    noInvoice: item.noInvoice, // Assuming 'no_invoice' in DB is 'noInvoice' in type
-    noNPB: item.noNPB, // Assuming 'no_npb' in DB is 'noNPB' in type
-    noDO: item.noDO, // Assuming 'no_do' in DB is 'noDO' in type
-    metodePengambilan: item.metodePengambilan, // Assuming 'metode_pengambilan'
+    no_invoice: item.no_invoice,
+    no_npb: item.no_npb,
+    no_do: item.no_do,
+    metode_pengambilan: item.metode_pengambilan,
     total: item.total,
     total_dibayar: item.total_dibayar,
     status: item.status,
@@ -54,9 +55,10 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
     total_akhir: item.total_akhir,
     created_at: item.created_at,
     updated_at: item.updated_at,
-    namaPelanggan: item.pelanggan?.nama_pelanggan || "Pelanggan Tidak Diketahui",
+    namaPelanggan:
+      item.pelanggan?.nama_pelanggan || "Pelanggan Tidak Diketahui",
     alamatPelanggan: item.pelanggan?.alamat || "",
-    items: item.items.map((detail: any) => ({
+    items: (item.items || []).map((detail: any) => ({
       id: detail.id,
       penjualan_id: detail.penjualan_id,
       supplier_produk_id: detail.supplier_produk_id,
@@ -125,353 +127,68 @@ export async function POST(request: NextRequest) {
           <meta charset="UTF-8">
           <title>Laporan Penjualan</title>
           <style>
-            * {
-              box-sizing: border-box;
-            }
-
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              margin: 0;
-              padding: 0;
-              color: #1f2937;
-              font-size: 11px;
-              background: #fff;
-            }
-
-            .container {
-              width: 100%;
-              background: white;
-              padding: 0 30px;
-            }
-
-            .report-title {
-              text-align: center;
-              padding: 25px 0 20px;
-              border-bottom: 3px solid #102853;
-              margin-bottom: 25px;
-            }
-
-            .report-title h2 {
-              margin: 0 0 10px 0;
-              font-size: 20px;
-              color: #000000;
-              font-weight: 700;
-              letter-spacing: 1px;
-              text-transform: uppercase;
-            }
-
-            .report-title .period {
-              display: inline-block;
-              background: #102853;
-              color: white;
-              padding: 6px 16px;
-              border-radius: 20px;
-              font-size: 10px;
-              font-weight: 500;
-              margin-top: 5px;
-            }
-
-            .summary-legend {
-                padding: 15px 20px;
-                margin-bottom: 25px;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                background-color: #f9fafb;
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 12px 25px;
-            }
-            
-            .summary-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 10px;
-                padding: 8px 0;
-                border-bottom: 1px solid #e5e7eb;
-            }
-            
-            .summary-item:last-child, 
-            .summary-item:nth-last-child(2), 
-            .summary-item:nth-last-child(3) {
-                border-bottom: none;
-            }
-            
-            .summary-item-label {
-                color: #4b5563;
-                font-weight: 600;
-            }
-            
-            .summary-item-value {
-                font-weight: 700;
-                color: #1f2937;
-            }
-
-            .table-container {
-              overflow-x: auto;
-            }
-
-            table {
-              width: 100%;
-              border-collapse: separate;
-              border-spacing: 0;
-              font-size: 9px;
-              border: 1px solid #e5e7eb;
-              border-radius: 8px;
-              overflow: hidden;
-            }
-
-            thead tr {
-              background: #102853;
-              color: white;
-            }
-
-            th {
-              padding: 10px 8px;
-              text-align: left;
-              font-weight: 600;
-              font-size: 9px;
-              text-transform: uppercase;
-              letter-spacing: 0.3px;
-            }
-
-            td {
-              padding: 8px;
-              border-bottom: 1px solid #f3f4f6;
-              vertical-align: top;
-            }
-
-            tbody tr:last-child td {
-              border-bottom: none;
-            }
-
-            tbody tr:nth-child(even) {
-              background-color: #fafafa;
-            }
-            
-            .status-lunas {
-              background-color: #fff9e6;
-              color: #102853;
-              padding: 3px 8px;
-              border-radius: 4px;
-              font-size: 8px;
-              font-weight: 700;
-              display: inline-block;
-              text-transform: uppercase;
-              letter-spacing: 0.3px;
-            }
-
-            .status-belum-lunas {
-              background-color: #fee2e2;
-              color: #7f1d1d;
-              padding: 3px 8px;
-              border-radius: 4px;
-              font-size: 8px;
-              font-weight: 700;
-              display: inline-block;
-              text-transform: uppercase;
-              letter-spacing: 0.3px;
-            }
-
-            .text-right { 
-              text-align: right; 
-              font-weight: 600; 
-            }
-            
-            .text-center { 
-              text-align: center; 
-            }
-
-            .products-list {
-              margin: 0;
-              padding: 0;
-              list-style: none;
-            }
-
-            .products-list li {
-              margin-bottom: 3px;
-              font-size: 8px;
-              line-height: 1.4;
-            }
-            
-            .totals-summary {
-                float: right;
-                width: 280px;
-                margin-top: 15px;
-                page-break-inside: avoid;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                overflow: hidden;
-            }
-            .total-item {
-                display: flex;
-                justify-content: space-between;
-                padding: 8px 12px;
-                font-size: 10px;
-            }
-            .total-item-label {
-                color: #4b5563;
-                font-weight: 600;
-            }
-            .total-item-value {
-                font-weight: 700;
-                color: #1f2937;
-            }
-            .grand-total {
-                background-color: #102853;
-                color: white;
-            }
-            .grand-total .total-item-label, .grand-total .total-item-value {
-                color: white;
-                font-size: 12px;
-            }
-
-            .signature-section {
-                margin-top: 50px;
-                page-break-inside: avoid;
-                float: right;
-                clear: both;
-                text-align: center;
-            }
-            
-            .signature-line {
-                border-top: 1px solid #1f2937;
-                width: 200px;
-                margin-top: 60px;
-            }
-            
-            .signature-name {
-                font-weight: 600;
-                font-size: 10px;
-                margin-top: 5px;
-            }
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h2 { color: #333; text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .total { font-weight: bold; }
           </style>
         </head>
         <body>
-          <div class="container">
-            <div class="report-title">
-              <h2>Laporan Penjualan</h2>
-              <span class="period">
-                ${
-                  startDate && endDate
-                    ? new Date(startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) +
-                      " - " +
-                      new Date(endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-                    : startDate
-                      ? "Dari: " +
-                        new Date(startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-                      : endDate
-                        ? "Sampai: " +
-                          new Date(endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-                        : "Semua Periode"
-                }
-              </span>
-            </div>
+          <h2>Laporan Penjualan</h2>
+          <p>Periode: ${
+            startDate && endDate
+              ? new Date(startDate).toLocaleDateString("id-ID") +
+                " - " +
+                new Date(endDate).toLocaleDateString("id-ID")
+              : startDate
+                ? "Dari: " + new Date(startDate).toLocaleDateString("id-ID")
+                : endDate
+                  ? "Sampai: " + new Date(endDate).toLocaleDateString("id-ID")
+                  : "Semua Periode"
+          }</p>
 
-            <div class="summary-legend">
-                <div class="summary-item">
-                    <span class="summary-item-label">Total Penjualan</span>
-                    <span class="summary-item-value">${totalSales}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-item-label">Pendapatan Bruto</span>
-                    <span class="summary-item-value">${formatRupiah(totalRevenue)}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-item-label">Total Pajak (PPN)</span>
-                    <span class="summary-item-value">${formatRupiah(totalPajak)}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-item-label">Pendapatan Netto</span>
-                    <span class="summary-item-value">${formatRupiah(penjualanBersih)}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-item-label">Penjualan Lunas</span>
-                    <span class="summary-item-value">${paidSales}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-item-label">Belum Lunas</span>
-                    <span class="summary-item-value">${unpaidSales}</span>
-                </div>
-            </div>
+          <div style="margin-bottom: 20px;">
+            <p>Total Penjualan: ${totalSales}</p>
+            <p>Pendapatan Bruto: ${formatRupiah(totalRevenue)}</p>
+            <p>Total Pajak: ${formatRupiah(totalPajak)}</p>
+            <p>Pendapatan Netto: ${formatRupiah(penjualanBersih)}</p>
+            <p>Penjualan Lunas: ${paidSales}</p>
+            <p>Belum Lunas: ${unpaidSales}</p>
+          </div>
 
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th class="text-center">No</th>
-                    <th>Invoice</th>
-                    <th>No. NPB</th>
-                    <th>No. DO</th>
-                    <th>Metode Pengambilan</th>
-                    <th>Tanggal</th>
-                    <th>Pelanggan</th>
-                    <th>Alamat</th>
-                    <th>Produk Dibeli</th>
-                    <th class="text-right">Total</th>
-                    <th class="text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${filteredSales
-                    .map(
-                      (sale, index) => `
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Invoice</th>
+                <th>Tanggal</th>
+                <th>Pelanggan</th>
+                <th>Total</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSales
+                .map(
+                  (sale, index) => `
                     <tr>
-                      <td class="text-center">${index + 1}</td>
-                      <td style="font-weight: 600; color: #102853;">${sale.noInvoice}</td>
-                      <td>${sale.noNPB}</td>
-                      <td>${sale.noDO || "-"}</td>
-                      <td>${sale.metodePengambilan}</td>
-                      <td>${new Date(sale.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td><strong>${sale.namaPelanggan || "Pelanggan Tidak Diketahui"}</strong></td>
-                      <td style="font-size: 8px; color: #6b7280;">${sale.alamatPelanggan || "-"}</td>
-                      <td>
-                        ${
-                          sale.items && sale.items.length > 0
-                            ? `<ul class="products-list">${sale.items
-                                .map(
-                                  (item) =>
-                                    `<li><strong>${item.namaProduk}</strong><br>${item.qty} ${item.satuan} × ${formatRupiah(item.hargaJual || 0)}</li>`,
-                                )
-                                .join("")}</ul>`
-                            : "<small style='color: #9ca3af;'>Tidak ada item</small>"
-                        }
-                      </td>
-                      <td class="text-right"><strong style="color: #102853; font-size: 10px;">${formatRupiah(sale.total)}</strong></td>
-                      <td class="text-center">
-                        <span class="${sale.status === "Lunas" ? "status-lunas" : "status-belum-lunas"}">
-                          ${sale.status}
-                        </span>
-                      </td>
+                      <td>${index + 1}</td>
+                      <td>${sale.no_invoice}</td>
+                      <td>${new Date(sale.tanggal).toLocaleDateString("id-ID")}</td>
+                      <td>${sale.namaPelanggan || "Pelanggan Tidak Diketahui"}</td>
+                      <td>${formatRupiah(sale.total)}</td>
+                      <td>${sale.status}</td>
                     </tr>
                   `,
-                    )
-                    .join("")}
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="totals-summary">
-                <div class="total-item">
-                    <span class="total-item-label">Subtotal:</span>
-                    <span class="total-item-value">${formatRupiah(penjualanBersih)}</span>
-                </div>
-                <div class="total-item">
-                    <span class="total-item-label">Total Pajak:</span>
-                    <span class="total-item-value">${formatRupiah(totalPajak)}</span>
-                </div>
-                <div class="total-item grand-total">
-                    <span class="total-item-label">Total Akhir:</span>
-                    <span class="total-item-value">${formatRupiah(totalRevenue)}</span>
-                </div>
-            </div>
+                )
+                .join("")}
+            </tbody>
+          </table>
 
-            <div class="signature-section">
-                <div style="font-size: 10px; margin-bottom: 5px;">Mengetahui,<br>SEMBAKO 32</div>
-                  
-                <div class="signature-line"></div>
-                <div class="signature-name">AM.Bisnis</div>
-            </div>
+          <div style="margin-top: 30px; text-align: right;">
+            <p class="total">Total Keseluruhan: ${formatRupiah(totalRevenue)}</p>
           </div>
         </body>
       </html>
@@ -545,31 +262,95 @@ export async function POST(request: NextRequest) {
     `;
 
     // Launch Puppeteer and generate PDF
+    const getExecutablePath = async () => {
+      if (process.env.PUPPETEER_EXEC_PATH)
+        return process.env.PUPPETEER_EXEC_PATH;
+      try {
+        const execPath = await chrome.executablePath;
+        if (execPath) return execPath;
+      } catch (e) {
+        // ignore
+      }
+      const defaultPaths = [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      ];
+      for (const p of defaultPaths) {
+        try {
+          await fs.access(p);
+          return p;
+        } catch (e) {
+          // continue
+        }
+      }
+      return undefined;
+    };
+
+    const executablePath = await getExecutablePath();
+    console.log("Resolved executable path:", executablePath);
+
+    if (!executablePath) {
+      throw new Error(
+        "Chrome/Chromium executable not found. Set env PUPPETEER_EXEC_PATH to your Chrome path.",
+      );
+    }
+
+    console.log("Launching Puppeteer with executable:", executablePath);
     const browser = await puppeteer.launch({
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+      ],
+      executablePath,
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      timeout: 60000,
     });
 
     const page = await browser.newPage();
 
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    // Set longer timeout for page operations
+    page.setDefaultTimeout(60000);
+    page.setDefaultNavigationTimeout(60000);
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      landscape: true,
-      printBackground: true,
-      margin: {
-        top: "150px",
-        right: "20px",
-        bottom: "50px",
-        left: "20px",
-      },
-      displayHeaderFooter: true,
-      headerTemplate: headerTemplate,
-      footerTemplate: footerTemplate,
+    await page.setContent(htmlContent, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
     });
 
-    await browser.close();
+    // Wait for images and styles to load
+    await page.waitForTimeout(2000);
+
+    let pdfBuffer: Buffer;
+    try {
+      pdfBuffer = await page.pdf({
+        format: "a4",
+        landscape: true,
+        printBackground: true,
+        margin: {
+          top: "140px",
+          right: "15px",
+          bottom: "80px",
+          left: "15px",
+        },
+        displayHeaderFooter: true,
+        headerTemplate: headerTemplate,
+        footerTemplate: footerTemplate,
+        preferCSSPageSize: true,
+        timeout: 60000,
+      });
+      console.log("PDF generated successfully, size:", pdfBuffer.length);
+    } catch (pdfError) {
+      console.error("PDF generation failed:", pdfError);
+      throw pdfError;
+    } finally {
+      try {
+        await browser.close();
+      } catch (e) {
+        console.warn("Failed to close browser:", e);
+      }
+    }
 
     // Return PDF as response
     const filename =

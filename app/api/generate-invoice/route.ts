@@ -106,8 +106,8 @@ async function generatePdf(
     ? (subTotal * penjualan.diskon) / 100
     : 0;
   const totalSetelahDiskon = subTotal - diskonAmount;
-  const pajakAmount = penjualan.pajakEnabled ? totalSetelahDiskon * 0.11 : 0;
-  const totalAkhir = totalSetelahDiskon + pajakAmount;
+  const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
+  const totalAkhir = penjualan.total_akhir ?? totalSetelahDiskon + pajakAmount;
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -122,12 +122,35 @@ async function generatePdf(
       "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
   });
 
+  let paymentDetailsHtml = `
+    <div class="invoice-item">
+      <span class="label">Pembayaran</span>
+      <span class="value">${penjualan.metode_pembayaran || "N/A"}</span>
+    </div>
+  `;
+  if (penjualan.metode_pembayaran === "Transfer") {
+    paymentDetailsHtml += `
+      <div class="invoice-item">
+        <span class="label">Bank</span>
+        <span class="value">${penjualan.nama_bank || ""}</span>
+      </div>
+      <div class="invoice-item">
+        <span class="label">A/n</span>
+        <span class="value">${penjualan.nama_pemilik_rekening || ""}</span>
+      </div>
+      <div class="invoice-item">
+        <span class="label">No Rek</span>
+        <span class="value">${penjualan.nomor_rekening || ""}</span>
+      </div>
+    `;
+  }
+
   const htmlContent = `
   <!DOCTYPE html>
   <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Invoice ${penjualan.noInvoice}</title>
+    <title>Invoice ${penjualan.no_invoice}</title>
     <style>
       * {
         margin: 0;
@@ -564,18 +587,18 @@ async function generatePdf(
           <div class="invoice-meta">
         <div class="invoice-item">
           <span class="label">No Invoice</span>
-          <span class="value">${penjualan.nomorInvoice || penjualan.noInvoice}</span>
+          <span class="value">${penjualan.no_invoice}</span>
         </div>
         <div class="invoice-item">
           <span class="label">No. NPB</span>
-          <span class="value">${penjualan.noNPB}</span>
+          <span class="value">${penjualan.no_npb}</span>
         </div>
         ${
-          penjualan.metodePengambilan === "Diantar" && penjualan.noDO
+          penjualan.metode_pengambilan === "Diantar" && penjualan.no_do
             ? `
         <div class="invoice-item">
           <span class="label">No. DO</span>
-          <span class="value">${penjualan.noDO}</span>
+          <span class="value">${penjualan.no_do}</span>
         </div>
         `
             : ""
@@ -584,28 +607,13 @@ async function generatePdf(
           <span class="label">Tanggal</span>
           <span class="value">${new Date(penjualan.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}</span>
         </div>
-        <div class="invoice-item">
-          <span class="label">Pembayaran</span>
-          <span class="value">${penjualan.metodePembayaran}</span>
-        </div>
-        <div class="invoice-item">
-          <span class="label">Bank</span>
-          <span class="value">BRI</span>
-        </div>
-        <div class="invoice-item">
-          <span class="label">A/n</span>
-          <span class="value">RAHMAT SYUKUR</span>
-        </div>
-        <div class="invoice-item">
-          <span class="label">No Rek</span>
-          <span class="value">7071 0101 9195 533</span>
-        </div>
+        ${paymentDetailsHtml}
         ${
-          penjualan.status === "Belum Lunas" && penjualan.tanggalJatuhTempo
+          penjualan.status === "Belum Lunas" && penjualan.tanggal_jatuh_tempo
             ? `
         <div class="invoice-item">
           <span class="label">Jatuh Tempo</span>
-          <span class="value">${new Date(penjualan.tanggalJatuhTempo).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}</span>
+          <span class="value">${new Date(penjualan.tanggal_jatuh_tempo).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}</span>
         </div>
         `
             : ""
@@ -632,27 +640,13 @@ async function generatePdf(
           </div>
           <div class="customer-item">
             <span class="label">Pengiriman</span>
-            <span class="value">${penjualan.metodePengambilan}</span>
+            <span class="value">${penjualan.metode_pengambilan}</span>
           </div>
         </div>
 
         <div class="amount-highlight">
           <p>Total Yang Harus Dibayar</p>
-          <div class="amount">Rp ${(() => {
-            const subTotal = (penjualan.items || []).reduce(
-              (sum, item) => sum + item.subtotal,
-              0,
-            );
-            const diskonAmount = penjualan.diskon
-              ? (subTotal * penjualan.diskon) / 100
-              : 0;
-            const totalSetelahDiskon = subTotal - diskonAmount;
-            const pajakAmount = penjualan.pajakEnabled
-              ? totalSetelahDiskon * 0.11
-              : 0;
-            const totalAkhir = totalSetelahDiskon + pajakAmount;
-            return totalAkhir.toLocaleString("id-ID");
-          })()}</div>
+          <div class="amount">Rp ${totalAkhir.toLocaleString("id-ID")}</div>
         </div>
       </div>
 
@@ -677,7 +671,7 @@ async function generatePdf(
               <td><strong>${item.namaProduk}</strong></td>
               <td class="text-center">${item.qty}</td>
               <td class="text-center">${item.satuan}</td>
-              <td class="text-right">Rp ${(item.hargaJual || 0).toLocaleString("id-ID")}</td>
+              <td class="text-right">Rp ${((item.hargaJual ?? item.harga) || 0).toLocaleString("id-ID")}</td>
               <td class="text-right"><strong>Rp ${item.subtotal.toLocaleString("id-ID")}</strong></td>
             </tr>
           `,
@@ -704,71 +698,31 @@ async function generatePdf(
             <table>
               <tr>
                 <td>Subtotal</td>
-                <td class="text-right">Rp ${(() => {
-                  const subTotal = (penjualan.items || []).reduce(
-                    (sum, item) => sum + item.subtotal,
-                    0,
-                  );
-                  return subTotal.toLocaleString("id-ID");
-                })()}</td>
+                <td class="text-right">Rp ${subTotal.toLocaleString("id-ID")}</td>
               </tr>
               ${
                 penjualan.diskon && penjualan.diskon > 0
-                  ? (() => {
-                      const subTotal = (penjualan.items || []).reduce(
-                        (sum, item) => sum + item.subtotal,
-                        0,
-                      );
-                      const diskonAmount = (subTotal * penjualan.diskon) / 100;
-                      return `
+                  ? `
                 <tr>
                   <td>Diskon (${penjualan.diskon}%)</td>
                   <td class="text-right">- Rp ${diskonAmount.toLocaleString("id-ID")}</td>
                 </tr>
-              `;
-                    })()
+                `
                   : ""
               }
               ${
-                penjualan.pajakEnabled
-                  ? (() => {
-                      const subTotal = (penjualan.items || []).reduce(
-                        (sum, item) => sum + item.subtotal,
-                        0,
-                      );
-                      const diskonAmount = penjualan.diskon
-                        ? (subTotal * penjualan.diskon) / 100
-                        : 0;
-                      const totalSetelahDiskon = subTotal - diskonAmount;
-                      const pajakAmount = totalSetelahDiskon * 0.11;
-                      return pajakAmount > 0
-                        ? `
+                penjualan.pajak_enabled && pajakAmount > 0
+                  ? `
                 <tr>
                   <td>PPN 11%</td>
                   <td class="text-right">Rp ${pajakAmount.toLocaleString("id-ID")}</td>
                 </tr>
               `
-                        : "";
-                    })()
                   : ""
               }
               <tr>
                 <td><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>Rp ${(() => {
-                  const subTotal = (penjualan.items || []).reduce(
-                    (sum, item) => sum + item.subtotal,
-                    0,
-                  );
-                  const diskonAmount = penjualan.diskon
-                    ? (subTotal * penjualan.diskon) / 100
-                    : 0;
-                  const totalSetelahDiskon = subTotal - diskonAmount;
-                  const pajakAmount = penjualan.pajakEnabled
-                    ? totalSetelahDiskon * 0.11
-                    : 0;
-                  const totalAkhir = totalSetelahDiskon + pajakAmount;
-                  return totalAkhir.toLocaleString("id-ID");
-                })()}</strong></td>
+                <td class="text-right"><strong>Rp ${totalAkhir.toLocaleString("id-ID")}</strong></td>
               </tr>
             </table>
           </div>
@@ -817,22 +771,24 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (
-      (!penjualan.nomorInvoice && !penjualan.noInvoice) ||
+      !penjualan.no_invoice ||
       !penjualan.namaPelanggan ||
       !penjualan.items ||
       penjualan.items.length === 0
     ) {
       throw new Error(
-        "Missing required fields: nomorInvoice/noInvoice, namaPelanggan, or items",
+        "Missing required fields: no_invoice, namaPelanggan, or items",
       );
     }
 
     // Validate items
     for (const item of penjualan.items) {
+      // Accept both hargaJual and harga field names
+      const priceValue = item.hargaJual ?? item.harga;
       if (
         !item.namaProduk ||
         typeof item.qty !== "number" ||
-        typeof item.hargaJual !== "number"
+        typeof priceValue !== "number"
       ) {
         throw new Error(`Invalid item data: ${JSON.stringify(item)}`);
       }
@@ -843,7 +799,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(pdfData as any, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Invoice_${penjualan.nomorInvoice || penjualan.noInvoice}.pdf"`,
+        "Content-Disposition": `attachment; filename="Invoice_${penjualan.no_invoice}.pdf"`,
       },
     });
   } catch (error) {

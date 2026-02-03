@@ -82,16 +82,16 @@ export function PenjualanTable({
                 {data.map((penjualan) => (
                   <TableRow key={penjualan.id}>
                     <TableCell className="font-medium">
-                      {penjualan.noInvoice}
+                      {penjualan.no_invoice}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {penjualan.noNPB}
+                      {penjualan.no_npb}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {penjualan.noDO || "-"}
+                      {penjualan.no_do || "-"}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {penjualan.metodePengambilan}
+                      {penjualan.metode_pengambilan}
                     </TableCell>
                     <TableCell>
                       {new Date(penjualan.tanggal).toLocaleDateString("id-ID")}

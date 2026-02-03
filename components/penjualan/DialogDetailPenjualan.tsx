@@ -158,24 +158,24 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           <div>
             <p className="text-sm text-black font-bold">Metode Pembayaran</p>
             <p className="font-semibold capitalize">
-              {penjualan.metodePembayaran}
+              {penjualan.metode_pembayaran}
             </p>
-            {penjualan.metodePembayaran === "Transfer" &&
-              penjualan.namaBank && (
+            {penjualan.metode_pembayaran === "Transfer" &&
+              penjualan.nama_bank && (
                 <p className="text-xs text-gray-600 mt-1">
-                  Nama Bank: {penjualan.namaBank}
+                  Nama Bank: {penjualan.nama_bank}
                 </p>
               )}
-            {penjualan.metodePembayaran === "Transfer" &&
-              penjualan.namaPemilikRekening && (
+            {penjualan.metode_pembayaran === "Transfer" &&
+              penjualan.nama_pemilik_rekening && (
                 <p className="text-xs text-gray-600 mt-1">
-                  Nama Pemilik Rekening: {penjualan.namaPemilikRekening}
+                  Nama Pemilik Rekening: {penjualan.nama_pemilik_rekening}
                 </p>
               )}
-            {penjualan.metodePembayaran === "Transfer" &&
-              penjualan.nomorRekening && (
+            {penjualan.metode_pembayaran === "Transfer" &&
+              penjualan.nomor_rekening && (
                 <p className="text-xs text-gray-600 mt-1">
-                  Nomor Rekening: {penjualan.nomorRekening}
+                  Nomor Rekening: {penjualan.nomor_rekening}
                 </p>
               )}
           </div>
