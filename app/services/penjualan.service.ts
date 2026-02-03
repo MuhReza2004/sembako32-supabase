@@ -54,7 +54,8 @@ export const createPenjualan = async (data: Penjualan) => {
     .single();
 
   if (penjualanError) {
-    console.error("Error creating penjualan:", penjualanError);
+    console.error("Error creating penjualan. Data payload:", JSON.stringify(penjualanData, null, 2));
+    console.error("Supabase Error details:", penjualanError);
     throw penjualanError;
   }
 

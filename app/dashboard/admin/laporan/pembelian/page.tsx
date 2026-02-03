@@ -277,7 +277,7 @@ export default function PembelianReportPage() {
                     <TableHead>No</TableHead>
                     <TableHead>Tanggal</TableHead>
                     <TableHead>No. Invoice</TableHead>
-                    <TableHead>No. DO</TableHead>
+                    <TableHead>No. Dokumen</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead>Produk Dibeli</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -294,7 +294,12 @@ export default function PembelianReportPage() {
                       <TableCell className="font-medium">
                         {purchase.invoice || "-"}
                       </TableCell>
-                      <TableCell>{purchase.no_do || "-"}</TableCell>
+                      <TableCell>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>{purchase.no_do || "-"}</li>
+                          <li>{purchase.no_npb || "-"}</li>
+                        </ul>
+                      </TableCell>
                       <TableCell>{purchase.namaSupplier}</TableCell>
                       <TableCell>
                         {purchase.items && purchase.items.length > 0 ? (

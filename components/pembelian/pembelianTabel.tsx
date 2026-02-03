@@ -167,13 +167,7 @@ export default function PembelianTable({
               <TableHead className="font-semibold text-gray-700">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
-                  DO
-                </div>
-              </TableHead>
-              <TableHead className="font-semibold text-gray-700">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  NPB
+                  No Dokumen
                 </div>
               </TableHead>
               <TableHead className="font-semibold text-gray-700">
@@ -242,22 +236,10 @@ export default function PembelianTable({
                     })}
                   </TableCell>
                   <TableCell>
-                    {p.noDO ? (
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {p.noDO}
-                      </Badge>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {p.noNPB ? (
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {p.noNPB}
-                      </Badge>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>{p.no_npb || "-"} </li>
+                      <li>{p.no_do || "-"}</li>
+                    </ul>
                   </TableCell>
                   <TableCell>
                     {p.invoice ? (

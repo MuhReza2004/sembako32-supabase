@@ -145,7 +145,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
                   <div>
                     <p className="font-medium text-sm">{item.kode}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(item.tanggal)} •{" "}
+                      {formatDate(new Date(item.tanggal))} •{" "}
                       {item.type === "sale" ? item.pelanggan : item.supplier}
                     </p>
                   </div>

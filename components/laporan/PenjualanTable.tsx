@@ -46,15 +46,14 @@ export function PenjualanTable({
               <TableHeader>
                 <TableRow className="bg-gray-100">
                   <TableHead style={{ minWidth: "120px" }}>Invoice</TableHead>
-                  <TableHead style={{ minWidth: "120px" }}>No. NPB</TableHead>
-                  <TableHead style={{ minWidth: "120px" }}>No. DO</TableHead>
+                  <TableHead style={{ minWidth: "120px" }}>
+                    No. Dokumen
+                  </TableHead>
                   <TableHead style={{ minWidth: "130px" }}>
                     Metode Pengambilan
                   </TableHead>
                   <TableHead style={{ minWidth: "100px" }}>Tanggal</TableHead>
-                  <TableHead style={{ minWidth: "180px" }}>
-                    Pelanggan
-                  </TableHead>
+                  <TableHead style={{ minWidth: "180px" }}>Pelanggan</TableHead>
                   <TableHead style={{ minWidth: "250px" }}>
                     Produk Dibeli
                   </TableHead>
@@ -85,10 +84,10 @@ export function PenjualanTable({
                       {penjualan.no_invoice}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {penjualan.no_npb}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {penjualan.no_do || "-"}
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>{penjualan.no_npb}</li>
+                        <li>{penjualan.no_do || "-"}</li>
+                      </ul>
                     </TableCell>
                     <TableCell className="font-medium">
                       {penjualan.metode_pengambilan}

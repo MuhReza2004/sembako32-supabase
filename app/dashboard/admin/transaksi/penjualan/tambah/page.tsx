@@ -88,6 +88,9 @@ function TambahPenjualanForm() {
   const [tanggalJatuhTempo, setTanggalJatuhTempo] = useState("");
   const [pajakEnabled, setPajakEnabled] = useState(false);
   const [diskon, setDiskon] = useState(0);
+  const [bankName, setBankName] = useState("BRI");
+  const [accountOwner, setAccountOwner] = useState("RAHMAT SYUKUR");
+  const [accountNumber, setAccountNumber] = useState("7071 0101 9195 533");
 
   const resetForm = async () => {
     setIsFormReady(false);
@@ -100,6 +103,9 @@ function TambahPenjualanForm() {
     setTanggalJatuhTempo("");
     setPajakEnabled(false);
     setDiskon(0);
+    setBankName("BRI");
+    setAccountOwner("RAHMAT SYUKUR");
+    setAccountNumber("7071 0101 9195 533");
     setError(null);
     if (!editId) {
       const [invoiceNum, npbNum, doNum] = await Promise.all([
@@ -160,6 +166,9 @@ function TambahPenjualanForm() {
           setTanggalJatuhTempo(penjualan.tanggal_jatuh_tempo || "");
           setPajakEnabled(penjualan.pajak_enabled || false);
           setDiskon(penjualan.diskon || 0);
+          setBankName(penjualan.bank_name || "");
+          setAccountOwner(penjualan.account_owner || "");
+          setAccountNumber(penjualan.account_number || "");
         }
         setIsFormReady(true);
       } else {
@@ -170,6 +179,24 @@ function TambahPenjualanForm() {
 
     fetchAndSetData();
   }, [editId]);
+
+  useEffect(() => {
+    if (status === "Lunas") {
+      setTanggalJatuhTempo(new Date().toISOString().split("T")[0]);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (metodePembayaran === "Transfer") {
+      setBankName("BRI");
+      setAccountOwner("RAHMAT SYUKUR");
+      setAccountNumber("7071 0101 9195 533");
+    } else {
+      setBankName("");
+      setAccountOwner("");
+      setAccountNumber("");
+    }
+  }, [metodePembayaran]);
 
   const addItemToList = () => {
     if (!currentItem.supplier_produk_id || currentItem.qty <= 0) {
@@ -232,8 +259,16 @@ function TambahPenjualanForm() {
     setError(null);
     if (!pelangganId) return setError("Pilih pelanggan terlebih dahulu");
     if (items.length === 0) return setError("Pastikan ada produk yang dipilih");
+    if (status === "Belum Lunas" && !tanggalJatuhTempo) {
+      return setError("Tanggal Jatuh Tempo harus diisi jika status belum lunas.");
+    }
 
     setIsLoading(true);
+
+    const finalTanggalJatuhTempo = status === "Lunas"
+      ? new Date().toISOString().split("T")[0]
+      : (tanggalJatuhTempo === "" ? null : tanggalJatuhTempo);
+
     try {
       const penjualanData = {
         tanggal:
@@ -247,12 +282,17 @@ function TambahPenjualanForm() {
         status: status,
         items: items,
         metode_pembayaran: metodePembayaran,
-        tanggal_jatuh_tempo: tanggalJatuhTempo,
+        tanggal_jatuh_tempo: finalTanggalJatuhTempo,
         pajak_enabled: pajakEnabled,
         pajak: totalPajak,
         diskon: diskon,
         total_akhir: total,
         no_do: metodePengambilan === "Diantar" ? noDo : undefined,
+        ...(metodePembayaran === "Transfer" && {
+          nama_bank: bankName,
+          nama_pemilik_rekening: accountOwner,
+          nomor_rekening: accountNumber,
+        }),
       };
 
       if (editingPenjualan?.id) {
@@ -442,6 +482,40 @@ function TambahPenjualanForm() {
                     </SelectContent>
                   </Select>
                 </div>
+                {metodePembayaran === "Transfer" && (
+                  <>
+                    <div>
+                      <Label htmlFor="bankName">Nama Bank</Label>
+                      <Input
+                        id="bankName"
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="Contoh: BRI"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="accountOwner">Nama Pemilik Rekening</Label>
+                      <Input
+                        id="accountOwner"
+                        type="text"
+                        value={accountOwner}
+                        onChange={(e) => setAccountOwner(e.target.value)}
+                        placeholder="Contoh: RAHMAT SYUKUR"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="accountNumber">Nomor Rekening</Label>
+                      <Input
+                        id="accountNumber"
+                        type="text"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        placeholder="Contoh: 7071 0101 9195 533"
+                      />
+                    </div>
+                  </>
+                )}
                 <div>
                   <Label>Status Pembayaran</Label>
                   <Select
