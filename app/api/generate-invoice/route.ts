@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { Penjualan } from "@/app/types/penjualan";
 
-
 function numberToWords(num: number): string {
   const units = [
     "",
@@ -628,7 +627,7 @@ async function generatePdf(
           <p>Kepada Yth.</p>
           <div class="customer-item">
             <span class="label">Nama</span>
-            <span class="value">${penjualan.nama_pelanggan}</span>
+            <span class="value">${penjualan.namaPelanggan}</span>
           </div>
           <div class="customer-item">
             <span class="label">Toko</span>
@@ -668,7 +667,7 @@ async function generatePdf(
               (item, i) => `
             <tr>
               <td class="text-center">${i + 1}</td>
-              <td><strong>${item.nama_produk}</strong></td>
+              <td><strong>${item.namaProduk}</strong></td>
               <td class="text-center">${item.qty}</td>
               <td class="text-center">${item.satuan}</td>
               <td class="text-right">Rp ${((item.hargaJual ?? item.harga) || 0).toLocaleString("id-ID")}</td>
@@ -737,7 +736,7 @@ async function generatePdf(
         </div>
         <div class="signature-box">
           <p>Diterima Oleh,</p>
-          <div class="signature-line">( ${penjualan.nama_pelanggan} )</div>
+          <div class="signature-line">( ${penjualan.namaPelanggan} )</div>
         </div>
       </div>
 
@@ -761,7 +760,7 @@ async function generatePdf(
 
   await browser.close();
 
-  return pdfBuffer;
+  return Buffer.from(pdfBuffer);
 }
 
 export async function POST(request: NextRequest) {
@@ -772,12 +771,12 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (
       !penjualan.no_invoice ||
-      !penjualan.nama_pelanggan ||
+      !penjualan.namaPelanggan ||
       !penjualan.items ||
       penjualan.items.length === 0
     ) {
       throw new Error(
-        "Missing required fields: no_invoice, nama_pelanggan, or items",
+        "Missing required fields: no_invoice, namaPelanggan, or items",
       );
     }
 
@@ -786,7 +785,7 @@ export async function POST(request: NextRequest) {
       // Accept both hargaJual and harga field names
       const priceValue = item.hargaJual ?? item.harga;
       if (
-        !item.nama_produk ||
+        !item.namaProduk ||
         typeof item.qty !== "number" ||
         typeof priceValue !== "number"
       ) {
@@ -796,7 +795,7 @@ export async function POST(request: NextRequest) {
 
     const pdfData = await generatePdf(penjualan);
 
-    return new NextResponse(pdfData, {
+    return new NextResponse(new Uint8Array(pdfData), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="Invoice_${penjualan.no_invoice}.pdf"`,
