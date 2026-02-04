@@ -56,6 +56,7 @@ export const createPenjualan = async (data: Penjualan) => {
     no_invoice: data.no_invoice,
     no_npb: data.no_npb,
     no_do: data.no_do,
+    no_tanda_terima: data.no_tanda_terima,
     metode_pengambilan: data.metode_pengambilan,
     total: Number(data.total),
     total_dibayar: Number(data.total_dibayar || 0),
@@ -187,6 +188,7 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     no_invoice: item.no_invoice,
     no_npb: item.no_npb,
     no_do: item.no_do,
+    no_tanda_terima: item.no_tanda_terima,
     metode_pengambilan: item.metode_pengambilan,
     total: item.total,
     total_dibayar: item.total_dibayar,
@@ -537,4 +539,27 @@ export const generateDONumber = async (): Promise<string> => {
 
   const nextNumber = (count || 0) + 1;
   return `DO/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
+};
+
+// --- NEW generate Tanda Terima number function ---
+export const generateTandaTerimaNumber = async (): Promise<string> => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  const { count, error } = await supabase
+    .from("penjualan")
+    .select("*", { count: "exact", head: true })
+    .not("no_tanda_terima", "is", null)
+    .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
+    .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
+
+  if (error) {
+    console.error("Error counting Tanda Terima:", error);
+    return `TT/${year}${month}${day}/ERR`;
+  }
+
+  const nextNumber = (count || 0) + 1;
+  return `TT/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
 };

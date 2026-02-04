@@ -122,6 +122,7 @@ CREATE TABLE penjualan (
   no_invoice TEXT NOT NULL UNIQUE,
   no_npb TEXT NOT NULL,
   no_do TEXT,
+  no_tanda_terima TEXT,
   metode_pengambilan TEXT NOT NULL CHECK (metode_pengambilan IN ('Ambil Langsung', 'Diantar')),
   total DECIMAL(14,2) NOT NULL,
   total_dibayar DECIMAL(14,2) DEFAULT 0,

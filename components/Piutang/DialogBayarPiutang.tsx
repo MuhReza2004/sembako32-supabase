@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Penjualan } from "@/app/types/penjualan";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { addPiutangPayment } from "@/app/services/penjualan.service";
 import { formatRupiah } from "@/helper/format";
@@ -56,6 +56,7 @@ export default function DialogBayarPiutang({
   } = useForm<FormData>();
 
   const confirm = useConfirm();
+  const [bayarLunas, setBayarLunas] = useState(false);
 
   const totalDibayar = piutang.total_dibayar || 0;
   const totalDibayarResolved =
@@ -66,11 +67,12 @@ export default function DialogBayarPiutang({
     if (isOpen) {
       reset({
         tanggal: new Date().toISOString().split("T")[0],
-        jumlah: sisaUtang,
+        jumlah: 0,
         metode_pembayaran: "Transfer",
         atas_nama:
           (piutang as any).namaPelanggan || piutang.nama_pelanggan || "",
       });
+      setBayarLunas(false);
     }
   }, [isOpen, piutang, sisaUtang, reset]);
 
@@ -229,11 +231,24 @@ export default function DialogBayarPiutang({
                         const input = e.target.value;
                         const numeric = input.replace(/[^0-9]/g, "");
                         field.onChange(Number(numeric));
+                        if (bayarLunas) setBayarLunas(false);
                       }}
                       placeholder={`Maksimal: ${formatRupiah(sisaUtang)}`}
                     />
                   )}
                 />
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={bayarLunas}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setBayarLunas(checked);
+                      setValue("jumlah", checked ? sisaUtang : 0);
+                    }}
+                  />
+                  Bayar lunas (isi otomatis {formatRupiah(sisaUtang)})
+                </label>
               </div>
               <div>
                 <Label htmlFor="metode_pembayaran">Metode Pembayaran</Label>

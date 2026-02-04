@@ -119,6 +119,37 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
     }
   };
 
+  const handlePrintReceipt = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/generate-receipt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...penjualan,
+          nama_toko: pelanggan?.nama_toko,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to generate receipt PDF:", errorText);
+        throw new Error(`Failed to generate receipt PDF: ${errorText}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Error generating receipt PDF:", error);
+      alert("Terjadi kesalahan saat membuat PDF tanda terima.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -300,6 +331,26 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Tutup
           </Button>
+          {penjualan.metode_pengambilan === "Diantar" && (
+            <Button
+              onClick={handlePrintReceipt}
+              disabled={isLoading}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Membuat Tanda Terima...
+                </>
+              ) : (
+                <>
+                  <Printer size={16} />
+                  Cetak Tanda Terima
+                </>
+              )}
+            </Button>
+          )}
           <Button
             onClick={handlePrintInvoice}
             disabled={isLoading}

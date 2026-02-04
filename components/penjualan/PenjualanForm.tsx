@@ -9,6 +9,7 @@ import {
   generateInvoiceNumber,
   generateNPBNumber,
   generateDONumber,
+  generateTandaTerimaNumber,
 } from "@/app/services/penjualan.service";
 import { PenjualanDetail, Penjualan } from "@/app/types/penjualan";
 import { Produk } from "@/app/types/produk";
@@ -95,6 +96,7 @@ export function PenjualanForm({
   });
 
   // const [error, setError] = useState<string | null>(null); // No longer needed
+  const watchMetodePengambilan = watch("metode_pengambilan");
 
   useEffect(() => {
     const generateNumbers = async () => {
@@ -106,11 +108,14 @@ export function PenjualanForm({
           ]);
           setValue("no_invoice", invoiceNum);
           setValue("no_npb", npbNum);
-          if (watch("metode_pengambilan") === "Diantar") {
+          if (watchMetodePengambilan === "Diantar") {
             const doNum = await generateDONumber();
+            const ttNum = await generateTandaTerimaNumber();
             setValue("no_do", doNum);
+            setValue("no_tanda_terima", ttNum);
           } else {
             setValue("no_do", "");
+            setValue("no_tanda_terima", "");
           }
         } catch (error: any) {
           console.error("Error generating document numbers:", error);
@@ -123,7 +128,7 @@ export function PenjualanForm({
       }
     };
     generateNumbers();
-  }, [editingPenjualan, setValue, showStatus, watch]);
+  }, [editingPenjualan, setValue, showStatus, watchMetodePengambilan]);
 
   const watchItems = watch("items");
   const watchPajakEnabled = watch("pajak_enabled");

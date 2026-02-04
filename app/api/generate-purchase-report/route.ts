@@ -168,6 +168,22 @@ export async function POST(request: NextRequest) {
           <div style="margin-top: 30px; text-align: right;">
             <p class="total">Total Nilai Transaksi: ${formatRupiah(totalCost)}</p>
           </div>
+
+           <div style="text-align:end; margin-top: 30px; ">(Pasangkayu,...../......./......... )</div>
+          <div style="margin-top: 150px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+              <div style="text-align: center; ">
+               
+                <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
+                <div style="font-size: 11px; margin-top: 6px;">AM Keuangan</div>
+              </div>
+              <div style="text-align: center;">
+                
+                <div style="border-top: 1px solid #333; width: 180px; margin: 0 auto;"></div>
+                <div style="font-size: 11px; margin-top: 6px;">Pimpinan SEMBAKO 32</div>
+              </div>
+            </div>
+          </div>
         </body>
       </html>
     `;

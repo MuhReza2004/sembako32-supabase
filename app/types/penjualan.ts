@@ -30,6 +30,7 @@ export interface Penjualan {
   no_invoice: string;
   no_npb: string; // Nomor Pengambilan Barang
   no_do?: string; // Nomor Delivery Order
+  no_tanda_terima?: string; // Nomor Tanda Terima
   metode_pengambilan: "Ambil Langsung" | "Diantar";
   total: number;
   total_dibayar?: number; // Total amount paid
