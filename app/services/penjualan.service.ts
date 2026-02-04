@@ -1,8 +1,5 @@
 import { supabase } from "@/app/lib/supabase";
-import {
-  Penjualan,
-  PenjualanDetail,
-} from "@/app/types/penjualan";
+import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
 
 // --- existing createPenjualan function ---
 export const createPenjualan = async (data: Penjualan) => {
@@ -54,7 +51,10 @@ export const createPenjualan = async (data: Penjualan) => {
     .single();
 
   if (penjualanError) {
-    console.error("Error creating penjualan. Data payload:", JSON.stringify(penjualanData, null, 2));
+    console.error(
+      "Error creating penjualan. Data payload:",
+      JSON.stringify(penjualanData, null, 2),
+    );
     console.error("Supabase Error details:", penjualanError);
     throw penjualanError;
   }
@@ -107,7 +107,8 @@ export const createPenjualan = async (data: Penjualan) => {
 
 // --- existing getAllPenjualan function ---
 export const getAllPenjualan = async (): Promise<Penjualan[]> => {
-  const { data, error } = await supabase
+  // First fetch penjualan dengan pelanggan
+  const { data: penjualanData, error: penjualanError } = await supabase
     .from("penjualan")
     .select(
       `
@@ -116,33 +117,42 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
         id,
         nama_pelanggan,
         alamat
-      ),
-      penjualan_detail (
-        id,
-        penjualan_id,
-        supplier_produk_id,
-        qty,
-        harga,
-        subtotal,
-        created_at,
-        supplier_produk (
-          produk (
-            nama,
-            satuan
-          ),
-          harga_jual
-        )
       )
     `,
     )
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching penjualan:", error);
-    throw error;
+  if (penjualanError) {
+    console.error("Error fetching penjualan:", penjualanError);
+    throw penjualanError;
   }
 
-  return data.map((item) => ({
+  // Then fetch penjualan_detail dengan supplier_produk
+  const { data: detailsData, error: detailsError } = await supabase.from(
+    "penjualan_detail",
+  ).select(`
+      *,
+      supplier_produk (
+        id,
+        harga_jual,
+        produk (
+          id,
+          nama,
+          satuan
+        )
+      )
+    `);
+
+  if (detailsError) {
+    console.error("Error fetching penjualan_detail:", detailsError);
+    throw detailsError;
+  }
+
+  console.log("Raw penjualan data:", penjualanData);
+  console.log("Raw details data:", detailsData);
+
+  // Join penjualan dengan penjualan_detail
+  const mappedData = penjualanData.map((item: any) => ({
     id: item.id,
     tanggal: item.tanggal,
     pelanggan_id: item.pelanggan_id,
@@ -167,21 +177,27 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     updated_at: item.updated_at,
     namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
     alamatPelanggan: item.pelanggan?.alamat || "",
+    // Get items from detailsData that belong to this penjualan
     items:
-      item.penjualan_detail?.map((detail: any) => ({
-        id: detail.id,
-        penjualan_id: item.id,
-        supplier_produk_id: detail.supplier_produk_id,
-        qty: detail.qty,
-        harga: detail.harga,
-        subtotal: detail.subtotal,
-        created_at: detail.created_at,
-        namaProduk:
-          detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-        satuan: detail.supplier_produk?.produk?.satuan || "",
-        hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
-      })) || [],
+      detailsData
+        .filter((detail: any) => detail.penjualan_id === item.id)
+        .map((detail: any) => ({
+          id: detail.id,
+          penjualan_id: detail.penjualan_id,
+          supplier_produk_id: detail.supplier_produk_id,
+          qty: detail.qty,
+          harga: detail.harga,
+          subtotal: detail.subtotal,
+          created_at: detail.created_at,
+          namaProduk:
+            detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
+          satuan: detail.supplier_produk?.produk?.satuan || "",
+          hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
+        })) || [],
   }));
+
+  console.log("Mapped penjualan data:", mappedData);
+  return mappedData;
 };
 
 // --- NEW getPiutang function ---
@@ -303,15 +319,22 @@ export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
 
     // Restore old stock
     for (const item of (currentPenjualan as any).penjualan_detail || []) {
-      const { data: p, error } = await supabase.from('supplier_produk').select('stok').eq('id', item.supplier_produk_id).single();
-      if(p) {
-        await supabase.from('supplier_produk').update({ stok: p.stok + item.qty }).eq('id', item.supplier_produk_id);
+      const { data: p, error } = await supabase
+        .from("supplier_produk")
+        .select("stok")
+        .eq("id", item.supplier_produk_id)
+        .single();
+      if (p) {
+        await supabase
+          .from("supplier_produk")
+          .update({ stok: p.stok + item.qty })
+          .eq("id", item.supplier_produk_id);
       }
     }
-    
+
     // Delete old details
     await supabase.from("penjualan_detail").delete().eq("penjualan_id", id);
-    
+
     // Create new details and deduct new stock
     for (const item of data.items) {
       await supabase.from("penjualan_detail").insert({
@@ -321,9 +344,16 @@ export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
         harga: item.harga,
         subtotal: item.subtotal,
       });
-      const { data: p, error } = await supabase.from('supplier_produk').select('stok').eq('id', item.supplier_produk_id).single();
-      if(p) {
-        await supabase.from('supplier_produk').update({ stok: p.stok - item.qty }).eq('id', item.supplier_produk_id);
+      const { data: p, error } = await supabase
+        .from("supplier_produk")
+        .select("stok")
+        .eq("id", item.supplier_produk_id)
+        .single();
+      if (p) {
+        await supabase
+          .from("supplier_produk")
+          .update({ stok: p.stok - item.qty })
+          .eq("id", item.supplier_produk_id);
       }
     }
   }
@@ -350,9 +380,16 @@ export const deletePenjualan = async (id: string) => {
   if (fetchDetailsError) throw fetchDetailsError;
 
   for (const item of penjualanDetails || []) {
-    const { data: p, error } = await supabase.from('supplier_produk').select('stok').eq('id', item.supplier_produk_id).single();
+    const { data: p, error } = await supabase
+      .from("supplier_produk")
+      .select("stok")
+      .eq("id", item.supplier_produk_id)
+      .single();
     if (p) {
-      await supabase.from('supplier_produk').update({ stok: p.stok + item.qty }).eq('id', item.supplier_produk_id);
+      await supabase
+        .from("supplier_produk")
+        .update({ stok: p.stok + item.qty })
+        .eq("id", item.supplier_produk_id);
     }
   }
 
@@ -369,12 +406,19 @@ export const cancelPenjualan = async (id: string) => {
   if (fetchDetailsError) throw fetchDetailsError;
 
   for (const item of penjualanDetails || []) {
-    const { data: p, error } = await supabase.from('supplier_produk').select('stok').eq('id', item.supplier_produk_id).single();
+    const { data: p, error } = await supabase
+      .from("supplier_produk")
+      .select("stok")
+      .eq("id", item.supplier_produk_id)
+      .single();
     if (p) {
-      await supabase.from('supplier_produk').update({ stok: p.stok + item.qty }).eq('id', item.supplier_produk_id);
+      await supabase
+        .from("supplier_produk")
+        .update({ stok: p.stok + item.qty })
+        .eq("id", item.supplier_produk_id);
     }
   }
-  
+
   await supabase.from("penjualan").update({ status: "Batal" }).eq("id", id);
 };
 
@@ -413,35 +457,35 @@ export const generateNPBNumber = async (): Promise<string> => {
     .not("no_npb", "is", null)
     .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
     .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
-  
+
   if (error) {
     console.error("Error counting NPB:", error);
     return `NPB/${year}${month}${day}/ERR`;
   }
-  
+
   const nextNumber = (count || 0) + 1;
   return `NPB/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
 };
 
 // --- NEW generateDONumber function ---
 export const generateDONumber = async (): Promise<string> => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
-    const { count, error } = await supabase
-        .from('penjualan')
-        .select('*', { count: 'exact', head: true })
-        .not('no_do', 'is', null)
-        .gte('created_at', new Date(date.setHours(0, 0, 0, 0)).toISOString())
-        .lt('created_at', new Date(date.setHours(23, 59, 59, 999)).toISOString());
+  const { count, error } = await supabase
+    .from("penjualan")
+    .select("*", { count: "exact", head: true })
+    .not("no_do", "is", null)
+    .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
+    .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
 
-    if (error) {
-        console.error('Error counting DO:', error);
-        return `DO/${year}${month}${day}/ERR`;
-    }
+  if (error) {
+    console.error("Error counting DO:", error);
+    return `DO/${year}${month}${day}/ERR`;
+  }
 
-    const nextNumber = (count || 0) + 1;
-    return `DO/${year}${month}${day}/${String(nextNumber).padStart(4, '0')}`;
+  const nextNumber = (count || 0) + 1;
+  return `DO/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
 };

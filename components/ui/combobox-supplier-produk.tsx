@@ -41,7 +41,8 @@ export function ComboboxSupplierProduk({
   const productsWithData = React.useMemo(() => {
     return supplierProdukList.map((sp) => {
       // Prioritize the nested 'produk' object if it exists from the join
-      const produk = (sp as any).produk || produkList.find((p) => p.id === sp.produk_id);
+      const produk =
+        (sp as any).produk || produkList.find((p) => p.id === sp.produk_id);
       return {
         ...sp,
         produk: produk,
@@ -62,6 +63,7 @@ export function ComboboxSupplierProduk({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -100,16 +102,14 @@ export function ComboboxSupplierProduk({
                     )}
                   />
                   <div className="flex justify-between items-center w-full">
-                    <span>
-                      {item.produk?.nama || "Produk tidak ditemukan"}
-                    </span>
+                    <span>{item.produk?.nama || "Produk tidak ditemukan"}</span>
                     <Badge
                       variant={
                         item.stok > 10
                           ? "default"
                           : item.stok > 0
-                          ? "outline"
-                          : "destructive"
+                            ? "outline"
+                            : "destructive"
                       }
                       className="ml-2"
                     >

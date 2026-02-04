@@ -62,11 +62,11 @@ export default function PenjualanReportPage() {
 
         const formattedData = penjualanData.map((item) => ({
           ...item,
-          nama_pelanggan: item.pelanggan?.nama_pelanggan,
-          alamat_pelanggan: item.pelanggan?.alamat,
+          namaPelanggan: item.pelanggan?.nama_pelanggan,
+          alamatPelanggan: item.pelanggan?.alamat,
           items: item.items.map((detail: PenjualanDetail) => ({
             ...detail,
-            nama_produk:
+            namaProduk:
               (detail.supplier_produk as any)?.produk?.nama ||
               "Produk tidak ditemukan",
             hargaJual: detail.harga,

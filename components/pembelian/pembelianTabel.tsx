@@ -104,7 +104,7 @@ export function PembelianTabel({
                   }`}
                 >
                   <TableCell className="font-medium text-gray-900">
-                    {p.nama_supplier || "Unknown Supplier"}
+                    {p.namaSupplier || "Unknown Supplier"}
                   </TableCell>
                   <TableCell className="text-gray-600">
                     {new Date(p.tanggal).toLocaleDateString("id-ID", {

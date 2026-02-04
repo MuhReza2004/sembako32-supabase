@@ -41,7 +41,7 @@ export default function DialogDetailPiutang({
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle className="text-2xl font-bold text-gray-800">
-              Detail Piutang - {piutang.noInvoice}
+              Detail Piutang - {piutang.no_invoice || (piutang as any).noInvoice || "-"}
             </DialogTitle>
             <Button
               onClick={handleExportPDF}
@@ -65,7 +65,9 @@ export default function DialogDetailPiutang({
               Informasi Penjualan
             </h3>
             <div className="font-bold">
-              <h1>Nama Pelanggan: {piutang.namaPelanggan}</h1>
+              <h1>
+                Nama Pelanggan: {piutang.namaPelanggan || piutang.nama_pelanggan || "-"}
+              </h1>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white p-4 rounded-lg shadow-sm border">
@@ -82,7 +84,7 @@ export default function DialogDetailPiutang({
                 <div className="flex justify-between items-center">
                   <span className=" font-medium">Total Dibayar:</span>
                   <span className="text-sm font-semibold ">
-                    {formatRupiah(piutang.totalDibayar || 0)}
+                    {formatRupiah((piutang as any).totalDibayar || piutang.total_dibayar || 0)}
                   </span>
                 </div>
               </div>
@@ -90,7 +92,9 @@ export default function DialogDetailPiutang({
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Sisa Utang:</span>
                   <span className="font-semibold">
-                    {formatRupiah(piutang.total - (piutang.totalDibayar || 0))}
+                    {formatRupiah(
+                      piutang.total - ((piutang as any).totalDibayar || piutang.total_dibayar || 0),
+                    )}
                   </span>
                 </div>
               </div>
@@ -216,11 +220,11 @@ export default function DialogDetailPiutang({
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {payment.metodePembayaran}
+                            {(payment as any).metodePembayaran || payment.metode_pembayaran || "-"}
                           </span>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {payment.atasNama}
+                          {(payment as any).atasNama || payment.atas_nama || "-"}
                         </TableCell>
                       </TableRow>
                     ))}

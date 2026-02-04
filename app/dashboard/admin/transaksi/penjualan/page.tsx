@@ -10,8 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updatePenjualanStatus as serviceUpdatePenjualanStatus, cancelPenjualan as serviceCancelPenjualan } from "@/app/services/penjualan.service";
-
+import {
+  updatePenjualanStatus as serviceUpdatePenjualanStatus,
+  cancelPenjualan as serviceCancelPenjualan,
+  getAllPenjualan,
+} from "@/app/services/penjualan.service";
 
 export default function PenjualanPage() {
   const router = useRouter();
@@ -33,75 +36,50 @@ export default function PenjualanPage() {
   const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
 
-
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const from = page * perPage;
-    const to = from + perPage - 1;
+    try {
+      // Get all penjualan data from service (which already has proper mapping)
+      const allData = await getAllPenjualan();
 
-    let queryBuilder = supabase
-      .from("penjualan")
-      .select(
-        `
-        *,
-        pelanggan (
-          id,
-          nama_pelanggan,
-          alamat
-        ),
-        penjualan_detail (
-          *,
-          supplier_produk (
-            produk (
-              nama,
-              satuan
-            )
-          )
-        )
-      `,
-        { count: "exact" },
-      )
-      .order("tanggal", { ascending: false });
+      // Filter by date range if provided
+      let filteredData = allData;
+      if (startDate && endDate) {
+        filteredData = allData.filter((item) => {
+          const itemDate = new Date(item.tanggal);
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          return itemDate >= start && itemDate <= end;
+        });
+      }
 
-    if (startDate && endDate) {
-      queryBuilder = queryBuilder
-        .gte("tanggal", startDate)
-        .lte("tanggal", endDate);
-    }
+      // Filter by search term if provided
+      if (searchTerm) {
+        filteredData = filteredData.filter(
+          (item) =>
+            item.no_invoice?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.namaPelanggan
+              ?.toLowerCase()
+              .includes(searchTerm.toLowerCase()),
+        );
+      }
 
-    if (searchTerm) {
-      queryBuilder = queryBuilder.or(
-        `no_invoice.ilike.%${searchTerm}%,pelanggan.nama_pelanggan.ilike.%${searchTerm}%`,
-      );
-    }
+      // Apply pagination
+      const from = page * perPage;
+      const to = from + perPage;
+      const paginatedData = filteredData.slice(from, to);
 
-    const { data, error, count } = await queryBuilder.range(from, to);
-
-    if (error) {
-      console.error("Error fetching sales:", error);
+      setData(paginatedData);
+      setTotalCount(filteredData.length);
+    } catch (err) {
+      console.error("Error fetching sales:", err);
       setError("Gagal memuat data penjualan.");
       setData([]);
-    } else {
-      const mappedData: Penjualan[] = data.map((item: Penjualan) => ({
-        ...item,
-        nama_pelanggan: (item.pelanggan as any)?.nama_pelanggan || "Unknown",
-        alamat_pelanggan: (item.pelanggan as any)?.alamat || "",
-        items:
-          item.penjualan_detail?.map((detail: PenjualanDetail) => ({
-            ...detail,
-            nama_produk:
-              (detail.supplier_produk as any)?.produk?.nama || "Produk Tidak Ditemukan",
-            satuan: (detail.supplier_produk as any)?.produk?.satuan || "",
-          })) || [],
-      }));
-      setData(mappedData);
-      setTotalCount(count || 0);
     }
     setIsLoading(false);
   }, [page, perPage, startDate, endDate, searchTerm]);
-
 
   useEffect(() => {
     fetchData();
@@ -126,7 +104,6 @@ export default function PenjualanPage() {
     };
   }, [fetchData]);
 
-
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);
   };
@@ -135,12 +112,10 @@ export default function PenjualanPage() {
     setPage((prevPage) => Math.max(0, prevPage - 1));
   };
 
-
   const handleViewDetails = (penjualan: Penjualan) => {
     setSelectedPenjualan(penjualan);
     setDialogDetailOpen(true);
   };
-
 
   const handleUpdateStatus = async (
     id: string,
@@ -178,7 +153,7 @@ export default function PenjualanPage() {
       }
     }
   };
-  
+
   const handleEdit = (penjualan: Penjualan) => {
     router.push(
       `/dashboard/admin/transaksi/penjualan/tambah?id=${penjualan.id}`,
@@ -186,7 +161,6 @@ export default function PenjualanPage() {
   };
 
   const hasNextPage = (page + 1) * perPage < totalCount;
-
 
   return (
     <div className="p-6 space-y-6">

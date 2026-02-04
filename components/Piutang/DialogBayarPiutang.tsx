@@ -53,7 +53,9 @@ export default function DialogBayarPiutang({
   } = useForm<FormData>();
 
   const totalDibayar = piutang.total_dibayar || 0;
-  const sisaUtang = (piutang.total_akhir || piutang.total) - totalDibayar;
+  const totalDibayarResolved =
+    (piutang as any).totalDibayar || piutang.total_dibayar || 0;
+  const sisaUtang = (piutang.total_akhir || piutang.total) - totalDibayarResolved;
 
   useEffect(() => {
     if (isOpen) {
@@ -61,7 +63,8 @@ export default function DialogBayarPiutang({
         tanggal: new Date().toISOString().split("T")[0],
         jumlah: sisaUtang,
         metode_pembayaran: "Transfer",
-        atas_nama: piutang.nama_pelanggan || "",
+        atas_nama:
+          (piutang as any).namaPelanggan || piutang.nama_pelanggan || "",
       });
     }
   }, [isOpen, piutang, sisaUtang, reset]);
@@ -102,7 +105,10 @@ export default function DialogBayarPiutang({
           <div className="space-y-4">
             <div>
               <Label>Nama Pelanggan</Label>
-              <Input value={piutang.nama_pelanggan || ""} disabled />
+              <Input
+                value={(piutang as any).namaPelanggan || piutang.nama_pelanggan || ""}
+                disabled
+              />
             </div>
             <div>
               <Label>Sisa Utang</Label>
@@ -135,7 +141,12 @@ export default function DialogBayarPiutang({
                     {piutang.items.map((item, index) => (
                       <TableRow key={index} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
-                          {item.nama_produk || "Produk Tidak Ditemukan"}
+                          {(
+                            (item as any).namaProduk ||
+                            (item as any).nama_produk ||
+                            (item as any).produk?.nama ||
+                            "Produk Tidak Ditemukan"
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           {item.qty} {item.satuan || ""}

@@ -87,7 +87,12 @@ export default function PenjualanTabel({
                 </TableCell>
                 <TableCell>{penjualan.metode_pengambilan}</TableCell>
                 <TableCell>{formatTanggal(penjualan.tanggal)}</TableCell>
-                <TableCell>{penjualan.nama_pelanggan}</TableCell>
+                <TableCell>
+                  {penjualan.namaPelanggan ||
+                    // fallback when payload includes nested pelanggan object
+                    (penjualan as any).pelanggan?.nama_pelanggan ||
+                    "-"}
+                </TableCell>
                 <TableCell className="text-center">
                   {formatRupiah(penjualan.total)}
                 </TableCell>
@@ -97,8 +102,8 @@ export default function PenjualanTabel({
                       penjualan.status === "Lunas"
                         ? "primary"
                         : penjualan.status === "Batal"
-                        ? "remove"
-                        : "secondary"
+                          ? "remove"
+                          : "secondary"
                     }
                   >
                     {penjualan.status}
@@ -118,9 +123,6 @@ export default function PenjualanTabel({
                         onClick={() => onViewDetails(penjualan)}
                       >
                         Lihat Detail
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(penjualan)}>
-                        Edit
                       </DropdownMenuItem>
 
                       <DropdownMenuItem

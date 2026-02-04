@@ -1,34 +1,37 @@
-import { supabase } from "@/app/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { PenjualanForm } from "@/components/penjualan/PenjualanForm";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Suspense } from "react";
 
-async function TambahPenjualanDataLoader({ searchParams }: { searchParams: { id?: string } }) {
+async function TambahPenjualanDataLoader({
+  searchParams,
+}: {
+  searchParams: { id?: string };
+}) {
   const editId = searchParams.id;
 
-  const { data: suppliers, error: suppliersError } = await supabase
+  const { data: suppliers, error: suppliersError } = await supabaseAdmin
     .from("suppliers")
     .select("*")
     .order("nama", { ascending: true });
 
-  const { data: products, error: productsError } = await supabase
+  const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
     .select("*")
-    .eq("status", "aktif")
     .order("nama", { ascending: true });
 
   const { data: supplierProduks, error: supplierProduksError } =
-    await supabase.from("supplier_produk").select("*, produk(*)");
+    await supabaseAdmin.from("supplier_produk").select("*, produk(*)");
 
-  const { data: pelangganList, error: pelError } = await supabase
+  const { data: pelangganList, error: pelError } = await supabaseAdmin
     .from("pelanggan")
     .select("*");
 
   let editingPenjualan = null;
   if (editId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("penjualan")
       .select("*, penjualan_detail(*)")
       .eq("id", editId)
@@ -59,8 +62,11 @@ async function TambahPenjualanDataLoader({ searchParams }: { searchParams: { id?
   );
 }
 
-
-export default function PageTambahPenjualan({ searchParams }: { searchParams: { id?: string } }) {
+export default function PageTambahPenjualan({
+  searchParams,
+}: {
+  searchParams: { id?: string };
+}) {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
@@ -84,7 +90,9 @@ export default function PageTambahPenjualan({ searchParams }: { searchParams: { 
         </div>
 
         <div className="max-w-4xl mx-auto">
-          <Suspense fallback={<div className="p-8 text-center">Loading form...</div>}>
+          <Suspense
+            fallback={<div className="p-8 text-center">Loading form...</div>}
+          >
             <TambahPenjualanDataLoader searchParams={searchParams} />
           </Suspense>
         </div>

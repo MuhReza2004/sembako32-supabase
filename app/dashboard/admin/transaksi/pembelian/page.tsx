@@ -54,7 +54,7 @@ export default function PembelianPage() {
 
     if (searchTerm) {
       queryBuilder = queryBuilder.or(
-        `invoice.ilike.%${searchTerm}%,no_do.ilike.%${searchTerm}%,suppliers.nama.ilike.%${searchTerm}%`
+        `invoice.ilike.%${searchTerm}%,no_do.ilike.%${searchTerm}%,suppliers.nama.ilike.%${searchTerm}%`,
       );
     }
     if (startDate) {
@@ -71,7 +71,13 @@ export default function PembelianPage() {
       setError("Gagal memuat data pembelian.");
       setPembelianData([]);
     } else {
-      setPembelianData(data as Pembelian[]);
+      // Map suppliers object to namaSupplier string
+      const mappedData =
+        (data as any[])?.map((item) => ({
+          ...item,
+          namaSupplier: item.suppliers?.nama || "Supplier Tidak Diketahui",
+        })) || [];
+      setPembelianData(mappedData as Pembelian[]);
       setTotalCount(count || 0);
     }
     setIsLoading(false);

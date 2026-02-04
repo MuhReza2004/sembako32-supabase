@@ -118,12 +118,19 @@ export function PenjualanForm({
 
   const onSubmit = async (data: PenjualanFormData) => {
     setError(null);
-    if (data.items.length === 0)
-      return setError("Pastikan ada produk yang dipilih");
+
+    console.log("Form submission started with data:", data);
+
+    if (data.items.length === 0) {
+      const msg = "Pastikan ada produk yang dipilih";
+      setError(msg);
+      return;
+    }
+
     if (data.status === "Belum Lunas" && !data.tanggal_jatuh_tempo) {
-      return setError(
-        "Tanggal Jatuh Tempo harus diisi jika status belum lunas.",
-      );
+      const msg = "Tanggal Jatuh Tempo harus diisi jika status belum lunas.";
+      setError(msg);
+      return;
     }
 
     try {
@@ -134,6 +141,8 @@ export function PenjualanForm({
         total_akhir: total,
       };
 
+      console.log("Final data to submit:", finalData);
+
       if (editingPenjualan?.id) {
         await updatePenjualan(editingPenjualan.id, finalData);
         alert("Penjualan berhasil diperbarui!");
@@ -143,10 +152,28 @@ export function PenjualanForm({
       }
       router.push("/dashboard/admin/transaksi/penjualan");
     } catch (error: any) {
-      console.error("Error during submit:", JSON.stringify(error, null, 2));
-      setError(error.message || "Gagal menyimpan penjualan");
+      console.error("Error during submit:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      const errorMessage =
+        error?.message ||
+        error?.error_description ||
+        "Gagal menyimpan penjualan";
+      setError(errorMessage);
     }
   };
+
+  useEffect(() => {
+    if (watchMetodePembayaran === "Transfer") {
+      setValue("nama_bank", "BRI");
+      setValue("nama_pemilik_rekening", "RAHMAT SYUKUR");
+      setValue("nomor_rekening", "7071 0101 9195 533");
+    } else {
+      // clear defaults when not Transfer to avoid stale values
+      setValue("nama_bank", "");
+      setValue("nama_pemilik_rekening", "");
+      setValue("nomor_rekening", "");
+    }
+  }, [watchMetodePembayaran, setValue]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -188,10 +215,7 @@ export function PenjualanForm({
                   name="metode_pengambilan"
                   control={control}
                   render={({ field }) => (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger id="metode_pengambilan">
                         <SelectValue />
                       </SelectTrigger>
@@ -238,7 +262,13 @@ export function PenjualanForm({
                   </TableHeader>
                   <TableBody>
                     {fields.map((item, index) => {
-                      const produk = products.find(p => p.id === supplierProduks.find(sp => sp.id === item.supplier_produk_id)?.produk_id);
+                      const produk = products.find(
+                        (p) =>
+                          p.id ===
+                          supplierProduks.find(
+                            (sp) => sp.id === item.supplier_produk_id,
+                          )?.produk_id,
+                      );
                       return (
                         <TableRow key={item.id}>
                           <TableCell>{produk?.nama || "..."}</TableCell>
@@ -247,6 +277,7 @@ export function PenjualanForm({
                           <TableCell>{formatRupiah(item.subtotal)}</TableCell>
                           <TableCell>
                             <Button
+                              type="button"
                               variant="ghost"
                               size="icon"
                               onClick={() => remove(index)}
@@ -333,10 +364,7 @@ export function PenjualanForm({
               {watchStatus === "Belum Lunas" && (
                 <div>
                   <Label>Tanggal Jatuh Tempo</Label>
-                  <Input
-                    type="date"
-                    {...register("tanggal_jatuh_tempo")}
-                  />
+                  <Input type="date" {...register("tanggal_jatuh_tempo")} />
                 </div>
               )}
               <Separator />
@@ -468,7 +496,7 @@ function AddItemForm({
           />
         </div>
       </div>
-      <Button onClick={handleAddItem} className="w-full">
+      <Button type="button" onClick={handleAddItem} className="w-full">
         <Plus className="h-4 w-4 mr-2" />
         Tambah Produk ke Daftar
       </Button>
