@@ -8,19 +8,19 @@ import { DialogEditProduk } from "@/components/produk/DialogEditProduk";
 import { DialogHapusProduk } from "@/components/produk/DialogHapusProduk";
 
 import { TabelProduk } from "@/components/produk/TabelProduk";
-import {
-  updateProduk,
-  deleteProduk,
-} from "@/app/services/produk.service";
+import { updateProduk, deleteProduk } from "@/app/services/produk.service";
 import { Produk, ProdukFormData } from "@/app/types/produk";
 import { Plus, Search } from "lucide-react";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function ProdukAdminPage() {
   const [products, setProducts] = useState<Produk[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+
+  const confirm = useConfirm();
+  const { showStatus } = useStatus();
 
   // Dialog states
   const [dialogTambahOpen, setDialogTambahOpen] = useState(false);
@@ -39,7 +39,6 @@ export default function ProdukAdminPage() {
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
 
     const from = page * perPage;
     const to = from + perPage - 1;
@@ -58,7 +57,10 @@ export default function ProdukAdminPage() {
     const { data, error, count } = await queryBuilder.range(from, to);
 
     if (error) {
-      setError("Gagal memuat data produk");
+      showStatus({
+        message: "Gagal memuat data produk: " + error.message,
+        success: false,
+      });
       console.error("Error fetching products:", error);
       setProducts([]);
     } else {
@@ -66,7 +68,7 @@ export default function ProdukAdminPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm]);
+  }, [page, perPage, searchTerm, showStatus]);
 
   // Load produk in real-time with pagination
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function ProdukAdminPage() {
         },
         () => {
           fetchProducts(); // Re-fetch the current page on any change
-        },
+        }
       )
       .subscribe();
 
@@ -104,13 +106,7 @@ export default function ProdukAdminPage() {
 
   const hasNextPage = (page + 1) * perPage < totalCount;
 
-  // Show success message
-  const showSuccess = (message: string) => {
-    setSuccess(message);
-    setTimeout(() => setSuccess(null), 3000);
-  };
-
-    const checkDuplicateProduct = async (nama: string): Promise<boolean> => {
+  const checkDuplicateProduct = async (nama: string): Promise<boolean> => {
     if (!nama) return false;
     const { data, error } = await supabase
       .from("produk")
@@ -125,8 +121,6 @@ export default function ProdukAdminPage() {
     return !!data;
   };
 
-  
-
   // Handle edit produk
   const handleEditSubmit = async (data: ProdukFormData) => {
     if (!selectedProduct) return;
@@ -135,7 +129,10 @@ export default function ProdukAdminPage() {
     if (data.nama !== selectedProduct.nama) {
       const isDuplicate = await checkDuplicateProduct(data.nama);
       if (isDuplicate) {
-        setError("Produk dengan nama yang sama sudah terdaftar");
+        showStatus({
+          message: "Produk dengan nama yang sama sudah terdaftar",
+          success: false,
+        });
         return;
       }
     }
@@ -143,11 +140,18 @@ export default function ProdukAdminPage() {
     try {
       setIsSubmitting(true);
       await updateProduk(selectedProduct.id, data);
-      showSuccess("Produk berhasil diupdate");
+      showStatus({
+        message: "Produk berhasil diupdate",
+        success: true,
+        refresh: true,
+      });
       setDialogEditOpen(false);
       setSelectedProduct(null);
-    } catch (err) {
-      setError("Gagal mengupdate produk");
+    } catch (err: any) {
+      showStatus({
+        message: "Gagal mengupdate produk: " + err.message,
+        success: false,
+      });
       console.error("Error updating product:", err);
     } finally {
       setIsSubmitting(false);
@@ -161,29 +165,37 @@ export default function ProdukAdminPage() {
   };
 
   // Handle delete produk
-  const handleDeleteClick = (product: Produk) => {
-    setSelectedProduct(product);
-    setDeletingId(product.id);
-    setDialogHapusOpen(true);
-  };
+  const handleDeleteClick = async (product: Produk) => {
+    const confirmed = await confirm({
+      title: "Konfirmasi Hapus",
+      message: `Apakah Anda yakin ingin menghapus produk "${product.nama}"?`,
+      confirmText: "Hapus",
+      cancelText: "Batal",
+    });
 
-  // Handle delete confirm
-  const handleDeleteConfirm = async () => {
-    if (!selectedProduct) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
+      setDeletingId(product.id);
       setIsSubmitting(true);
-      await deleteProduk(selectedProduct.id);
-      showSuccess("Produk berhasil dihapus");
-      setDialogHapusOpen(false);
+      await deleteProduk(product.id);
+      showStatus({
+        message: "Produk berhasil dihapus",
+        success: true,
+        refresh: true,
+      });
       setSelectedProduct(null);
-      setDeletingId(null);
-    } catch (err) {
-      setError("Gagal menghapus produk");
+    } catch (err: any) {
+      showStatus({
+        message: "Gagal menghapus produk: " + err.message,
+        success: false,
+      });
       console.error("Error deleting product:", err);
-      setDeletingId(null);
     } finally {
       setIsSubmitting(false);
+      setDeletingId(null);
     }
   };
 
@@ -196,18 +208,6 @@ export default function ProdukAdminPage() {
           Kelola produk, harga, stok, dan status di sini
         </p>
       </div>
-
-      {/* Alert Messages */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-          {success}
-        </div>
-      )}
 
       {/* Search & Button Bar */}
       <div className="bg-white p-6 rounded-lg border space-y-4">
@@ -260,8 +260,15 @@ export default function ProdukAdminPage() {
       <DialogTambahProduk
         open={dialogTambahOpen}
         onOpenChange={setDialogTambahOpen}
-        onProductAdded={fetchProducts}
+        onProductAdded={() => {
+          showStatus({
+            message: "Produk berhasil ditambahkan",
+            success: true,
+            refresh: true,
+          });
+        }}
         isLoading={isSubmitting}
+        onStatusReport={showStatus} // Pass showStatus down
       />
 
       {/* Dialog Edit */}
@@ -273,14 +280,15 @@ export default function ProdukAdminPage() {
         isLoading={isSubmitting}
       />
 
-      {/* Dialog Hapus */}
-      <DialogHapusProduk
+      {/* Dialog Hapus (This dialog is now controlled by useConfirm directly) */}
+      {/* We can remove this dialog as handleDeleteClick directly uses useConfirm now */}
+      {/* <DialogHapusProduk
         open={dialogHapusOpen}
         onOpenChange={setDialogHapusOpen}
         onConfirm={handleDeleteConfirm}
         produk={selectedProduct}
         isLoading={isSubmitting}
-      />
+      /> */}
     </div>
   );
 }

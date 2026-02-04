@@ -6,18 +6,21 @@ import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 import PiutangTable from "../../../../../components/Piutang/PiutangTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function PiutangPage() {
   const [piutang, setPiutang] = useState<Penjualan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
   const [perPage, setPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
 
+  const { showStatus } = useStatus();
+
   const fetchPiutang = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    // setError(null); // No longer needed
 
     const from = page * perPage;
     const to = from + perPage - 1;
@@ -49,7 +52,10 @@ export default function PiutangPage() {
       .range(from, to);
 
     if (error) {
-      setError("Gagal memuat data piutang.");
+      showStatus({
+        message: "Gagal memuat data piutang: " + error.message,
+        success: false,
+      });
       console.error("Error fetching piutang:", error);
       setPiutang([]);
     } else {
@@ -68,7 +74,7 @@ export default function PiutangPage() {
       setTotalCount(count || 0);
     }
     setLoading(false);
-  }, [page, perPage]);
+  }, [page, perPage, showStatus]);
 
   useEffect(() => {
     fetchPiutang();
@@ -106,9 +112,9 @@ export default function PiutangPage() {
     setPage((prevPage) => Math.max(0, prevPage - 1));
   };
 
-  const refreshPiutang = () => {
-    fetchPiutang();
-  };
+  // const refreshPiutang = () => { // No longer needed, refresh will be handled by useStatus
+  //   fetchPiutang();
+  // };
 
   const hasNextPage = (page + 1) * perPage < totalCount;
 
@@ -124,9 +130,13 @@ export default function PiutangPage() {
         </CardHeader>
         <CardContent>
           {loading && <p>Memuat data...</p>}
-          {error && <p className="text-red-500">{error}</p>}
-          {!loading && !error && (
-            <PiutangTable piutang={piutang} onPaymentSuccess={refreshPiutang} />
+          {/* {error && <p className="text-red-500">{error}</p>} // No longer needed */}
+          {!loading && (
+            <PiutangTable
+              piutang={piutang}
+              // onPaymentSuccess={refreshPiutang} // No longer needed
+              onStatusReport={showStatus}
+            />
           )}
         </CardContent>
       </Card>

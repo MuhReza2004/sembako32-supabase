@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogTambahPelanggan } from "@/components/pelanggan/DialogTambahPelanggan";
 import { DialogEditPelanggan } from "@/components/pelanggan/DialogEditPelanggan";
-import { DialogHapusPelanggan } from "@/components/pelanggan/DialogHapusPelanggan";
+// import { DialogHapusPelanggan } from "@/components/pelanggan/DialogHapusPelanggan"; // No longer needed
 import { TabelPelanggan } from "@/components/pelanggan/TabelPelanggan";
 import { Pelanggan, PelangganFormData } from "@/app/types/pelanggan";
 import { Plus, Search } from "lucide-react";
@@ -15,16 +15,21 @@ import {
   updatePelanggan,
 } from "@/app/services/pelanggan.service";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function PelangganAdminPage() {
   const [customers, setCustomers] = useState<Pelanggan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
+  // const [success, setSuccess] = useState<string | null>(null); // No longer needed
+
+  const confirm = useConfirm();
+  const { showStatus } = useStatus();
 
   const [dialogTambahOpen, setDialogTambahOpen] = useState(false);
   const [dialogEditOpen, setDialogEditOpen] = useState(false);
-  const [dialogHapusOpen, setDialogHapusOpen] = useState(false);
+  // const [dialogHapusOpen, setDialogHapusOpen] = useState(false); // No longer needed
   const [selectedCustomer, setSelectedCustomer] = useState<Pelanggan | null>(
     null,
   );
@@ -40,7 +45,7 @@ export default function PelangganAdminPage() {
 
   const fetchCustomers = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    // setError(null); // No longer needed
 
     const from = page * perPage;
     const to = from + perPage - 1;
@@ -59,7 +64,10 @@ export default function PelangganAdminPage() {
     const { data, error, count } = await queryBuilder.range(from, to);
 
     if (error) {
-      setError("Gagal memuat data pelanggan");
+      showStatus({
+        message: "Gagal memuat data pelanggan: " + error.message,
+        success: false,
+      });
       console.error("Error fetching customers:", error);
       setCustomers([]);
     } else {
@@ -67,7 +75,7 @@ export default function PelangganAdminPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm]);
+  }, [page, perPage, searchTerm, showStatus]);
 
 
   // Load pelanggan in real-time with pagination
@@ -106,10 +114,10 @@ export default function PelangganAdminPage() {
   const hasNextPage = (page + 1) * perPage < totalCount;
 
 
-  const showSuccess = (message: string) => {
-    setSuccess(message);
-    setTimeout(() => setSuccess(null), 3000);
-  };
+  // const showSuccess = (message: string) => { // No longer needed
+  //   setSuccess(message);
+  //   setTimeout(() => setSuccess(null), 3000);
+  // };
 
   const checkDuplicateNIB = async (nib: string): Promise<boolean> => {
     if (!nib) return false;
@@ -121,34 +129,16 @@ export default function PelangganAdminPage() {
     
     if (error) {
         console.error("Error checking duplicate NIB:", error);
+        showStatus({
+          message: "Error saat memeriksa duplikasi NIB: " + error.message,
+          success: false,
+        });
         return true; // Assume duplicate on error
     }
     return !!data;
   };
 
-  const handleTambahSubmit = async (data: PelangganFormData) => {
-    // Only check for duplicate NIB if it's provided
-    if (data.nib) {
-      const isDuplicate = await checkDuplicateNIB(data.nib);
-      if (isDuplicate) {
-        setError(`NIB sudah terdaftar.`);
-        return;
-      }
-    }
 
-    try {
-      setIsSubmitting(true);
-      await addpelanggan(data);
-      showSuccess("Pelanggan berhasil ditambahkan");
-      setDialogTambahOpen(false);
-      setError(null);
-    } catch (err) {
-      setError("Gagal menambah pelanggan");
-      console.error("Error adding customer:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleEditSubmit = async (data: PelangganFormData) => {
     if (!selectedCustomer || !selectedCustomer.id) return;
@@ -169,7 +159,10 @@ export default function PelangganAdminPage() {
     if (data.nib && data.nib !== selectedCustomer.nib) {
         const isDuplicate = await checkDuplicateNIB(data.nib);
         if (isDuplicate) {
-            setError(`NIB sudah terdaftar.`);
+            showStatus({
+              message: `NIB sudah terdaftar.`,
+              success: false,
+            });
             return;
         }
     }
@@ -177,11 +170,18 @@ export default function PelangganAdminPage() {
     try {
       setIsSubmitting(true);
       await updatePelanggan(selectedCustomer.id, cleanData);
-      showSuccess("Pelanggan berhasil diperbarui");
+      showStatus({
+        message: "Pelanggan berhasil diperbarui",
+        success: true,
+        refresh: true,
+      });
       setDialogEditOpen(false);
       setSelectedCustomer(null);
-    } catch (err) {
-      setError("Gagal memperbarui pelanggan");
+    } catch (err: any) {
+      showStatus({
+        message: "Gagal memperbarui pelanggan: " + err.message,
+        success: false,
+      });
       console.error("Error updating customer:", err);
     } finally {
       setIsSubmitting(false);
@@ -193,22 +193,32 @@ export default function PelangganAdminPage() {
     setDialogEditOpen(true);
   };
 
-  const handleDeleteClick = (customer: Pelanggan) => {
-    setSelectedCustomer(customer);
-    setDialogHapusOpen(true);
-  };
+  const handleDeleteClick = async (customer: Pelanggan) => {
+    const confirmed = await confirm({
+      title: "Konfirmasi Hapus",
+      message: `Apakah Anda yakin ingin menghapus pelanggan "${customer.nama_pelanggan}"?`,
+      confirmText: "Hapus",
+      cancelText: "Batal",
+    });
 
-  const handleDeleteConfirm = async () => {
-    if (!selectedCustomer || !selectedCustomer.id) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
       setIsSubmitting(true);
-      await deletePelanggan(selectedCustomer.id);
-      showSuccess("Pelanggan berhasil dihapus");
-      setDialogHapusOpen(false);
+      await deletePelanggan(customer.id);
+      showStatus({
+        message: "Pelanggan berhasil dihapus",
+        success: true,
+        refresh: true,
+      });
       setSelectedCustomer(null);
-    } catch (err) {
-      setError("Gagal menghapus pelanggan");
+    } catch (err: any) {
+      showStatus({
+        message: "Gagal menghapus pelanggan: " + err.message,
+        success: false,
+      });
       console.error("Error deleting customer:", err);
     } finally {
       setIsSubmitting(false);
@@ -228,16 +238,16 @@ export default function PelangganAdminPage() {
       </div>
 
       {/* Alert Messages */}
-      {error && (
+      {/* {error && ( // No longer needed
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
       )}
-      {success && (
+      {success && ( // No longer needed
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
           {success}
         </div>
-      )}
+      )} */}
 
       {/* Search & Button Bar */}
       <div className="bg-white p-6 rounded-lg border space-y-4">
@@ -285,8 +295,8 @@ export default function PelangganAdminPage() {
       <DialogTambahPelanggan
         open={dialogTambahOpen}
         onOpenChange={setDialogTambahOpen}
-        onSubmit={handleTambahSubmit}
         isLoading={isSubmitting}
+        onStatusReport={showStatus}
       />
 
       <DialogEditPelanggan
@@ -297,13 +307,13 @@ export default function PelangganAdminPage() {
         isLoading={isSubmitting}
       />
 
-      <DialogHapusPelanggan
+      {/* <DialogHapusPelanggan // No longer needed
         open={dialogHapusOpen}
         onOpenChange={setDialogHapusOpen}
         onConfirm={handleDeleteConfirm}
         pelanggan={selectedCustomer}
         isLoading={isSubmitting}
-      />
+      /> */}
     </div>
   );
 }

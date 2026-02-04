@@ -10,15 +10,18 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function PembelianPage() {
   const router = useRouter();
   const [pembelianData, setPembelianData] = useState<Pembelian[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  const { showStatus } = useStatus();
 
   const [page, setPage] = useState(0);
   const [perPage] = useState(10);
@@ -26,7 +29,7 @@ export default function PembelianPage() {
 
   const fetchPembelian = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    // setError(null); // No longer needed
 
     const from = page * perPage;
     const to = from + perPage - 1;
@@ -68,7 +71,10 @@ export default function PembelianPage() {
 
     if (error) {
       console.error("Error fetching pembelian:", error);
-      setError("Gagal memuat data pembelian.");
+      showStatus({
+        message: "Gagal memuat data pembelian: " + error.message,
+        success: false,
+      });
       setPembelianData([]);
     } else {
       // Map suppliers object to namaSupplier string
@@ -81,7 +87,7 @@ export default function PembelianPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm, startDate, endDate]);
+  }, [page, perPage, searchTerm, startDate, endDate, showStatus]);
 
   useEffect(() => {
     fetchPembelian();
@@ -114,9 +120,9 @@ export default function PembelianPage() {
 
   const hasNextPage = (page + 1) * perPage < totalCount;
 
-  if (error) {
-    return <div className="p-8 text-center text-red-500">{error}</div>;
-  }
+  // if (error) { // No longer needed
+  //   return <div className="p-8 text-center text-red-500">{error}</div>;
+  // }
 
   return (
     <div className="space-y-6 p-6">

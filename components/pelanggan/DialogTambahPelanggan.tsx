@@ -14,27 +14,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PelangganFormData } from "@/app/types/pelanggan";
-import { getNewKodePelanggan } from "@/app/services/pelanggan.service";
+import {
+  getNewKodePelanggan,
+  addpelanggan,
+} from "@/app/services/pelanggan.service";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface DialogTambahPelangganProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: PelangganFormData) => Promise<void>;
-  isLoading?: boolean;
+  // onSubmit: (data: PelangganFormData) => Promise<void>; // No longer needed, handled internally
+  isLoading?: boolean; // Prop from parent for overall loading state
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"];
 }
 
 export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
   open,
   onOpenChange,
-  onSubmit,
-  isLoading = false,
+  // onSubmit, // No longer needed
+  isLoading: parentLoading = false,
+  onStatusReport,
 }) => {
   const {
     register,
     handleSubmit,
     reset,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitting: isFormSubmitting },
   } = useForm<PelangganFormData>({
     defaultValues: {
       nama_pelanggan: "",
@@ -42,11 +48,13 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
       nama_toko: "",
       nib: "",
       alamat: "",
-      no_telp: "-",
+      no_telp: "",
       email: "",
       status: "aktif",
     },
   });
+
+  const currentLoading = parentLoading || isFormSubmitting;
 
   // Auto-generate kode pelanggan saat dialog dibuka
   useEffect(() => {
@@ -55,17 +63,35 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
         try {
           const newKode = await getNewKodePelanggan();
           setValue("kode_pelanggan", newKode);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error generating kode pelanggan:", error);
+          onStatusReport({
+            message: "Gagal membuat kode pelanggan: " + error.message,
+            success: false,
+          });
         }
       };
       generateKode();
     }
-  }, [open, setValue]);
+  }, [open, setValue, onStatusReport]);
 
   const onSubmitForm = async (data: PelangganFormData) => {
-    await onSubmit(data);
-    reset();
+    try {
+      await addpelanggan(data);
+      onStatusReport({
+        message: "Pelanggan berhasil ditambahkan",
+        success: true,
+        refresh: true,
+      });
+      onOpenChange(false);
+      reset();
+    } catch (err: any) {
+      onStatusReport({
+        message: "Gagal menambah pelanggan: " + err.message,
+        success: false,
+      });
+      console.error("Error adding customer:", err);
+    }
   };
 
   useEffect(() => {
@@ -79,7 +105,7 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
           <DialogTitle>Tambah Pelanggan Baru</DialogTitle>
           <DialogDescription>
             Isi informasi pelanggan di bawah ini. ID Pelanggan akan dibuat
-            otomatis.
+            otomati/is.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,10 +157,7 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
               <Input
                 id="nama_toko"
                 placeholder="Toko Zahirah"
-                {...register("nama_toko", {
-                  required: "Nama toko wajib diisi",
-                  minLength: { value: 3, message: "Minimal 3 karakter" },
-                })}
+                {...register("nama_toko", {})}
                 className={errors.nama_toko ? "border-red-500" : ""}
               />
               {errors.nama_toko && (
@@ -168,9 +191,7 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
               <Input
                 id="no_telp"
                 placeholder="Misal: 081234567890"
-                {...register("no_telp", {
-                  required: "Nomor telepon wajib diisi",
-                })}
+                {...register("no_telp", {})}
                 className={errors.no_telp ? "border-red-500" : ""}
               />
               {errors.no_telp && (
@@ -242,12 +263,12 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={currentLoading}
             >
               Batal
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Menyimpan..." : "Tambah Pelanggan"}
+            <Button type="submit" disabled={currentLoading}>
+              {currentLoading ? "Menyimpan..." : "Tambah Pelanggan"}
             </Button>
           </DialogFooter>
         </form>

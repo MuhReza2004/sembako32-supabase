@@ -10,20 +10,25 @@ import {
 import TabelSupplier from "@/components/supplier/TabelSupplier";
 import DialogTambahSupplier from "@/components/supplier/DialogTambahSupplier";
 import EditSupplierDialog from "@/components/supplier/EditSupplierDialog";
-import { DialogHapusSupplier } from "@/components/supplier/DialogHapusSupplier";
+// import { DialogHapusSupplier } from "@/components/supplier/DialogHapusSupplier"; // No longer needed
 import { Supplier } from "@/app/types/supplier";
 import { Search } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function SupplierPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
+  // const [success, setSuccess] = useState<string | null>(null); // No longer needed
+
+  const confirm = useConfirm();
+  const { showStatus } = useStatus();
 
   const [dialogTambahOpen, setDialogTambahOpen] = useState(false);
   const [dialogEditOpen, setDialogEditOpen] = useState(false);
-  const [dialogHapusOpen, setDialogHapusOpen] = useState(false);
+  // const [dialogHapusOpen, setDialogHapusOpen] = useState(false); // No longer needed
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
     null,
   );
@@ -35,7 +40,7 @@ export default function SupplierPage() {
 
   const fetchSuppliers = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    // setError(null); // No longer needed
 
     const from = page * perPage;
     const to = from + perPage - 1;
@@ -54,7 +59,10 @@ export default function SupplierPage() {
     const { data, error, count } = await queryBuilder.range(from, to);
 
     if (error) {
-      setError("Gagal memuat data supplier");
+      showStatus({
+        message: "Gagal memuat data supplier: " + error.message,
+        success: false,
+      });
       console.error("Error fetching suppliers:", error);
       setSuppliers([]);
     } else {
@@ -62,7 +70,7 @@ export default function SupplierPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm]);
+  }, [page, perPage, searchTerm, showStatus]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -95,31 +103,43 @@ export default function SupplierPage() {
 
   const hasNextPage = (page + 1) * perPage < totalCount;
 
-  const showSuccess = (message: string) => {
-    setSuccess(message);
-    setTimeout(() => setSuccess(null), 3000);
-  };
+  // const showSuccess = (message: string) => { // No longer needed
+  //   setSuccess(message);
+  //   setTimeout(() => setSuccess(null), 3000);
+  // };
 
   const handleEditClick = (supplier: Supplier) => {
     setSelectedSupplier(supplier);
     setDialogEditOpen(true);
   };
 
-  const handleDeleteClick = (supplier: Supplier) => {
-    setSelectedSupplier(supplier);
-    setDialogHapusOpen(true);
-  };
+  const handleDeleteClick = async (supplier: Supplier) => {
+    const confirmed = await confirm({
+      title: "Konfirmasi Hapus",
+      message: `Apakah Anda yakin ingin menghapus supplier "${supplier.nama}"?`,
+      confirmText: "Hapus",
+      cancelText: "Batal",
+    });
 
-  const handleDeleteConfirm = async () => {
-    if (!selectedSupplier) return;
+    if (!confirmed) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await deleteSupplier(selectedSupplier.id);
-      showSuccess("Supplier berhasil dihapus");
-      setDialogHapusOpen(false);
+      await deleteSupplier(supplier.id);
+      showStatus({
+        message: "Supplier berhasil dihapus",
+        success: true,
+        refresh: true,
+      });
+      // setDialogHapusOpen(false); // No longer needed
       setSelectedSupplier(null);
-    } catch (err) {
-      setError("Gagal menghapus supplier");
+    } catch (err: any) {
+      showStatus({
+        message: "Gagal menghapus supplier: " + err.message,
+        success: false,
+      });
       console.error("Error deleting supplier:", err);
     } finally {
       setIsSubmitting(false);
@@ -148,16 +168,16 @@ export default function SupplierPage() {
         </div>
       </div>
 
-      {error && (
+      {/* {error && ( // No longer needed
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
       )}
-      {success && (
+      {success && ( // No longer needed
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
           {success}
         </div>
-      )}
+      )} */}
 
       <TabelSupplier
         data={suppliers}
@@ -177,7 +197,8 @@ export default function SupplierPage() {
       <DialogTambahSupplier
         open={dialogTambahOpen}
         onOpenChange={setDialogTambahOpen}
-        onSuccess={fetchSuppliers}
+        // onSuccess={fetchSuppliers} // Replaced with onStatusReport
+        onStatusReport={showStatus}
       />
 
       <EditSupplierDialog
@@ -185,18 +206,31 @@ export default function SupplierPage() {
         onOpenChange={setDialogEditOpen}
         supplier={selectedSupplier}
         onSave={async (supplierData) => {
-          await updateSupplier(supplierData.id, supplierData);
-          fetchSuppliers();
-          setDialogEditOpen(false);
+          try {
+            await updateSupplier(supplierData.id, supplierData);
+            showStatus({
+              message: "Supplier berhasil diupdate",
+              success: true,
+              refresh: true,
+            });
+            // fetchSuppliers(); // Handled by refresh: true
+            setDialogEditOpen(false);
+          } catch (err: any) {
+            showStatus({
+              message: "Gagal mengupdate supplier: " + err.message,
+              success: false,
+            });
+            console.error("Error updating supplier:", err);
+          }
         }}
       />
 
-      <DialogHapusSupplier
+      {/* <DialogHapusSupplier // No longer needed
         open={dialogHapusOpen}
         onOpenChange={setDialogHapusOpen}
         supplier={selectedSupplier}
         onConfirm={handleDeleteConfirm}
-      />
+      /> */}
     </div>
   );
 }

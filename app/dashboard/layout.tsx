@@ -1,5 +1,7 @@
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { ErrorBoundary } from "@/components/dashboard/ErrorBoundary";
+import ConfirmProvider from "@/components/ui/ConfirmProvider";
+import StatusProvider from "@/components/ui/StatusProvider";
 
 export default function DashboardLayout({
   children,
@@ -8,7 +10,11 @@ export default function DashboardLayout({
 }) {
   return (
     <ErrorBoundary>
-      <DashboardShell>{children}</DashboardShell>
+      <ConfirmProvider>
+        <StatusProvider>
+          <DashboardShell>{children}</DashboardShell>
+        </StatusProvider>
+      </ConfirmProvider>
     </ErrorBoundary>
   );
 }

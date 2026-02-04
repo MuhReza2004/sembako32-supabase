@@ -16,17 +16,18 @@ import { Switch } from "@/components/ui/switch";
 
 import { SupplierFormData } from "@/app/types/supplier";
 import { addSupplier } from "@/app/services/supplier.service";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // New prop for status reporting
 }
 
 export default function DialogTambahSupplier({
   open,
   onOpenChange,
-  onSuccess,
+  onStatusReport,
 }: Props) {
   const {
     register,
@@ -43,22 +44,29 @@ export default function DialogTambahSupplier({
       status: true,
     },
   });
-  const [error, setError] = useState<string>("");
+  // const [error, setError] = useState<string>(""); // No longer needed
 
   useEffect(() => {
     if (open) {
       reset();
-      setError("");
+      // setError(""); // No longer needed
     }
   }, [open, reset]);
 
   const onSubmit = async (data: SupplierFormData) => {
     try {
       await addSupplier(data);
-      onSuccess?.();
+      onStatusReport({
+        message: "Supplier berhasil ditambahkan",
+        success: true,
+        refresh: true,
+      });
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message);
+      onStatusReport({
+        message: "Gagal menambahkan supplier: " + err.message,
+        success: false,
+      });
     }
   };
 
@@ -118,7 +126,7 @@ export default function DialogTambahSupplier({
             />
           </div>
 
-          {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+          {/* {error && <p className="text-sm text-red-500 mt-1">{error}</p>} */}
 
           <DialogFooter>
             <Button

@@ -15,15 +15,16 @@ import { formatRupiah, formatTanggal } from "@/helper/format";
 import DialogDetailPiutang from "./DialogDetailPiutang";
 import { exportPiutangTableToPDF } from "@/helper/pdfExport";
 import { FileText } from "lucide-react";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface PiutangTableProps {
   piutang: Penjualan[];
-  onPaymentSuccess: () => void;
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"];
 }
 
 export default function PiutangTable({
   piutang = [],
-  onPaymentSuccess,
+  onStatusReport,
 }: PiutangTableProps) {
   const [selectedPiutang, setSelectedPiutang] = useState<Penjualan | null>(
     null,
@@ -53,10 +54,10 @@ export default function PiutangTable({
     setIsDetailDialogOpen(false);
   };
 
-  const handlePaymentSuccess = () => {
-    handleCloseDialog();
-    onPaymentSuccess(); // Refresh data on the main page
-  };
+  // const handlePaymentSuccess = () => { // No longer needed
+  //   handleCloseDialog();
+  //   onPaymentSuccess(); // Refresh data on the main page
+  // };
 
   const handleExportPDF = () => {
     exportPiutangTableToPDF(piutang);
@@ -134,7 +135,7 @@ export default function PiutangTable({
           isOpen={isDialogOpen}
           onClose={handleCloseDialog}
           piutang={selectedPiutang}
-          onSuccess={handlePaymentSuccess}
+          onStatusReport={onStatusReport}
         />
       )}
       <DialogDetailPiutang

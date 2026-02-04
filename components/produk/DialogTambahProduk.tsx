@@ -22,13 +22,13 @@ import {
   getProdukById,
 } from "@/app/services/produk.service";
 import { DialogProdukDuplikat } from "./DialogProdukDuplikat"; // Import the duplicate dialog
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface DialogTambahProdukProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // onSubmit: (data: ProdukFormData) => Promise<void>; // This will be handled internally now
-  onProductAdded: () => void; // Callback for when a product is successfully added or stock updated
   isLoading?: boolean; // Prop from parent for overall loading state
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // New prop for status reporting
 }
 
 const SATUAN_OPTIONS = [
@@ -42,10 +42,9 @@ const SATUAN_OPTIONS = [
 export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
   open,
   onOpenChange,
-  onProductAdded,
   isLoading: parentLoading = false,
+  onStatusReport,
 }) => {
-  const [hargaJualFormatted, setHargaJualFormatted] = useState(""); // This seems unused, consider removing
   const [isSubmitting, setIsSubmitting] = useState(false); // Internal loading state for this dialog
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [existingProductData, setExistingProductData] = useState<Produk | null>(
@@ -96,11 +95,18 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
         const kode = await getNewKodeProduk();
         await addProduk({ ...data, kode });
         onOpenChange(false);
-        onProductAdded();
+        onStatusReport({
+          message: "Produk berhasil ditambahkan",
+          success: true,
+          refresh: true,
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to add produk:", error);
-      // TODO: Show an alert or toast for the error
+      onStatusReport({
+        message: "Gagal menambahkan produk: " + error.message,
+        success: false,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -114,10 +120,17 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
       const updatedStok = existingProductData.stok + newDataForDuplicate.stok;
       await updateProdukStok(existingProductData.id, updatedStok);
       onOpenChange(false);
-      onProductAdded();
-    } catch (error) {
+      onStatusReport({
+        message: "Stok produk berhasil diperbarui",
+        success: true,
+        refresh: true,
+      });
+    } catch (error: any) {
       console.error("Failed to update stock:", error);
-      // TODO: Show an alert or toast for the error
+      onStatusReport({
+        message: "Gagal memperbarui stok: " + error.message,
+        success: false,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -131,10 +144,17 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
       const kode = await getNewKodeProduk();
       await addProduk({ ...newDataForDuplicate, kode });
       onOpenChange(false);
-      onProductAdded();
-    } catch (error) {
+      onStatusReport({
+        message: "Produk baru berhasil ditambahkan",
+        success: true,
+        refresh: true,
+      });
+    } catch (error: any) {
       console.error("Failed to add new duplicate produk:", error);
-      // TODO: Show an alert or toast for the error
+      onStatusReport({
+        message: "Gagal menambahkan produk baru: " + error.message,
+        success: false,
+      });
     } finally {
       setIsSubmitting(false);
     }

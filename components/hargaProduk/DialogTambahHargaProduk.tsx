@@ -29,18 +29,19 @@ import { getAllProduk } from "@/app/services/produk.service";
 import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // New prop for status reporting
   preselectedSupplierId?: string;
 }
 
 export default function DialogTambahHargaProduk({
   open,
   onOpenChange,
-  onSuccess,
+  onStatusReport,
   preselectedSupplierId,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -153,20 +154,28 @@ export default function DialogTambahHargaProduk({
       );
 
       if (exists) {
-        alert(
-          "Produk dengan supplier yang sama sudah ada. Tidak dapat menambahkan harga produk yang sama.",
-        );
+        onStatusReport({
+          message: "Produk dengan supplier yang sama sudah ada. Tidak dapat menambahkan harga produk yang sama.",
+          success: false,
+        });
         setLoading(false);
         return;
       }
 
       await addSupplierProduk(formData);
 
-      onSuccess?.();
+      onStatusReport({
+        message: "Harga produk berhasil ditambahkan",
+        success: true,
+        refresh: true,
+      });
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding supplier product:", error);
-      alert("Gagal menambahkan harga produk. Silakan coba lagi.");
+      onStatusReport({
+        message: "Gagal menambahkan harga produk: " + error.message,
+        success: false,
+      });
     } finally {
       setLoading(false);
     }

@@ -38,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 type PenjualanFormData = Omit<Penjualan, "id" | "created_at" | "updated_at">;
 
@@ -55,6 +56,7 @@ export function PenjualanForm({
   editingPenjualan,
 }: PenjualanFormProps) {
   const router = useRouter();
+  const { showStatus } = useStatus();
   const {
     register,
     control,
@@ -84,23 +86,32 @@ export function PenjualanForm({
     name: "items",
   });
 
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
 
   useEffect(() => {
     const generateNumbers = async () => {
       if (!editingPenjualan) {
-        const [invoiceNum, npbNum, doNum] = await Promise.all([
-          generateInvoiceNumber(),
-          generateNPBNumber(),
-          generateDONumber(),
-        ]);
-        setValue("no_invoice", invoiceNum);
-        setValue("no_npb", npbNum);
-        setValue("no_do", doNum);
+        try {
+          const [invoiceNum, npbNum, doNum] = await Promise.all([
+            generateInvoiceNumber(),
+            generateNPBNumber(),
+            generateDONumber(),
+          ]);
+          setValue("no_invoice", invoiceNum);
+          setValue("no_npb", npbNum);
+          setValue("no_do", doNum);
+        } catch (error: any) {
+          console.error("Error generating document numbers:", error);
+          showStatus({
+            message:
+              "Gagal membuat nomor dokumen otomatis: " + error.message,
+            success: false,
+          });
+        }
       }
     };
     generateNumbers();
-  }, [editingPenjualan, setValue]);
+  }, [editingPenjualan, setValue, showStatus]);
 
   const watchItems = watch("items");
   const watchPajakEnabled = watch("pajak_enabled");
@@ -117,19 +128,25 @@ export function PenjualanForm({
   }, [watchItems, watchDiskon, watchPajakEnabled]);
 
   const onSubmit = async (data: PenjualanFormData) => {
-    setError(null);
+    // setError(null); // No longer needed
 
     console.log("Form submission started with data:", data);
 
     if (data.items.length === 0) {
       const msg = "Pastikan ada produk yang dipilih";
-      setError(msg);
+      showStatus({
+        message: msg,
+        success: false,
+      });
       return;
     }
 
     if (data.status === "Belum Lunas" && !data.tanggal_jatuh_tempo) {
       const msg = "Tanggal Jatuh Tempo harus diisi jika status belum lunas.";
-      setError(msg);
+      showStatus({
+        message: msg,
+        success: false,
+      });
       return;
     }
 
@@ -145,10 +162,18 @@ export function PenjualanForm({
 
       if (editingPenjualan?.id) {
         await updatePenjualan(editingPenjualan.id, finalData);
-        alert("Penjualan berhasil diperbarui!");
+        showStatus({
+          message: "Penjualan berhasil diperbarui!",
+          success: true,
+          refresh: true,
+        });
       } else {
         await createPenjualan(finalData);
-        alert("Penjualan berhasil disimpan!");
+        showStatus({
+          message: "Penjualan berhasil disimpan!",
+          success: true,
+          refresh: true,
+        });
       }
       router.push("/dashboard/admin/transaksi/penjualan");
     } catch (error: any) {
@@ -158,7 +183,10 @@ export function PenjualanForm({
         error?.message ||
         error?.error_description ||
         "Gagal menyimpan penjualan";
-      setError(errorMessage);
+      showStatus({
+        message: errorMessage,
+        success: false,
+      });
     }
   };
 
@@ -177,7 +205,7 @@ export function PenjualanForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {error && (
+      {/* {error && ( // No longer needed
         <Card className="border-red-300 bg-red-50 p-4 mb-6">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600" />
@@ -185,7 +213,7 @@ export function PenjualanForm({
           </div>
           <p className="text-sm text-red-700 mt-2 ml-8">{error}</p>
         </Card>
-      )}
+      )} */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -240,6 +268,7 @@ export function PenjualanForm({
               <AddItemForm
                 supplierProduks={supplierProduks}
                 onAddItem={(item) => append(item)}
+                onStatusReport={showStatus} // Pass showStatus down
               />
             </CardContent>
           </Card>
@@ -436,29 +465,43 @@ export function PenjualanForm({
 function AddItemForm({
   supplierProduks,
   onAddItem,
+  onStatusReport,
 }: {
   supplierProduks: any[];
   onAddItem: (item: PenjualanDetail) => void;
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // Added prop
 }) {
   const [supplierProdukId, setSupplierProdukId] = useState("");
   const [qty, setQty] = useState(1);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
 
   const handleAddItem = () => {
-    setError(null);
+    // setError(null); // No longer needed
     if (!supplierProdukId || qty <= 0) {
-      return setError("Pilih produk dan masukkan jumlah yang valid");
+      onStatusReport({
+        message: "Pilih produk dan masukkan jumlah yang valid",
+        success: false,
+      });
+      return;
     }
     const supplierProduk = supplierProduks.find(
       (sp) => sp.id === supplierProdukId,
     );
-    if (!supplierProduk) return setError("Produk tidak ditemukan");
+    if (!supplierProduk) {
+      onStatusReport({
+        message: "Produk tidak ditemukan",
+        success: false,
+      });
+      return;
+    }
     if (qty > supplierProduk.stok) {
-      return setError(
-        `Stok ${supplierProduk.produk?.nama || "Produk"} tidak mencukupi (sisa: ${
-          supplierProduk.stok
-        })`,
-      );
+      onStatusReport({
+        message: `Stok ${
+          supplierProduk.produk?.nama || "Produk"
+        } tidak mencukupi (sisa: ${supplierProduk.stok})`,
+        success: false,
+      });
+      return;
     }
     onAddItem({
       id: "",
@@ -475,7 +518,7 @@ function AddItemForm({
 
   return (
     <div className="space-y-4">
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {/* {error && <p className="text-sm text-red-500">{error}</p>} */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
         <div className="md:col-span-2">
           <Label>Pilih Produk</Label>
@@ -503,3 +546,4 @@ function AddItemForm({
     </div>
   );
 }
+

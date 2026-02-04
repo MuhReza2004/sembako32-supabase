@@ -25,6 +25,7 @@ import {
 import { useState } from "react";
 import DialogDetailPembelian from "./DialogDetailPembelian";
 import DialogEditPembelian from "./DialogEditPembelian";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export function PembelianTabel({
   data,
@@ -38,6 +39,7 @@ export function PembelianTabel({
   );
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const { showStatus } = useStatus();
 
   const grandTotal = data.reduce((sum, p) => sum + p.total, 0);
 
@@ -206,7 +208,7 @@ export function PembelianTabel({
         open={editOpen}
         onOpenChange={setEditOpen}
         pembelian={selectedPembelian}
-        onSuccess={() => {}}
+        onStatusReport={showStatus}
       />
     </div>
   );

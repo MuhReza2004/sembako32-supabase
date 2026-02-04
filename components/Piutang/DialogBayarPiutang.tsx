@@ -21,12 +21,15 @@ import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { addPiutangPayment } from "@/app/services/penjualan.service";
 import { formatRupiah } from "@/helper/format";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface DialogBayarPiutangProps {
   isOpen: boolean;
   onClose: () => void;
   piutang: Penjualan;
-  onSuccess: () => void;
+  // onSuccess: () => void; // Replaced with onStatusReport
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"];
 }
 
 type FormData = {
@@ -40,7 +43,7 @@ export default function DialogBayarPiutang({
   isOpen,
   onClose,
   piutang,
-  onSuccess,
+  onStatusReport,
 }: DialogBayarPiutangProps) {
   const {
     register,
@@ -51,6 +54,8 @@ export default function DialogBayarPiutang({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
+
+  const confirm = useConfirm();
 
   const totalDibayar = piutang.total_dibayar || 0;
   const totalDibayarResolved =
@@ -71,27 +76,57 @@ export default function DialogBayarPiutang({
 
   const onSubmit = async (data: FormData) => {
     if (data.jumlah <= 0) {
-      alert("Jumlah bayar harus lebih dari nol.");
+      onStatusReport({
+        message: "Jumlah bayar harus lebih dari nol.",
+        success: false,
+      });
       return;
     }
     if (data.jumlah > sisaUtang) {
-      alert(
-        `Jumlah bayar tidak boleh melebihi sisa utang (${formatRupiah(
+      onStatusReport({
+        message: `Jumlah bayar tidak boleh melebihi sisa utang (${formatRupiah(
           sisaUtang,
         )}).`,
-      );
+        success: false,
+      });
       return;
     }
     if (!piutang.id) {
-      alert("ID Penjualan tidak ditemukan.");
+      onStatusReport({
+        message: "ID Penjualan tidak ditemukan.",
+        success: false,
+      });
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Konfirmasi Pembayaran Piutang",
+      message: `Anda akan membayar sejumlah ${formatRupiah(
+        data.jumlah,
+      )} untuk invoice ${
+        piutang.no_invoice
+      }. Lanjutkan?`,
+      confirmText: "Bayar",
+      cancelText: "Batal",
+    });
+
+    if (!confirmed) {
       return;
     }
 
     try {
       await addPiutangPayment(piutang.id, data);
-      onSuccess();
+      onStatusReport({
+        message: "Pembayaran piutang berhasil!",
+        success: true,
+        refresh: true,
+      });
+      onClose();
     } catch (err: any) {
-      alert(err.message || "Gagal menyimpan pembayaran.");
+      onStatusReport({
+        message: err.message || "Gagal menyimpan pembayaran.",
+        success: false,
+      });
     }
   };
 

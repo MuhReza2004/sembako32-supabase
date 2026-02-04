@@ -15,12 +15,14 @@ import {
   cancelPenjualan as serviceCancelPenjualan,
   getAllPenjualan,
 } from "@/app/services/penjualan.service";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function PenjualanPage() {
   const router = useRouter();
   const [data, setData] = useState<Penjualan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // No longer needed
   const [dialogDetailOpen, setDialogDetailOpen] = useState(false);
   const [selectedPenjualan, setSelectedPenjualan] = useState<Penjualan | null>(
     null,
@@ -36,9 +38,12 @@ export default function PenjualanPage() {
   const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
 
+  const confirm = useConfirm();
+  const { showStatus } = useStatus();
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    // setError(null); // No longer needed
 
     try {
       // Get all penjualan data from service (which already has proper mapping)
@@ -73,13 +78,16 @@ export default function PenjualanPage() {
 
       setData(paginatedData);
       setTotalCount(filteredData.length);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching sales:", err);
-      setError("Gagal memuat data penjualan.");
+      showStatus({
+        message: "Gagal memuat data penjualan: " + err.message,
+        success: false,
+      });
       setData([]);
     }
     setIsLoading(false);
-  }, [page, perPage, startDate, endDate, searchTerm]);
+  }, [page, perPage, startDate, endDate, searchTerm, showStatus]);
 
   useEffect(() => {
     fetchData();
@@ -124,33 +132,52 @@ export default function PenjualanPage() {
     setUpdatingStatus(id);
     try {
       await serviceUpdatePenjualanStatus(id, status);
-      alert(`Status penjualan berhasil diubah menjadi ${status}`);
-    } catch (error) {
+      showStatus({
+        message: `Status penjualan berhasil diubah menjadi ${status}`,
+        success: true,
+        refresh: true,
+      });
+    } catch (error: any) {
       console.error("Error updating status:", error);
-      alert("Gagal mengubah status penjualan.");
+      showStatus({
+        message: "Gagal mengubah status penjualan: " + error.message,
+        success: false,
+      });
     } finally {
       setUpdatingStatus(null);
     }
   };
 
   const handleCancel = async (id: string) => {
-    if (
-      confirm(
+    const confirmed = await confirm({
+      title: "Konfirmasi Pembatalan Transaksi",
+      message:
         "Apakah Anda yakin ingin membatalkan transaksi ini? Status akan diubah menjadi 'Batal' dan stok produk akan dikembalikan.",
-      )
-    ) {
-      setCancelingTransaction(id);
-      try {
-        await serviceCancelPenjualan(id);
-        alert(
+      confirmText: "Batalkan",
+      cancelText: "Tidak",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setCancelingTransaction(id);
+    try {
+      await serviceCancelPenjualan(id);
+      showStatus({
+        message:
           "Transaksi berhasil dibatalkan. Status diubah menjadi 'Batal' dan stok telah dikembalikan.",
-        );
-      } catch (error) {
-        console.error("Error canceling transaction:", error);
-        alert("Gagal membatalkan transaksi.");
-      } finally {
-        setCancelingTransaction(null);
-      }
+        success: true,
+        refresh: true,
+      });
+    } catch (error: any) {
+      console.error("Error canceling transaction:", error);
+      showStatus({
+        message: "Gagal membatalkan transaksi: " + error.message,
+        success: false,
+      });
+    } finally {
+      setCancelingTransaction(null);
     }
   };
 
@@ -211,7 +238,6 @@ export default function PenjualanPage() {
       <PenjualanTabel
         data={data} // Use raw data from fetchData, filtering moved to Supabase query
         isLoading={isLoading}
-        error={error}
         onViewDetails={handleViewDetails}
         onUpdateStatus={handleUpdateStatus}
         onEdit={handleEdit}

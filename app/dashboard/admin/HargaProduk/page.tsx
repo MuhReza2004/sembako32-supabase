@@ -10,54 +10,69 @@ import {
 import TabelHargaProduk from "@/components/hargaProduk/TabelHargaProduk";
 import DialogTambahHargaProduk from "@/components/hargaProduk/DialogTambahHargaProduk";
 import DialogEditHargaProduk from "@/components/hargaProduk/DialogEditHargaProduk";
-import { DialogHapusHargaProduk } from "@/components/hargaProduk/DialogHapusHargaProduk";
+// import { DialogHapusHargaProduk } from "@/components/hargaProduk/DialogHapusHargaProduk"; // No longer needed
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 export default function HargaProdukPage() {
   const [data, setData] = useState<SupplierProduk[]>([]);
   const [open, setOpen] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
+  // const [openDelete, setOpenDelete] = useState(false); // No longer needed
   const [selectedItem, setSelectedItem] = useState<SupplierProduk | null>(null);
-  const [selectedDelete, setSelectedDelete] = useState<SupplierProduk | null>(
-    null,
-  );
+  // const [selectedDelete, setSelectedDelete] = useState<SupplierProduk | null>( // No longer needed
+  //   null,
+  // );
   const [preselectedSupplierId, setPreselectedSupplierId] = useState<
     string | undefined
   >(undefined);
 
+  const confirm = useConfirm();
+  const { showStatus } = useStatus();
+
   const fetchData = useCallback(async () => {
-    const res = await getAllSupplierProduk();
-    setData(res);
-  }, []);
+    try {
+      const res = await getAllSupplierProduk();
+      setData(res);
+    } catch (error: any) {
+      showStatus({
+        message: "Gagal memuat data harga produk: " + error.message,
+        success: false,
+      });
+      console.error("Failed to fetch supplier produk:", error);
+    }
+  }, [showStatus]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleDelete = (item: SupplierProduk) => {
-    setSelectedDelete(item);
-    setOpenDelete(true);
-  };
+  const handleDelete = async (item: SupplierProduk) => {
+    const confirmed = await confirm({
+      title: "Konfirmasi Hapus",
+      message: `Apakah Anda yakin ingin menghapus harga produk ${item.produkNama} dari supplier ${item.supplierNama}?`,
+      confirmText: "Hapus",
+      cancelText: "Batal",
+    });
 
-  const getSupplierName = (supplierId: string) => {
-    // This is a simple fallback - in a real app you'd fetch supplier data
-    return supplierId; // For now, just return the ID
-  };
+    if (!confirmed) {
+      return;
+    }
 
-  const getProductName = (produkId: string) => {
-    // This is a simple fallback - in a real app you'd fetch product data
-    return produkId; // For now, just return the ID
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!selectedDelete) return;
     try {
-      await deleteSupplierProduk(selectedDelete.id);
-      fetchData();
-      setSelectedDelete(null);
-    } catch (error) {
+      await deleteSupplierProduk(item.id);
+      showStatus({
+        message: "Harga produk berhasil dihapus",
+        success: true,
+        refresh: true,
+      });
+      // fetchData(); // Handled by refresh: true
+    } catch (error: any) {
+      showStatus({
+        message: "Gagal menghapus harga produk: " + error.message,
+        success: false,
+      });
       console.error("Failed to delete supplier produk:", error);
-      // Optionally, add a user-facing notification here, e.g., a toast
     }
   };
 
@@ -89,7 +104,8 @@ export default function HargaProdukPage() {
           setOpen(open);
           if (!open) setPreselectedSupplierId(undefined);
         }}
-        onSuccess={fetchData}
+        // onSuccess={fetchData} // Replaced with onStatusReport
+        onStatusReport={showStatus}
         preselectedSupplierId={preselectedSupplierId}
       />
 
@@ -97,17 +113,18 @@ export default function HargaProdukPage() {
         open={openEdit}
         onOpenChange={setOpenEdit}
         item={selectedItem}
-        onSuccess={fetchData}
+        // onSuccess={fetchData} // Replaced with onStatusReport
+        onStatusReport={showStatus}
       />
 
-      <DialogHapusHargaProduk
+      {/* <DialogHapusHargaProduk // No longer needed
         open={openDelete}
         onOpenChange={setOpenDelete}
         item={selectedDelete}
         onConfirm={handleConfirmDelete}
         supplierName={selectedDelete?.supplierNama}
         productName={selectedDelete?.produkNama}
-      />
+      /> */}
     </div>
   );
 }

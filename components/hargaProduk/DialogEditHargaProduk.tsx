@@ -24,19 +24,20 @@ import { getAllProduk } from "@/app/services/produk.service";
 import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: SupplierProduk | null;
-  onSuccess?: () => void;
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // New prop for status reporting
 }
 
 export default function DialogEditHargaProduk({
   open,
   onOpenChange,
   item,
-  onSuccess,
+  onStatusReport,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -55,13 +56,21 @@ export default function DialogEditHargaProduk({
   });
 
   const fetchData = useCallback(async () => {
-    const [sups, prods] = await Promise.all([
-      getAllSuppliers(),
-      getAllProduk(),
-    ]);
-    setSuppliers(sups);
-    setProducts(prods);
-  }, []);
+    try {
+      const [sups, prods] = await Promise.all([
+        getAllSuppliers(),
+        getAllProduk(),
+      ]);
+      setSuppliers(sups);
+      setProducts(prods);
+    } catch (error: any) {
+      onStatusReport({
+        message: "Gagal memuat data pendukung: " + error.message,
+        success: false,
+      });
+      console.error("Failed to fetch support data:", error);
+    }
+  }, [onStatusReport]);
 
   useEffect(() => {
     if (open) fetchData();
@@ -130,11 +139,23 @@ export default function DialogEditHargaProduk({
 
     setLoading(true);
 
-    await updateSupplierProduk(item.id, formData);
-
-    setLoading(false);
-    onSuccess?.();
-    onOpenChange(false);
+    try {
+      await updateSupplierProduk(item.id, formData);
+      onStatusReport({
+        message: "Harga produk berhasil diperbarui",
+        success: true,
+        refresh: true,
+      });
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error updating supplier product:", error);
+      onStatusReport({
+        message: "Gagal memperbarui harga produk: " + error.message,
+        success: false,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

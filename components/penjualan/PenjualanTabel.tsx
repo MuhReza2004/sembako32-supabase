@@ -24,7 +24,7 @@ import {
 interface PenjualanTabelProps {
   data: Penjualan[];
   isLoading: boolean;
-  error: string | null;
+  // error: string | null; // No longer needed
   onViewDetails: (penjualan: Penjualan) => void;
   onUpdateStatus: (id: string, status: "Lunas" | "Belum Lunas") => void;
   onEdit: (penjualan: Penjualan) => void;
@@ -36,7 +36,7 @@ interface PenjualanTabelProps {
 export default function PenjualanTabel({
   data = [],
   isLoading,
-  error,
+  // error, // No longer needed
   onViewDetails,
   onUpdateStatus,
   onEdit,
@@ -48,9 +48,9 @@ export default function PenjualanTabel({
     return <p>Loading...</p>;
   }
 
-  if (error) {
-    return <p className="text-red-500">{error}</p>;
-  }
+  // if (error) { // No longer needed
+  //   return <p className="text-red-500">{error}</p>;
+  // }
 
   if (data.length === 0) {
     return <p>Tidak ada data penjualan.</p>;

@@ -25,6 +25,7 @@ import { Trash2, Plus, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 import { DialogKonfirmasiPembelian } from "./DialogKonfirmasiPembelian";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface PembelianFormProps {
   suppliers: Supplier[];
@@ -65,6 +66,7 @@ export default function PembelianForm({
   const total = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
 
   const router = useRouter();
+  const { showStatus } = useStatus();
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pembelianToConfirm, setPembelianToConfirm] =
     useState<PembelianFormData | null>(null);
@@ -83,12 +85,19 @@ export default function PembelianForm({
 
     try {
       await createPembelian(pembelianToConfirm);
-      alert("Pembelian berhasil!");
+      showStatus({
+        message: "Pembelian berhasil ditambahkan!",
+        success: true,
+        refresh: true, // Refresh the page to show the new data in the table
+      });
       setIsConfirmDialogOpen(false);
       router.push("/dashboard/admin/transaksi/pembelian");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Gagal menyimpan pembelian");
+      showStatus({
+        message: "Gagal menyimpan pembelian: " + error.message,
+        success: false,
+      });
     }
   };
 
@@ -321,7 +330,7 @@ export default function PembelianForm({
         produkList={products}
         supplierProdukList={supplierProduks}
         onConfirm={handleConfirmSubmit}
-        isLoading={isSubmitting}
+        // isLoading={isSubmitting} // Removed
       />
     </>
   );

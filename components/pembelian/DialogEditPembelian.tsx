@@ -20,22 +20,26 @@ import {
 import { getAllProduk } from "@/app/services/produk.service";
 import { getAllSupplierProduk } from "@/app/services/supplierProduk.service";
 import { Produk } from "@/app/types/produk";
-import { SupplierProduk } from "@/app/types/suplyer";
+import { SupplierProduk } from "@/app/types/suplyer"; // Typo in original file: 'suplyer' should be 'supplier'
 import { formatRupiah } from "@/helper/format";
 import { X, Check, Package } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { useStatus } from "@/components/ui/StatusProvider";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  // onSuccess: () => void; // Replaced with onStatusReport
   pembelian: Pembelian | null;
+  onStatusReport: ReturnType<typeof useStatus>["showStatus"];
 }
 
 export default function DialogEditPembelian({
   open,
   onOpenChange,
-  onSuccess,
+  // onSuccess, // Replaced with onStatusReport
   pembelian,
+  onStatusReport,
 }: Props) {
   const [no_do, setNoDO] = useState("");
   const [no_npb, setNoNPB] = useState("");
@@ -45,24 +49,35 @@ export default function DialogEditPembelian({
   const [products, setProducts] = useState<Produk[]>([]);
   const [supplierProduks, setSupplierProduks] = useState<SupplierProduk[]>([]);
 
+  const confirm = useConfirm();
+
   useEffect(() => {
     const fetchData = async () => {
       if (pembelian && pembelian.id) {
         setNoDO(pembelian.no_do || "");
         setNoNPB(pembelian.no_npb || "");
         setInvoice(pembelian.invoice || "");
-        const det = await getPembelianDetails(pembelian.id);
-        const prods = await getAllProduk();
-        const supProds = await getAllSupplierProduk();
-        setDetails(det);
-        setProducts(prods);
-        setSupplierProduks(supProds);
+        try {
+          const det = await getPembelianDetails(pembelian.id);
+          const prods = await getAllProduk();
+          const supProds = await getAllSupplierProduk();
+          setDetails(det);
+          setProducts(prods);
+          setSupplierProduks(supProds);
+        } catch (error: any) {
+          console.error("Error fetching purchase details:", error);
+          onStatusReport({
+            message: "Gagal memuat detail pembelian: " + error.message,
+            success: false,
+          });
+          onOpenChange(false);
+        }
       }
     };
     if (open) {
       fetchData();
     }
-  }, [pembelian, open]);
+  }, [pembelian, open, onOpenChange, onStatusReport]);
 
   const handleSubmit = async () => {
     if (!pembelian || !pembelian.id) return;
@@ -70,12 +85,19 @@ export default function DialogEditPembelian({
     setIsLoading(true);
     try {
       await updatePembelianAndStock(pembelian.id, { no_do, no_npb, invoice });
-      alert("Pembelian berhasil diterima dan stok diperbarui.");
-      onSuccess();
+      onStatusReport({
+        message: "Pembelian berhasil diterima dan stok diperbarui.",
+        success: true,
+        refresh: true,
+      });
+      // onSuccess(); // Replaced with onStatusReport
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update pembelian:", error);
-      alert("Gagal memperbarui pembelian.");
+      onStatusReport({
+        message: "Gagal memperbarui pembelian: " + error.message,
+        success: false,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -83,18 +105,32 @@ export default function DialogEditPembelian({
 
   const handleDecline = async () => {
     if (!pembelian || !pembelian.id) return;
-    if (!window.confirm("Apakah Anda yakin ingin menolak transaksi ini?"))
-      return;
+
+    const confirmed = await confirm({
+      title: "Konfirmasi Tolak Pembelian",
+      message: "Apakah Anda yakin ingin menolak transaksi ini? Stok tidak akan diperbarui.",
+      confirmText: "Tolak",
+      cancelText: "Batal",
+    });
+
+    if (!confirmed) return;
 
     setIsLoading(true);
     try {
       await updatePembelianStatus(pembelian.id, "Decline");
-      alert("Pembelian telah ditolak.");
-      onSuccess();
+      onStatusReport({
+        message: "Pembelian telah ditolak.",
+        success: true,
+        refresh: true,
+      });
+      // onSuccess(); // Replaced with onStatusReport
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to decline transaction:", error);
-      alert("Gagal menolak transaksi.");
+      onStatusReport({
+        message: "Gagal menolak transaksi: " + error.message,
+        success: false,
+      });
     } finally {
       setIsLoading(false);
     }
