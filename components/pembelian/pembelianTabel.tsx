@@ -67,7 +67,7 @@ export function PembelianTabel({
               <TableHead className="font-semibold text-gray-700">
                 Invoice
               </TableHead>
-              <TableHead className="font-semibold text-gray-700">
+              <TableHead className="font-semibold text-gray-700 text-center">
                 Total
               </TableHead>
               <TableHead className="font-semibold text-gray-700 text-center">
@@ -97,14 +97,14 @@ export function PembelianTabel({
                     p.status === "Pending"
                       ? "bg-yellow-50"
                       : p.status === "Decline"
-                      ? "bg-red-100"
-                      : idx % 2 === 0
-                      ? "bg-white"
-                      : "bg-gray-50/50"
+                        ? "bg-red-100"
+                        : idx % 2 === 0
+                          ? "bg-white"
+                          : "bg-gray-50/50"
                   }`}
                 >
                   <TableCell className="font-medium text-gray-900">
-                    {(p.suppliers as any)?.nama || "Unknown Supplier"}
+                    {p.nama_supplier || "Unknown Supplier"}
                   </TableCell>
                   <TableCell className="text-gray-600">
                     {new Date(p.tanggal).toLocaleDateString("id-ID", {
@@ -128,7 +128,7 @@ export function PembelianTabel({
                       <span className="text-gray-400">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     <span className="font-bold text-blue-600 text-base">
                       {formatRupiah(p.total)}
                     </span>
@@ -139,8 +139,8 @@ export function PembelianTabel({
                         p.status === "Completed"
                           ? "bg-green-100 text-green-800"
                           : p.status === "Pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
                       }`}
                     >
                       {p.status}

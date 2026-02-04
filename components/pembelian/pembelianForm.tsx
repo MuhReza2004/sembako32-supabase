@@ -7,6 +7,7 @@ import { createPembelian } from "@/app/services/pembelian.service";
 import { PembelianDetail, Pembelian } from "@/app/types/pembelian";
 import { Produk } from "@/app/types/produk";
 import { Supplier, SupplierProduk } from "@/app/types/supplier";
+import { formatRupiah } from "@/helper/format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +32,7 @@ interface PembelianFormProps {
   supplierProduks: SupplierProduk[];
 }
 
-type PembelianFormData = Omit<
-  Pembelian,
-  "id" | "created_at" | "updated_at"
->;
+type PembelianFormData = Omit<Pembelian, "id" | "created_at" | "updated_at">;
 
 export default function PembelianForm({
   suppliers,
@@ -72,7 +70,11 @@ export default function PembelianForm({
     useState<PembelianFormData | null>(null);
 
   const onSubmit = (data: PembelianFormData) => {
-    setPembelianToConfirm(data);
+    const totalAmount = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
+    setPembelianToConfirm({
+      ...data,
+      total: totalAmount,
+    });
     setIsConfirmDialogOpen(true);
   };
 
@@ -242,17 +244,14 @@ export default function PembelianForm({
                 />
 
                 <Input
-                  type="number"
+                  type="text"
                   min={1}
                   {...register(`items.${index}.qty`, {
                     valueAsNumber: true,
                     onChange: (e) => {
                       const qty = e.target.value;
                       const harga = watchItems[index].harga;
-                      setValue(
-                        `items.${index}.subtotal`,
-                        Number(qty) * harga,
-                      );
+                      setValue(`items.${index}.subtotal`, Number(qty) * harga);
                     },
                   })}
                   placeholder="Qty"
@@ -260,13 +259,13 @@ export default function PembelianForm({
 
                 <Input
                   type="text"
-                  value={"Rp " + watchItems[index].harga.toLocaleString("id-ID")}
+                  value={formatRupiah(watchItems[index].harga)}
                   readOnly
                   className="bg-muted/50 h-9"
                 />
 
                 <div className="font-semibold text-sm flex items-center h-9 px-3 bg-muted/30 rounded-md">
-                  Rp {watchItems[index].subtotal.toLocaleString("id-ID")}
+                  {formatRupiah(watchItems[index].subtotal)}
                 </div>
 
                 <Button
@@ -289,7 +288,7 @@ export default function PembelianForm({
                 Total Pembelian
               </p>
               <div className="text-3xl font-bold text-primary">
-                Rp {total.toLocaleString("id-ID")}
+                {formatRupiah(total)}
               </div>
             </div>
             <Button

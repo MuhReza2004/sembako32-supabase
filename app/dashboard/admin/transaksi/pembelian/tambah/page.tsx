@@ -1,20 +1,25 @@
-import { supabase } from "@/app/lib/supabase";
-import PembelianForm from "@/components/pembelian/PembelianForm";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import PembelianForm from "@/components/pembelian/pembelianForm";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default async function PageTambahPembelian() {
-  const { data: suppliers, error: suppliersError } = await supabase
+  const { data: suppliers, error: suppliersError } = await supabaseAdmin
     .from("suppliers")
     .select("*")
     .order("nama", { ascending: true });
-  const { data: products, error: productsError } = await supabase
+  const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
     .select("*")
     .order("nama", { ascending: true });
   const { data: supplierProduks, error: supplierProduksError } =
-    await supabase.from("supplier_produk").select("*");
+    await supabaseAdmin.from("supplier_produk").select("*");
+
+  console.log("Suppliers fetched:", suppliers);
+  console.log("Suppliers error:", suppliersError);
+  console.log("Products fetched:", products?.length || 0);
+  console.log("Supplier Products fetched:", supplierProduks?.length || 0);
 
   if (suppliersError || productsError || supplierProduksError) {
     return (

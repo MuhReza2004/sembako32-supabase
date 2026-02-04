@@ -10,16 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Pembelian, PembelianDetail } from "@/app/types/pembelian";
-import { Supplier, SupplierProduk } from "@/app/types/suplyer";
+import { Supplier, SupplierProduk } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { formatRupiah } from "@/helper/format";
 
 interface DialogKonfirmasiPembelianProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pembelianData: (Omit<Pembelian, "id" | "status"> & { items: PembelianDetail[] }) | null;
+  pembelianData: Omit<Pembelian, "id" | "created_at" | "updated_at"> | null;
   supplier: Supplier | null;
   produkList: Produk[];
   supplierProdukList: SupplierProduk[];
@@ -39,12 +40,14 @@ export function DialogKonfirmasiPembelian({
 }: DialogKonfirmasiPembelianProps) {
   if (!pembelianData || !supplier) return null;
 
-  const { tanggal, noDO, noNPB, invoice, items, total } = pembelianData;
+  const { tanggal, no_do, no_npb, invoice, items, total } = pembelianData;
 
   const getProductName = (supplierProdukId: string) => {
-    const supplierProduk = supplierProdukList.find(sp => sp.id === supplierProdukId);
+    const supplierProduk = supplierProdukList.find(
+      (sp) => sp.id === supplierProdukId,
+    );
     if (!supplierProduk) return "Produk tidak ditemukan";
-    const product = produkList.find(p => p.id === supplierProduk.produkId);
+    const product = produkList.find((p) => p.id === supplierProduk.produk_id);
     return product?.nama || "Nama produk tidak ada";
   };
 
@@ -71,16 +74,18 @@ export function DialogKonfirmasiPembelian({
                   <p className="text-muted-foreground">Tanggal</p>
                   <p className="font-medium">
                     {/* Ensure tanggal is a valid date string or Date object */}
-                    {tanggal ? format(new Date(tanggal), "d MMMM yyyy", { locale: id }) : 'Invalid Date'}
+                    {tanggal
+                      ? format(new Date(tanggal), "d MMMM yyyy", { locale: id })
+                      : "Invalid Date"}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">No. NPB</p>
-                  <p className="font-medium">{noNPB || "-"}</p>
+                  <p className="font-medium">{no_npb || "-"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">No. DO</p>
-                  <p className="font-medium">{noDO || "-"}</p>
+                  <p className="font-medium">{no_do || "-"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Invoice/Faktur</p>
@@ -93,18 +98,21 @@ export function DialogKonfirmasiPembelian({
               <h3 className="font-semibold">Ringkasan Item</h3>
               <Separator />
               <div className="space-y-2">
-                {items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center rounded-md p-2 hover:bg-muted/50">
+                {items?.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center rounded-md p-2 hover:bg-muted/50"
+                  >
                     <div>
                       <p className="font-medium">
-                        {getProductName(item.supplierProdukId)}
+                        {getProductName(item.supplier_produk_id)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {item.qty} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga)}
+                        {item.qty} x {formatRupiah(item.harga)}
                       </p>
                     </div>
                     <p className="font-semibold">
-                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.subtotal)}
+                      {formatRupiah(item.subtotal)}
                     </p>
                   </div>
                 ))}
@@ -113,7 +121,7 @@ export function DialogKonfirmasiPembelian({
               <div className="flex justify-between items-center pt-2">
                 <p className="text-lg font-bold">Total</p>
                 <p className="text-lg font-bold text-primary">
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(total)}
+                  {formatRupiah(total)}
                 </p>
               </div>
             </div>

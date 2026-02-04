@@ -13,10 +13,7 @@ import { useEffect, useState } from "react";
 import { getPembelianDetails } from "@/app/services/pembelian.service";
 import { PembelianDetail } from "@/app/types/pembelian";
 import { getAllSuppliers } from "@/app/services/supplier.service";
-import { getAllProduk } from "@/app/services/produk.service";
-import { getAllSupplierProduk } from "@/app/services/supplierProduk.service";
-import { Supplier, SupplierProduk } from "@/app/types/supplier";
-import { Produk } from "@/app/types/produk";
+import { Supplier } from "@/app/types/supplier";
 
 interface Props {
   open: boolean;
@@ -31,20 +28,14 @@ export default function DialogDetailPembelian({
 }: Props) {
   const [details, setDetails] = useState<PembelianDetail[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Produk[]>([]);
-  const [supplierProduks, setSupplierProduks] = useState<SupplierProduk[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (pembelian && pembelian.id) {
         const det = await getPembelianDetails(pembelian.id);
         const sups = await getAllSuppliers();
-        const prods = await getAllProduk();
-        const supProds = await getAllSupplierProduk();
         setDetails(det);
         setSuppliers(sups);
-        setProducts(prods);
-        setSupplierProduks(supProds);
       }
     };
     fetchData();
@@ -52,7 +43,7 @@ export default function DialogDetailPembelian({
 
   if (!pembelian) return null;
 
-  const supplier = suppliers.find((s) => s.id === pembelian.supplierId);
+  const supplier = suppliers.find((s) => s.id === pembelian.supplier_id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,13 +70,13 @@ export default function DialogDetailPembelian({
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">No DO</label>
-              <p>{pembelian.noDO || "-"}</p>
+              <p>{pembelian.no_do || "-"}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">
                 No NPB
               </label>
-              <p>{pembelian.noNPB || "-"}</p>
+              <p>{pembelian.no_npb || "-"}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">
@@ -105,12 +96,6 @@ export default function DialogDetailPembelian({
             <h3 className="text-lg font-semibold mb-4">Detail Produk</h3>
             <div className="space-y-2">
               {details.map((detail, index) => {
-                const supplierProduk = supplierProduks.find(
-                  (sp) => sp.id === detail.supplierProdukId,
-                );
-                const product = products.find(
-                  (p) => p.id === supplierProduk?.produkId,
-                );
                 return (
                   <div
                     key={detail.id}
@@ -118,7 +103,7 @@ export default function DialogDetailPembelian({
                   >
                     <div>
                       <p className="font-medium">
-                        {product?.nama || "Unknown Product"}
+                        {detail.namaProduk || "Unknown Product"}
                       </p>
                       <p className="text-sm text-gray-600">Qty: {detail.qty}</p>
                     </div>
