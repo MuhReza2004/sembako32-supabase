@@ -140,6 +140,21 @@ CREATE TABLE penjualan (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Delivery Order table (separate for long-term scalability)
+CREATE TABLE delivery_orders (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  penjualan_id UUID REFERENCES penjualan(id) ON DELETE CASCADE,
+  no_do TEXT NOT NULL UNIQUE,
+  no_tanda_terima TEXT,
+  status TEXT NOT NULL CHECK (status IN ('Draft', 'Dikirim', 'Diterima', 'Batal')) DEFAULT 'Draft',
+  tanggal_kirim DATE,
+  tanggal_terima DATE,
+  alamat_pengiriman TEXT,
+  catatan TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Sales Details table
 CREATE TABLE penjualan_detail (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -173,6 +188,8 @@ CREATE INDEX idx_pembelian_supplier_id ON pembelian(supplier_id);
 CREATE INDEX idx_pembelian_tanggal ON pembelian(tanggal);
 CREATE INDEX idx_penjualan_pelanggan_id ON penjualan(pelanggan_id);
 CREATE INDEX idx_penjualan_tanggal ON penjualan(tanggal);
+CREATE INDEX idx_delivery_orders_penjualan_id ON delivery_orders(penjualan_id);
+CREATE INDEX idx_delivery_orders_no_do ON delivery_orders(no_do);
 CREATE INDEX idx_penjualan_no_invoice ON penjualan(no_invoice);
 CREATE INDEX idx_pembelian_detail_pembelian_id ON pembelian_detail(pembelian_id);
 CREATE INDEX idx_penjualan_detail_penjualan_id ON penjualan_detail(penjualan_id);
@@ -189,6 +206,7 @@ ALTER TABLE stock_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pembelian ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pembelian_detail ENABLE ROW LEVEL SECURITY;
 ALTER TABLE penjualan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE delivery_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE penjualan_detail ENABLE ROW LEVEL SECURITY;
 ALTER TABLE riwayat_pembayaran ENABLE ROW LEVEL SECURITY;
 
@@ -222,6 +240,9 @@ CREATE POLICY "Allow authenticated users to update pembelian" ON pembelian FOR U
 CREATE POLICY "Allow authenticated users to read pembelian_detail" ON pembelian_detail FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert pembelian_detail" ON pembelian_detail FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update pembelian_detail" ON pembelian_detail FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow authenticated users to read delivery_orders" ON delivery_orders FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow authenticated users to insert delivery_orders" ON delivery_orders FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Allow authenticated users to update delivery_orders" ON delivery_orders FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to read penjualan" ON penjualan FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert penjualan" ON penjualan FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated users to update penjualan" ON penjualan FOR UPDATE TO authenticated USING (true);
@@ -251,3 +272,4 @@ CREATE TRIGGER update_pelanggan_updated_at BEFORE UPDATE ON pelanggan FOR EACH R
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_pembelian_updated_at BEFORE UPDATE ON pembelian FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_penjualan_updated_at BEFORE UPDATE ON penjualan FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_delivery_orders_updated_at BEFORE UPDATE ON delivery_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

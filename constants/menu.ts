@@ -66,6 +66,11 @@ export const dashboardMenus: MenuItem[] = [
         href: "/dashboard/admin/transaksi/piutang ",
         roles: ["admin"],
       },
+      {
+        label: "Delivery Order",
+        href: "/dashboard/admin/transaksi/delivery-order",
+        roles: ["admin"],
+      },
     ],
   },
   {

@@ -69,7 +69,8 @@ export default function PembelianReportPage() {
           items: item.items.map((detail: PembelianDetail) => ({
             ...detail,
             namaProduk:
-              (detail.supplier_produk as any)?.produk?.nama || "Produk tidak ditemukan",
+              (detail.supplier_produk as any)?.produk?.nama ||
+              "Produk tidak ditemukan",
             satuan: (detail.supplier_produk as any)?.produk?.satuan || "",
             harga: detail.harga,
             qty: detail.qty,
@@ -79,7 +80,8 @@ export default function PembelianReportPage() {
         setData(formattedData);
         setHasMore(pembelianData.length === PAGE_SIZE);
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+        const errorMessage =
+          err instanceof Error ? err.message : "An unknown error occurred";
         console.error("Error fetching purchases:", err);
         setError("Gagal memuat data pembelian: " + errorMessage);
       } finally {
@@ -142,11 +144,6 @@ export default function PembelianReportPage() {
     }
   };
 
-  const exportToExcel = async () => {
-    // Excel export logic needs to be implemented
-    alert("Export to excel is not implemented yet");
-  };
-
   const totalPurchases = data.length;
   const totalCost = data.reduce((sum, purchase) => sum + purchase.total, 0);
   const paidPurchases = data.filter(
@@ -173,10 +170,6 @@ export default function PembelianReportPage() {
           <Button onClick={exportToPDF} variant="outline">
             <FileText className="w-4 h-4 mr-2" />
             Export PDF
-          </Button>
-          <Button onClick={exportToExcel} variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export Excel
           </Button>
         </div>
       </div>

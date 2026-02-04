@@ -30,10 +30,6 @@ export function PenjualanTable({
     <Card>
       <CardHeader className="flex flex-row justify-between ">
         <CardTitle>Detail Penjualan</CardTitle>
-        <Button onClick={onExportExcel} variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export Excel
-        </Button>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (

@@ -94,7 +94,7 @@ export default function PenjualanTabel({
                     "-"}
                 </TableCell>
                 <TableCell className="text-center">
-                  {formatRupiah(penjualan.total)}
+                  {formatRupiah(penjualan.total_akhir ?? penjualan.total)}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge

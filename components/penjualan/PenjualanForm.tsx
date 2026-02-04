@@ -241,11 +241,21 @@ export function PenjualanForm({
     }
   }, [watchMetodePembayaran, setValue]);
 
+  useEffect(() => {
+    if (watchStatus === "Lunas") {
+      setValue("tanggal_jatuh_tempo", "");
+    }
+  }, [watchStatus, setValue]);
+
   const pelanggan = pelangganList.find((p) => p.id === watchPelangganId);
 
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <input type="hidden" {...register("no_invoice")} />
+      <input type="hidden" {...register("no_npb")} />
+      <input type="hidden" {...register("no_do")} />
+      <input type="hidden" {...register("no_tanda_terima")} />
       {/* {error && ( // No longer needed
         <Card className="border-red-300 bg-red-50 p-4 mb-6">
           <div className="flex items-center gap-3">
@@ -452,8 +462,13 @@ export function PenjualanForm({
                     control={control}
                     render={({ field }) => (
                       <Input
-                        type="number"
-                        {...field}
+                        type="text"
+                        value={formatRupiah(field.value || 0)}
+                        onChange={(e) => {
+                          const input = e.target.value;
+                          const numeric = input.replace(/[^0-9]/g, "");
+                          field.onChange(Number(numeric));
+                        }}
                         className="w-28 h-8 text-right"
                       />
                     )}

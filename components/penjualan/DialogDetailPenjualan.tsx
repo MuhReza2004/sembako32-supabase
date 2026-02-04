@@ -331,26 +331,6 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Tutup
           </Button>
-          {penjualan.metode_pengambilan === "Diantar" && (
-            <Button
-              onClick={handlePrintReceipt}
-              disabled={isLoading}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Membuat Tanda Terima...
-                </>
-              ) : (
-                <>
-                  <Printer size={16} />
-                  Cetak Tanda Terima
-                </>
-              )}
-            </Button>
-          )}
           <Button
             onClick={handlePrintInvoice}
             disabled={isLoading}

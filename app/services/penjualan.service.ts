@@ -49,14 +49,18 @@ export const createPenjualan = async (data: Penjualan) => {
   }
 
   // 2. Create the sale record
+  const tanggalJatuhTempo = data.tanggal_jatuh_tempo || null;
+  const noDo = data.no_do || null;
+  const noTandaTerima = data.no_tanda_terima || null;
+
   const penjualanData = {
     tanggal: data.tanggal,
     pelanggan_id: data.pelanggan_id,
     catatan: data.catatan,
     no_invoice: data.no_invoice,
     no_npb: data.no_npb,
-    no_do: data.no_do,
-    no_tanda_terima: data.no_tanda_terima,
+    no_do: noDo,
+    no_tanda_terima: noTandaTerima,
     metode_pengambilan: data.metode_pengambilan,
     total: Number(data.total),
     total_dibayar: Number(data.total_dibayar || 0),
@@ -65,7 +69,7 @@ export const createPenjualan = async (data: Penjualan) => {
     nomor_rekening: data.nomor_rekening,
     nama_bank: data.nama_bank,
     nama_pemilik_rekening: data.nama_pemilik_rekening,
-    tanggal_jatuh_tempo: data.tanggal_jatuh_tempo,
+    tanggal_jatuh_tempo: tanggalJatuhTempo,
     diskon: Number(data.diskon || 0),
     pajak_enabled: data.pajak_enabled || false,
     pajak: Number(data.pajak || 0),
@@ -127,6 +131,22 @@ export const createPenjualan = async (data: Penjualan) => {
     if (stockError) {
       console.error("Error updating stock:", stockError);
       throw stockError;
+    }
+  }
+
+  // 4. Create delivery order record for "Diantar"
+  if (data.metode_pengambilan === "Diantar") {
+    const { error: doError } = await supabase.from("delivery_orders").insert({
+      penjualan_id: penjualan.id,
+      no_do: data.no_do,
+      no_tanda_terima: data.no_tanda_terima,
+      status: "Draft",
+      tanggal_kirim: data.tanggal,
+    });
+
+    if (doError) {
+      console.error("Error creating delivery order:", doError);
+      throw doError;
     }
   }
 
@@ -526,9 +546,8 @@ export const generateDONumber = async (): Promise<string> => {
   const day = String(date.getDate()).padStart(2, "0");
 
   const { count, error } = await supabase
-    .from("penjualan")
+    .from("delivery_orders")
     .select("*", { count: "exact", head: true })
-    .not("no_do", "is", null)
     .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
     .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
 
@@ -549,9 +568,8 @@ export const generateTandaTerimaNumber = async (): Promise<string> => {
   const day = String(date.getDate()).padStart(2, "0");
 
   const { count, error } = await supabase
-    .from("penjualan")
+    .from("delivery_orders")
     .select("*", { count: "exact", head: true })
-    .not("no_tanda_terima", "is", null)
     .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
     .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
 

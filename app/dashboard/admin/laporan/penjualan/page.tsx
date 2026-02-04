@@ -184,10 +184,7 @@ export default function PenjualanReportPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <PenjualanReportHeader
-        onExportPDF={exportToPDF}
-        onExportExcel={() => alert("Export to excel is not implemented yet")}
-      />
+      <PenjualanReportHeader onExportPDF={exportToPDF} />
 
       <PenjualanSummaryCards
         totalSales={totalSales}
@@ -209,7 +206,6 @@ export default function PenjualanReportPage() {
       <PenjualanTable
         data={data}
         onViewDetails={handleViewDetails}
-        onExportExcel={() => alert("Export to excel is not implemented yet")}
         isLoading={isLoading}
       />
 
