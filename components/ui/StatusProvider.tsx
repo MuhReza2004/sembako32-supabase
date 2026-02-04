@@ -9,12 +9,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type StatusOptions = {
   title?: string;
   message: string;
   success?: boolean;
-  refresh?: boolean; // reload page after close
+  refresh?: boolean; // refresh data on route change
   timeoutMs?: number; // auto close
 };
 
@@ -32,6 +33,7 @@ export const useStatus = () => {
 export function StatusProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const [opts, setOpts] = React.useState<StatusOptions | null>(null);
+  const router = useRouter(); // Initialize useRouter
 
   React.useEffect(() => {
     let t: any;
@@ -45,10 +47,10 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!open && opts?.refresh) {
-      // do a full reload to ensure latest data; this is simple and reliable
-      window.location.reload();
+      // Use router.refresh() for a soft navigation that re-fetches data
+      router.refresh();
     }
-  }, [open, opts]);
+  }, [open, opts, router]); // Add router to dependency array
 
   const showStatus = (o: StatusOptions) => {
     setOpts(o);
