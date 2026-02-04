@@ -35,6 +35,15 @@ export default function PiutangPage() {
           nama_pelanggan,
           alamat
         ),
+        riwayat_pembayaran (
+          id,
+          penjualan_id,
+          tanggal,
+          jumlah,
+          metode_pembayaran,
+          atas_nama,
+          created_at
+        ),
         penjualan_detail (
           *,
           supplier_produk (
@@ -62,6 +71,7 @@ export default function PiutangPage() {
       const mappedData: Penjualan[] = data.map((item: any) => ({
         ...item,
         nama_pelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
+        riwayatPembayaran: item.riwayat_pembayaran || [],
         items:
           item.penjualan_detail?.map((detail: any) => ({
             ...detail,

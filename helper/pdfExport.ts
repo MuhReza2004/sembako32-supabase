@@ -3,27 +3,136 @@ import html2canvas from "html2canvas";
 import { Penjualan } from "@/app/types/penjualan";
 import { formatRupiah, formatTanggal } from "./format";
 
+let logoDataUrlPromise: Promise<string | null> | null = null;
+
+const loadLogoDataUrl = async () => {
+  if (!logoDataUrlPromise) {
+    logoDataUrlPromise = (async () => {
+      try {
+        const res = await fetch("/logo.svg");
+        if (!res.ok) return null;
+        const svgText = await res.text();
+        const svgBase64 = btoa(unescape(encodeURIComponent(svgText)));
+        const svgDataUrl = `data:image/svg+xml;base64,${svgBase64}`;
+
+        const img = new Image();
+        img.src = svgDataUrl;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+        });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.drawImage(img, 0, 0);
+        return canvas.toDataURL("image/png");
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return logoDataUrlPromise;
+};
+
+const addLogo = async (pdf: jsPDF, x: number, y: number, widthMm: number) => {
+  const dataUrl = await loadLogoDataUrl();
+  if (!dataUrl) return;
+
+  const img = new Image();
+  img.src = dataUrl;
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject();
+  });
+  const ratio = img.height / img.width || 1;
+  const heightMm = widthMm * ratio;
+  pdf.addImage(dataUrl, "PNG", x, y, widthMm, heightMm);
+};
+
+const drawHeader = async (
+  pdf: jsPDF,
+  {
+    title,
+    dateText,
+  }: { title: string; dateText: string },
+) => {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const headerX = 12;
+  const headerY = 6;
+  const headerHeight = 30;
+  const headerWidth = pageWidth - 24;
+
+  // Background (match sales report header)
+  pdf.setFillColor(254, 195, 53);
+  (pdf as any).roundedRect(
+    headerX,
+    headerY,
+    headerWidth,
+    headerHeight,
+    3,
+    3,
+    "F",
+  );
+
+  // Logo container
+  pdf.setFillColor(255, 255, 255);
+  (pdf as any).roundedRect(headerX + 6, headerY + 6, 18, 18, 2, 2, "F");
+  await addLogo(pdf, headerX + 8, headerY + 8, 14);
+
+  // Company info (left)
+  pdf.setTextColor(16, 40, 83);
+  pdf.setFontSize(12);
+  pdf.text("SEMBAKO 32", headerX + 28, headerY + 12);
+
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFontSize(8.5);
+  pdf.text("Alamat : Jl. Soekarno Hatta Pasangkayu", headerX + 28, headerY + 18);
+  pdf.text("Kontak : 0821-9030-9333", headerX + 28, headerY + 22.5);
+  pdf.text("Email  : sembako32@gmail.com", headerX + 28, headerY + 27);
+
+  // Right side date + title
+  const rightX = headerX + headerWidth - 8;
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFontSize(8.5);
+  pdf.text("Tanggal Cetak:", rightX, headerY + 12, { align: "right" });
+  pdf.setFontSize(9);
+  pdf.text(dateText, rightX, headerY + 17, { align: "right" });
+
+  pdf.setTextColor(16, 40, 83);
+  pdf.setFontSize(13);
+  pdf.text(title, rightX, headerY + 25, { align: "right" });
+};
+
+const toText = (value: unknown) => {
+  if (value === null || value === undefined) return "-";
+  return String(value);
+};
+
+const safeTanggal = (value: unknown) => {
+  if (!value) return "-";
+  try {
+    return formatTanggal(String(value));
+  } catch {
+    return "-";
+  }
+};
+
 export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
   const pdf = new jsPDF("l", "mm", "a4"); // landscape orientation
 
-  pdf.setFillColor(16, 40, 83); // Blue header
-  pdf.rect(14, 0, 270, 25, "F");
+  await drawHeader(pdf, {
+    title: "LAPORAN PIUTANG",
+    dateText: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  });
 
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(24);
-  pdf.text("LAPORAN PIUTANG", 16, 18);
-
-  pdf.setFontSize(12);
-  pdf.text(
-    `Tanggal: ${formatTanggal(new Date().toISOString().split("T")[0])}`,
-    200,
-    18,
-  );
-
-  // Reset text color
-  pdf.setTextColor(0, 0, 0);
-
-  let yPosition = 35;
+  let yPosition = 50;
 
   // Main table headers
   const headers = [
@@ -51,8 +160,9 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 
   // Table data
   piutang.forEach((item, index) => {
-    const totalDibayar = item.totalDibayar || 0;
-    const sisaUtang = item.total - totalDibayar;
+    const total = item.total_akhir ?? item.total ?? 0;
+    const totalDibayar = item.total_dibayar ?? (item as any).totalDibayar ?? 0;
+    const sisaUtang = total - totalDibayar;
 
     // Alternate row colors
     if (index % 2 === 0) {
@@ -61,17 +171,17 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     }
 
     const rowData = [
-      item.noInvoice,
-      formatTanggal(item.tanggal),
-      item.namaPelanggan || "",
-      formatRupiah(item.total),
+      item.no_invoice ?? (item as any).noInvoice ?? item.nomorInvoice ?? "-",
+      safeTanggal(item.tanggal),
+      item.namaPelanggan || (item as any).nama_pelanggan || "-",
+      formatRupiah(total),
       formatRupiah(totalDibayar),
       formatRupiah(sisaUtang),
-      item.status,
+      item.status || "-",
     ];
 
     rowData.forEach((data, colIndex) => {
-      pdf.text(data.toString(), 16 + colIndex * 38, yPosition + 3);
+      pdf.text(toText(data), 16 + colIndex * 38, yPosition + 3);
     });
 
     yPosition += 8;
@@ -84,7 +194,11 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 
       item.riwayatPembayaran.forEach((payment) => {
         yPosition += 5;
-        const paymentText = `${formatTanggal(payment.tanggal)} - ${formatRupiah(payment.jumlah)} (${payment.metodePembayaran}) - ${payment.atasNama || "N/A"}`;
+        const metode =
+          (payment as any).metodePembayaran ?? payment.metode_pembayaran ?? "-";
+        const atasNama =
+          (payment as any).atasNama ?? payment.atas_nama ?? "N/A";
+        const paymentText = `${safeTanggal(payment.tanggal)} - ${formatRupiah(payment.jumlah)} (${metode}) - ${atasNama}`;
         pdf.text(paymentText, 25, yPosition + 3);
       });
 
@@ -109,9 +223,13 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
   pdf.setFontSize(12);
   pdf.text("RINGKASAN KESELURUHAN", 16, yPosition + 10);
 
-  const totalTagihan = piutang.reduce((sum, item) => sum + item.total, 0);
+  const totalTagihan = piutang.reduce(
+    (sum, item) => sum + (item.total_akhir ?? item.total ?? 0),
+    0,
+  );
   const totalDibayar = piutang.reduce(
-    (sum, item) => sum + (item.totalDibayar || 0),
+    (sum, item) =>
+      sum + (item.total_dibayar ?? (item as any).totalDibayar ?? 0),
     0,
   );
   const totalSisa = totalTagihan - totalDibayar;
@@ -143,25 +261,16 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   const pdf = new jsPDF("p", "mm", "a4"); // portrait orientation
 
-  // Add header with company branding
-  pdf.setFillColor(16, 40, 83); // Blue header
-  pdf.rect(14, 0, 180, 30, "F");
+  await drawHeader(pdf, {
+    title: "DETAIL PIUTANG",
+    dateText: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  });
 
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(20);
-  pdf.text("DETAIL PIUTANG", 16, 20);
-
-  pdf.setFontSize(10);
-  pdf.text(
-    `Dicetak: ${formatTanggal(new Date().toISOString().split("T")[0])}`,
-    140,
-    25,
-  );
-
-  // Reset text color
-  pdf.setTextColor(0, 0, 0);
-
-  let yPosition = 45;
+  let yPosition = 55;
 
   pdf.setFillColor(16, 40, 83);
   pdf.rect(14, yPosition, 180, 12, "F");
@@ -178,10 +287,16 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   pdf.setFillColor(254, 249, 231);
   pdf.rect(14, yPosition, 180, 25, "F");
 
-  pdf.text(`No. Invoice: ${piutang.noInvoice}`, 16, yPosition + 6);
-  pdf.text(`Tanggal: ${formatTanggal(piutang.tanggal)}`, 16, yPosition + 12);
-  pdf.text(`Pelanggan: ${piutang.namaPelanggan || ""}`, 16, yPosition + 18);
-  pdf.text(`Status: ${piutang.status}`, 120, yPosition + 18);
+  const invoiceNo =
+    piutang.no_invoice ?? (piutang as any).noInvoice ?? piutang.nomorInvoice;
+  pdf.text(`No. Invoice: ${toText(invoiceNo)}`, 16, yPosition + 6);
+  pdf.text(`Tanggal: ${safeTanggal(piutang.tanggal)}`, 16, yPosition + 12);
+  pdf.text(
+    `Pelanggan: ${piutang.namaPelanggan || (piutang as any).nama_pelanggan || "-"}`,
+    16,
+    yPosition + 18,
+  );
+  pdf.text(`Status: ${piutang.status || "-"}`, 120, yPosition + 18);
 
   yPosition += 35;
 
@@ -197,8 +312,9 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   yPosition += 18;
 
   // Financial details in boxes
-  const totalTagihan = piutang.total;
-  const totalDibayar = piutang.totalDibayar || 0;
+  const totalTagihan = piutang.total_akhir ?? piutang.total ?? 0;
+  const totalDibayar =
+    piutang.total_dibayar ?? (piutang as any).totalDibayar ?? 0;
   const sisaUtang = totalTagihan - totalDibayar;
 
   // Total Tagihan box
@@ -252,9 +368,15 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
     pdf.rect(14, yPosition, 180, 8, "F");
 
     pdf.setTextColor(255, 255, 255);
-    const paymentHeaders = ["Tanggal", "Jumlah", "Metode Pembayaran"];
+    const paymentHeaders = [
+      "Tanggal",
+      "Jumlah",
+      "Metode Pembayaran",
+      "Penyetor",
+    ];
     paymentHeaders.forEach((header, index) => {
-      const xPos = index === 0 ? 16 : index === 1 ? 50 : 100;
+      const xPos =
+        index === 0 ? 16 : index === 1 ? 50 : index === 2 ? 100 : 145;
       pdf.text(header, xPos, yPosition + 5);
     });
 
@@ -270,17 +392,15 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
       }
 
       pdf.setFontSize(9);
-      pdf.text(formatTanggal(payment.tanggal), 16, yPosition + 3);
+      pdf.text(safeTanggal(payment.tanggal), 16, yPosition + 3);
       pdf.text(formatRupiah(payment.jumlah), 50, yPosition + 3);
-      pdf.text(payment.metodePembayaran, 100, yPosition + 3);
-
-      if (payment.atasNama) {
-        pdf.setFontSize(8);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text(`Atas nama: ${payment.atasNama}`, 16, yPosition + 7);
-        pdf.setTextColor(0, 0, 0);
-        yPosition += 2;
-      }
+      pdf.text(
+        (payment as any).metodePembayaran ?? payment.metode_pembayaran ?? "-",
+        100,
+        yPosition + 3,
+      );
+      const atasNama = (payment as any).atasNama ?? payment.atas_nama ?? "-";
+      pdf.text(atasNama, 145, yPosition + 3);
 
       yPosition += 8;
 
@@ -315,6 +435,6 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
 
   // Save the PDF
   pdf.save(
-    `detail_piutang_${piutang.noInvoice}_${formatTanggal(new Date().toISOString().split("T")[0])}.pdf`,
+    `detail_piutang_${toText(invoiceNo)}_${formatTanggal(new Date().toISOString().split("T")[0])}.pdf`,
   );
 };

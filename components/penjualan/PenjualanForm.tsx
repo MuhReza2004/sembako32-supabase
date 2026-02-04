@@ -39,6 +39,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useStatus } from "@/components/ui/StatusProvider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type PenjualanFormData = Omit<Penjualan, "id" | "created_at" | "updated_at">;
 
@@ -92,14 +100,18 @@ export function PenjualanForm({
     const generateNumbers = async () => {
       if (!editingPenjualan) {
         try {
-          const [invoiceNum, npbNum, doNum] = await Promise.all([
+          const [invoiceNum, npbNum] = await Promise.all([
             generateInvoiceNumber(),
             generateNPBNumber(),
-            generateDONumber(),
           ]);
           setValue("no_invoice", invoiceNum);
           setValue("no_npb", npbNum);
-          setValue("no_do", doNum);
+          if (watch("metode_pengambilan") === "Diantar") {
+            const doNum = await generateDONumber();
+            setValue("no_do", doNum);
+          } else {
+            setValue("no_do", "");
+          }
         } catch (error: any) {
           console.error("Error generating document numbers:", error);
           showStatus({
@@ -111,13 +123,14 @@ export function PenjualanForm({
       }
     };
     generateNumbers();
-  }, [editingPenjualan, setValue, showStatus]);
+  }, [editingPenjualan, setValue, showStatus, watch]);
 
   const watchItems = watch("items");
   const watchPajakEnabled = watch("pajak_enabled");
   const watchDiskon = watch("diskon");
   const watchStatus = watch("status");
   const watchMetodePembayaran = watch("metode_pembayaran");
+  const watchPelangganId = watch("pelanggan_id");
 
   const { subTotal, totalPajak, total } = useMemo(() => {
     const subTotal = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
@@ -127,36 +140,28 @@ export function PenjualanForm({
     return { subTotal, totalPajak, total };
   }, [watchItems, watchDiskon, watchPajakEnabled]);
 
-  const onSubmit = async (data: PenjualanFormData) => {
-    // setError(null); // No longer needed
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState<PenjualanFormData | null>(
+    null,
+  );
 
+  const buildFinalData = (data: PenjualanFormData) => ({
+    ...data,
+    total: subTotal,
+    pajak: totalPajak,
+    total_akhir: total,
+  });
+
+  const openConfirm = (data: PenjualanFormData) => {
+    setConfirmData(buildFinalData(data));
+    setIsConfirmOpen(true);
+  };
+
+  const doSubmit = async (data: PenjualanFormData) => {
     console.log("Form submission started with data:", data);
 
-    if (data.items.length === 0) {
-      const msg = "Pastikan ada produk yang dipilih";
-      showStatus({
-        message: msg,
-        success: false,
-      });
-      return;
-    }
-
-    if (data.status === "Belum Lunas" && !data.tanggal_jatuh_tempo) {
-      const msg = "Tanggal Jatuh Tempo harus diisi jika status belum lunas.";
-      showStatus({
-        message: msg,
-        success: false,
-      });
-      return;
-    }
-
     try {
-      const finalData = {
-        ...data,
-        total: subTotal,
-        pajak: totalPajak,
-        total_akhir: total,
-      };
+      const finalData = buildFinalData(data);
 
       console.log("Final data to submit:", finalData);
 
@@ -190,6 +195,34 @@ export function PenjualanForm({
     }
   };
 
+  const onSubmit = (data: PenjualanFormData) => {
+    if (data.items.length === 0) {
+      showStatus({
+        message: "Pastikan ada produk yang dipilih",
+        success: false,
+      });
+      return;
+    }
+
+    if (!data.metode_pembayaran) {
+      showStatus({
+        message: "Metode pembayaran harus dipilih terlebih dahulu.",
+        success: false,
+      });
+      return;
+    }
+
+    if (data.status === "Belum Lunas" && !data.tanggal_jatuh_tempo) {
+      showStatus({
+        message: "Tanggal Jatuh Tempo harus diisi jika status belum lunas.",
+        success: false,
+      });
+      return;
+    }
+
+    openConfirm(data);
+  };
+
   useEffect(() => {
     if (watchMetodePembayaran === "Transfer") {
       setValue("nama_bank", "BRI");
@@ -203,8 +236,11 @@ export function PenjualanForm({
     }
   }, [watchMetodePembayaran, setValue]);
 
+  const pelanggan = pelangganList.find((p) => p.id === watchPelangganId);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* {error && ( // No longer needed
         <Card className="border-red-300 bg-red-50 p-4 mb-6">
           <div className="flex items-center gap-3">
@@ -450,7 +486,7 @@ export function PenjualanForm({
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !watchMetodePembayaran}
             className="w-full h-12 text-lg"
           >
             <Save className="h-5 w-5 mr-2" />
@@ -458,7 +494,125 @@ export function PenjualanForm({
           </Button>
         </div>
       </div>
-    </form>
+      </form>
+
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Pembayaran</DialogTitle>
+            <DialogDescription>
+              Periksa detail transaksi sebelum menyimpan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Pelanggan</div>
+                <div className="font-semibold">
+                  {pelanggan?.nama_toko || pelanggan?.nama_pelanggan || "-"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Metode Pembayaran</div>
+                <div className="font-semibold">
+                  {confirmData?.metode_pembayaran || "-"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Status</div>
+                <div className="font-semibold">{confirmData?.status || "-"}</div>
+              </div>
+              {confirmData?.status === "Belum Lunas" && (
+                <div>
+                  <div className="text-muted-foreground">Jatuh Tempo</div>
+                  <div className="font-semibold">
+                    {confirmData?.tanggal_jatuh_tempo || "-"}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produk</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Harga</TableHead>
+                    <TableHead>Subtotal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(confirmData?.items || []).map((item, index) => {
+                    const sp = supplierProduks.find(
+                      (x) => x.id === item.supplier_produk_id,
+                    );
+                    const produk = products.find(
+                      (p) => p.id === sp?.produk_id,
+                    );
+                    return (
+                      <TableRow key={`${item.supplier_produk_id}-${index}`}>
+                        <TableCell>{produk?.nama || "..."}</TableCell>
+                        <TableCell>{item.qty}</TableCell>
+                        <TableCell>{formatRupiah(item.harga)}</TableCell>
+                        <TableCell>{formatRupiah(item.subtotal)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span className="font-semibold">
+                  {formatRupiah(confirmData?.total || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Diskon</span>
+                <span className="font-semibold">
+                  {formatRupiah(confirmData?.diskon || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Pajak</span>
+                <span className="font-semibold">
+                  {formatRupiah(confirmData?.pajak || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span>Total Akhir</span>
+                <span>{formatRupiah(confirmData?.total_akhir || 0)}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                if (!confirmData) return;
+                setIsConfirmOpen(false);
+                await doSubmit(confirmData);
+              }}
+              disabled={isSubmitting}
+            >
+              Konfirmasi & Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -472,7 +626,7 @@ function AddItemForm({
   onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // Added prop
 }) {
   const [supplierProdukId, setSupplierProdukId] = useState("");
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState<number | "">(0);
   // const [error, setError] = useState<string | null>(null); // No longer needed
 
   const handleAddItem = () => {
@@ -532,10 +686,13 @@ function AddItemForm({
           <Label>Jumlah</Label>
           <Input
             type="number"
-            min={1}
-            value={qty}
-            onChange={(e) => setQty(Number(e.target.value))}
-            placeholder="1"
+            min={0}
+            value={qty === 0 ? "" : qty}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQty(val === "" ? "" : Number(val));
+            }}
+            placeholder="0"
           />
         </div>
       </div>

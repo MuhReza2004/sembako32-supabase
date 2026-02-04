@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
               <tr>
                 <th>No</th>
                 <th>Tanggal</th>
-                <th>Invoice</th>
+                <th>No Dokumen</th>
                 <th>Supplier</th>
                 <th>Total</th>
                 <th>Status</th>
@@ -148,7 +148,13 @@ export async function POST(request: NextRequest) {
                     <tr>
                       <td>${index + 1}</td>
                       <td>${new Date(p.tanggal).toLocaleDateString("id-ID")}</td>
-                      <td>${p.invoice || "-"}</td>
+                      <td>
+                      <ul>
+                        <li>No NPB: ${p.no_npb || "-"}</li>
+                        <li>No DO: ${p.no_do || "-"}</li>
+                        <li>Invoice: ${p.invoice || "-"}</li>
+                      </ul>
+                      </td>
                       <td>${p.nama_supplier}</td>
                       <td>${formatRupiah(p.total)}</td>
                       <td>${p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline"}</td>
@@ -160,7 +166,7 @@ export async function POST(request: NextRequest) {
           </table>
 
           <div style="margin-top: 30px; text-align: right;">
-            <p class="total">Total Keseluruhan: ${formatRupiah(totalCost)}</p>
+            <p class="total">Total Nilai Transaksi: ${formatRupiah(totalCost)}</p>
           </div>
         </body>
       </html>
