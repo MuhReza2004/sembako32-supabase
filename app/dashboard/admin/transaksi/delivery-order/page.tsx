@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatTanggal } from "@/helper/format";
+import { formatRupiah, formatTanggal } from "@/helper/format";
 import { Badge } from "@/components/ui/badge";
 import { FileText, MoreHorizontal } from "lucide-react";
 import {
@@ -538,8 +538,8 @@ export default function DeliveryOrderPage() {
                             {item.supplier_produk?.produk?.nama || "Produk"}
                           </TableCell>
                           <TableCell>{item.qty}</TableCell>
-                          <TableCell>{item.harga}</TableCell>
-                          <TableCell>{item.subtotal}</TableCell>
+                          <TableCell>{formatRupiah(item.harga)}</TableCell>
+                          <TableCell>{formatRupiah(item.subtotal)}</TableCell>
                         </TableRow>
                       ),
                     )}

@@ -87,7 +87,10 @@ export async function POST(request: NextRequest) {
     `;
 
     const items = deliveryOrder.penjualan.items || [];
-    const total = items.reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
+    const total = items.reduce(
+      (sum: number, item: any) => sum + (item.subtotal || 0),
+      0,
+    );
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; color: #111827; }
             h2 { color: #111827; text-align: center; margin: 0; }
-            .meta { margin-top: 10px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
+            .meta { margin-top: 40px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
             th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
             th { background-color: #f9fafb; }
@@ -106,14 +109,13 @@ export async function POST(request: NextRequest) {
           </style>
         </head>
         <body>
-          <h2>DELIVERY ORDER</h2>
+          <h2 style="text-decoration: underline;">DELIVERY ORDER</h2>
+          <h4 style="text-align: center;">NO: ${deliveryOrder.no_do}</h4>
           <div class="meta">
-            <span>No. DO</span><span>:</span><span>${deliveryOrder.no_do}</span>
-            <span>No. Tanda Terima</span><span>:</span><span>${deliveryOrder.no_tanda_terima || "-"}</span>
-            <span>No. Invoice</span><span>:</span><span>${deliveryOrder.penjualan.no_invoice || "-"}</span>
-            <span>No. NPB</span><span>:</span><span>${deliveryOrder.penjualan.no_npb || "-"}</span>
+          <span>No. NPB</span><span>:</span><span>${deliveryOrder.penjualan.no_npb || "-"}</span>
+          <span>No. Invoice</span><span>:</span><span>${deliveryOrder.penjualan.no_invoice || "-"}</span>
             <span>Tanggal</span><span>:</span><span>${new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID")}</span>
-            <span>Pelanggan</span><span>:</span><span>${deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-"}</span>
+            <span>Penerima</span><span>:</span><span>${deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-"}</span>
             <span>Alamat</span><span>:</span><span>${deliveryOrder.penjualan.pelanggan?.alamat || "-"}</span>
           </div>
 

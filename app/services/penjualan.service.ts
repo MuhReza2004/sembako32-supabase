@@ -498,21 +498,26 @@ export const generateInvoiceNumber = async (): Promise<string> => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
 
   const { count, error } = await supabase
     .from("penjualan")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
-    .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
+    .gte(
+      "created_at",
+      new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
+    )
+    .lt(
+      "created_at",
+      new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString(),
+    );
 
   if (error) {
     console.error("Error counting invoices:", error);
-    return `INV/${year}${month}${day}/ERR`;
+    return `INV/${year}/${month}/ERR`;
   }
 
   const nextNumber = (count || 0) + 1;
-  return `INV/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
+  return `INV/S32/${year}/${month}/${String(nextNumber).padStart(4, "0")}`;
 };
 
 // --- NEW generateNPBNumber function ---
@@ -531,11 +536,14 @@ export const generateNPBNumber = async (): Promise<string> => {
 
   if (error) {
     console.error("Error counting NPB:", error);
-    return `NPB/${year}${month}${day}/ERR`;
+    return `NPB/G001/${year}/${month}/${day}/ERR`;
   }
 
   const nextNumber = (count || 0) + 1;
-  return `NPB/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
+  return `NPB/G001/${year}/${month}/${day}/${String(nextNumber).padStart(
+    4,
+    "0",
+  )}`;
 };
 
 // --- NEW generateDONumber function ---
@@ -543,21 +551,26 @@ export const generateDONumber = async (): Promise<string> => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
 
   const { count, error } = await supabase
     .from("delivery_orders")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
-    .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
+    .gte(
+      "created_at",
+      new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
+    )
+    .lt(
+      "created_at",
+      new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString(),
+    );
 
   if (error) {
     console.error("Error counting DO:", error);
-    return `DO/${year}${month}${day}/ERR`;
+    return `DO/${year}/${month}/ERR`;
   }
 
   const nextNumber = (count || 0) + 1;
-  return `DO/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
+  return `DO/S32/${year}/${month}/${String(nextNumber).padStart(4, "0")}`;
 };
 
 // --- NEW generate Tanda Terima number function ---
@@ -565,19 +578,24 @@ export const generateTandaTerimaNumber = async (): Promise<string> => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
 
   const { count, error } = await supabase
     .from("delivery_orders")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
-    .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
+    .gte(
+      "created_at",
+      new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
+    )
+    .lt(
+      "created_at",
+      new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString(),
+    );
 
   if (error) {
     console.error("Error counting Tanda Terima:", error);
-    return `TT/${year}${month}${day}/ERR`;
+    return `ERR/S32/${month}/${year}`;
   }
 
   const nextNumber = (count || 0) + 1;
-  return `TT/${year}${month}${day}/${String(nextNumber).padStart(4, "0")}`;
+  return `${String(nextNumber).padStart(4, "0")}/S32/${month}/${year}`;
 };
