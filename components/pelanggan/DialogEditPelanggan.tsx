@@ -143,10 +143,7 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
               <Input
                 id="nib"
                 placeholder="Misal: 1234567890"
-                {...register("nib", {
-                  required: "NIB wajib diisi",
-                  minLength: { value: 10, message: "Minimal 10 karakter" },
-                })}
+                {...register("nib", {})}
                 className={errors.nib ? "border-red-500" : ""}
               />
               {errors.nib && (
@@ -163,10 +160,7 @@ export const DialogEditPelanggan: React.FC<DialogEditPelangganProps> = ({
               <Input
                 id="no_telp"
                 placeholder="Misal: 081234567890"
-                {...register("no_telp", {
-                  required: "Nomor telepon wajib diisi",
-                  minLength: { value: 10, message: "Minimal 10 angka" },
-                })}
+                {...register("no_telp", {})}
                 className={errors.no_telp ? "border-red-500" : ""}
               />
               {errors.no_telp && (

@@ -23,7 +23,7 @@ import { Penjualan } from "@/app/types/penjualan";
 import { Pelanggan } from "@/app/types/pelanggan";
 import { formatRupiah } from "@/helper/format";
 import { getPelangganById } from "@/app/services/pelanggan.service";
-import { FileText, Printer, Eye } from "lucide-react";
+import { FileText, Printer, Loader2 } from "lucide-react";
 
 interface DialogDetailPenjualanProps {
   open: boolean;
@@ -37,9 +37,9 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   penjualan,
 }) => {
   const [pelanggan, setPelanggan] = useState<Pelanggan | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Debug logging
     if (penjualan) {
       console.log("DialogDetailPenjualan received penjualan:", penjualan);
       console.log("Penjualan items:", penjualan.items);
@@ -81,6 +81,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
 
   const handlePrintInvoice = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch("/api/generate-invoice", {
         method: "POST",
@@ -113,6 +114,8 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Terjadi kesalahan saat membuat preview invoice PDF.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -299,10 +302,20 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           </Button>
           <Button
             onClick={handlePrintInvoice}
+            disabled={isLoading}
             className="flex items-center gap-2"
           >
-            <Printer size={16} />
-            Cetak Invoice
+            {isLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Membuat Invoice...
+              </>
+            ) : (
+              <>
+                <Printer size={16} />
+                Cetak Invoice
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

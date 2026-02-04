@@ -149,14 +149,17 @@ export async function POST(request: NextRequest) {
                   : "Semua Periode"
           }</p>
 
-          <div style="margin-bottom: 20px;">
-            <p>Total Penjualan: ${totalSales}</p>
-            <p>Pendapatan Bruto: ${formatRupiah(totalRevenue)}</p>
-            <p>Total Pajak: ${formatRupiah(totalPajak)}</p>
-            <p>Pendapatan Netto: ${formatRupiah(penjualanBersih)}</p>
-            <p>Penjualan Lunas: ${paidSales}</p>
-            <p>Belum Lunas: ${unpaidSales}</p>
-          </div>
+<div style="margin-bottom: 20px;">
+  <div style="display: grid; grid-template-columns: 180px 10px auto;">
+    <span>Total Penjualan</span><span>:</span><span>${totalSales}</span>
+    <span>Pendapatan Bruto</span><span>:</span><span>${formatRupiah(totalRevenue)}</span>
+    <span>Total Pajak</span><span>:</span><span>${formatRupiah(totalPajak)}</span>
+    <span style="font-weight: bold;">Pendapatan Netto</span><span>:</span><span style="font-weight: bold;">${formatRupiah(penjualanBersih)}</span>
+    <span>Penjualan Lunas</span><span>:</span><span>${paidSales}</span>
+    <span>Belum Lunas</span><span>:</span><span>${unpaidSales}</span>
+  </div>
+</div>
+
 
           <table>
             <thead>

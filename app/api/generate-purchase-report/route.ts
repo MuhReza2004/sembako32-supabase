@@ -120,13 +120,15 @@ export async function POST(request: NextRequest) {
                   ? "Sampai: " + new Date(endDate).toLocaleDateString("id-ID")
                   : "Semua Periode"
           }</p>
+<div style="margin-bottom: 20px;">
+  <div style="display: grid; grid-template-columns: 180px 10px auto;">
+    <span>Total Pembelian</span><span>:</span><span>${totalPurchases}</span>
+    <span>Total Dibayar</span><span>:</span><span>${paidPurchases}</span>
+    <span>Total Belum Dibayar</span><span>:</span><span>${unpaidPurchases}</span>
+    <span style="font-weight: bold;">Total Biaya</span><span>:</span><span style="font-weight: bold;">${formatRupiah(totalCost)}</span>
+  </div>
+</div>
 
-          <div style="margin-bottom: 20px;">
-            <p>Total Pembelian: ${totalPurchases}</p>
-            <p>Total Dibayar: ${paidPurchases}</p>
-            <p>Total Belum Dibayar: ${unpaidPurchases}</p>
-            <p>Total Biaya: ${formatRupiah(totalCost)}</p>
-          </div>
 
           <table>
             <thead>

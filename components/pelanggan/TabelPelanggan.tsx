@@ -100,16 +100,16 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
                 </TableCell>
 
                 <TableCell className="text-gray-700 text-sm">
-                  {customer.nib}
+                  {customer.nib || "-"}
                 </TableCell>
                 <TableCell className="text-gray-700 text-sm">
-                  {customer.no_telp}
+                  {customer.no_telp || "-"}
                 </TableCell>
                 <TableCell className="text-gray-700 text-sm">
                   {customer.nama_toko || "-"}
                 </TableCell>
                 <TableCell className="text-gray-700 text-sm max-w-xs truncate">
-                  {customer.alamat}
+                  {customer.alamat || "-"}
                 </TableCell>
                 <TableCell className="text-center">
                   <span
