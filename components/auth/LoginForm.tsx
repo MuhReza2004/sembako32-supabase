@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/app/services/auth.service";
 import { getUserById } from "@/app/services/user.service";
+import { supabase } from "@/app/lib/supabase";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -31,17 +32,29 @@ export default function LoginForm() {
         throw new Error("Login failed: No user or session returned.");
       }
 
-      router.refresh(); // Force a refresh to update session state for middleware
-
-      // Ambil profile user
-      const user = await getUserById(res.user.id); // Supabase user ID is res.user.id
-
-      if (!user) {
-        throw new Error("Data user tidak ditemukan di database");
+      // Sync role into JWT metadata for faster middleware checks
+      let role: string | null = null;
+      const syncRes = await fetch("/api/auth/sync-role", { method: "POST" });
+      if (syncRes.ok) {
+        const data = await syncRes.json();
+        role = data?.role ?? null;
       }
 
+      if (!role) {
+        // Fallback: ambil profile user bila sync gagal
+        const user = await getUserById(res.user.id); // Supabase user ID is res.user.id
+        if (!user) {
+          throw new Error("Data user tidak ditemukan di database");
+        }
+        role = user.role;
+      }
+
+      // Refresh session to include updated metadata
+      await supabase.auth.refreshSession();
+      router.refresh(); // Update session state for middleware
+
       // Redirect berdasarkan role
-      if (user.role === "admin") {
+      if (role === "admin") {
         router.push("/dashboard/admin");
       } else {
         router.push("/dashboard/staff");

@@ -1,6 +1,22 @@
 import { supabase } from "../lib/supabase";
 import { Pembelian, PembelianDetail } from "../types/pembelian";
 
+const DECIMAL_14_2_MAX = 999999999999.99;
+
+const assertValidMoney = (label: string, value: number) => {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} tidak valid`);
+  }
+  if (value > DECIMAL_14_2_MAX) {
+    throw new Error(
+      `${label} terlalu besar. Maksimal 999.999.999.999,99. Mohon pecah transaksi atau tingkatkan presisi kolom di database.`,
+    );
+  }
+  if (value < 0) {
+    throw new Error(`${label} tidak boleh negatif`);
+  }
+};
+
 export const createPembelian = async (data: {
   supplier_id: string;
   tanggal: string;
@@ -11,6 +27,14 @@ export const createPembelian = async (data: {
   status: "Pending" | "Completed" | "Decline";
   items: PembelianDetail[];
 }) => {
+  const totalAmount = Number(data.total);
+  assertValidMoney("Total pembelian", totalAmount);
+
+  data.items.forEach((item, index) => {
+    assertValidMoney(`Harga item #${index + 1}`, Number(item.harga));
+    assertValidMoney(`Subtotal item #${index + 1}`, Number(item.subtotal));
+  });
+
   // Create pembelian record
   const pembelianData = {
     supplier_id: data.supplier_id,
@@ -18,7 +42,7 @@ export const createPembelian = async (data: {
     no_do: data.no_do,
     no_npb: data.no_npb,
     invoice: data.invoice,
-    total: data.total,
+    total: totalAmount,
     status: data.status,
   };
 
@@ -29,8 +53,9 @@ export const createPembelian = async (data: {
     .single();
 
   if (pembelianError) {
-    console.error("Error creating pembelian:", pembelianError);
-    throw pembelianError;
+    const errorMessage = pembelianError?.message || "Gagal membuat pembelian";
+    console.error("Error creating pembelian:", errorMessage);
+    throw new Error(errorMessage);
   }
 
   // Create pembelian_detail records
@@ -40,14 +65,15 @@ export const createPembelian = async (data: {
       .insert({
         pembelian_id: pembelian.id,
         supplier_produk_id: item.supplier_produk_id,
-        qty: item.qty,
-        harga: item.harga,
-        subtotal: item.subtotal,
+        qty: Number(item.qty),
+        harga: Number(item.harga),
+        subtotal: Number(item.subtotal),
       });
 
     if (detailError) {
-      console.error("Error creating pembelian detail:", detailError);
-      throw detailError;
+      const errorMessage = detailError?.message || "Gagal membuat detail pembelian";
+      console.error("Error creating pembelian detail:", errorMessage);
+      throw new Error(errorMessage);
     }
 
     // Only update stock if status is not 'Pending'
@@ -60,8 +86,9 @@ export const createPembelian = async (data: {
         .single();
 
       if (fetchError) {
-        console.error("Error fetching stock:", fetchError);
-        throw fetchError;
+        const errorMessage = fetchError?.message || "Gagal mengambil stok supplier produk";
+        console.error("Error fetching stock:", errorMessage);
+        throw new Error(errorMessage);
       }
 
       // 2. Calculate new stock
@@ -76,8 +103,9 @@ export const createPembelian = async (data: {
         .eq("id", item.supplier_produk_id);
 
       if (stockError) {
-        console.error("Error updating stock:", stockError);
-        throw stockError;
+        const errorMessage = stockError?.message || "Gagal memperbarui stok";
+        console.error("Error updating stock:", errorMessage);
+        throw new Error(errorMessage);
       }
     }
   }
@@ -116,8 +144,9 @@ export const getAllPembelian = async (): Promise<Pembelian[]> => {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching pembelian:", error);
-    throw error;
+    const errorMessage = error?.message || "Gagal mengambil pembelian";
+    console.error("Error fetching pembelian:", errorMessage);
+    throw new Error(errorMessage);
   }
 
   return data.map((item) => ({
@@ -166,8 +195,9 @@ export const updatePembelianAndStock = async (
     .eq("id", pembelianId);
 
   if (updateError) {
-    console.error("Error updating pembelian:", updateError);
-    throw updateError;
+    const errorMessage = updateError?.message || "Gagal memperbarui pembelian";
+    console.error("Error updating pembelian:", errorMessage);
+    throw new Error(errorMessage);
   }
 
   // Then, fetch the purchase details to update stock
@@ -177,8 +207,9 @@ export const updatePembelianAndStock = async (
     .eq("pembelian_id", pembelianId);
 
   if (detailError) {
-    console.error("Error fetching pembelian details:", detailError);
-    throw detailError;
+    const errorMessage = detailError?.message || "Gagal mengambil detail pembelian untuk update stok";
+    console.error("Error fetching pembelian details:", errorMessage);
+    throw new Error(errorMessage);
   }
 
   for (const detail of details) {
@@ -190,8 +221,9 @@ export const updatePembelianAndStock = async (
       .single();
 
     if (fetchError) {
-      console.error("Error fetching stock for supplier_produk:", fetchError);
-      throw fetchError;
+      const errorMessage = fetchError?.message || "Gagal mengambil stok supplier produk untuk update";
+      console.error("Error fetching stock for supplier_produk:", errorMessage);
+      throw new Error(errorMessage);
     }
     
     // 2. Calculate new stock
@@ -206,8 +238,9 @@ export const updatePembelianAndStock = async (
       .eq("id", detail.supplier_produk_id);
 
     if (stockError) {
-      console.error("Error updating stock for supplier_produk:", stockError);
-      throw stockError;
+      const errorMessage = stockError?.message || "Gagal memperbarui stok supplier produk";
+      console.error("Error updating stock for supplier_produk:", errorMessage);
+      throw new Error(errorMessage);
     }
   }
 };
@@ -224,8 +257,9 @@ export const updatePembelianStatus = async (
     .eq("id", pembelianId);
 
   if (error) {
-    console.error("Error updating pembelian status:", error);
-    throw error;
+    const errorMessage = error?.message || "Gagal memperbarui status pembelian";
+    console.error("Error updating pembelian status:", errorMessage);
+    throw new Error(errorMessage);
   }
 };
 
@@ -248,8 +282,9 @@ export const getPembelianDetails = async (
     .eq("pembelian_id", pembelianId);
 
   if (error) {
-    console.error("Error fetching pembelian details:", error);
-    throw error;
+    const errorMessage = error?.message || "Gagal mengambil detail pembelian";
+    console.error("Error fetching pembelian details:", errorMessage);
+    throw new Error(errorMessage);
   }
 
   return data.map((detail) => ({

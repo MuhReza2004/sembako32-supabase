@@ -96,7 +96,7 @@ CREATE TABLE pembelian (
   no_do TEXT,
   no_npb TEXT,
   invoice TEXT,
-  total DECIMAL(10,2) NOT NULL,
+  total DECIMAL(14,2) NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('Pending', 'Completed', 'Decline')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -108,8 +108,8 @@ CREATE TABLE pembelian_detail (
   pembelian_id UUID REFERENCES pembelian(id) ON DELETE CASCADE,
   supplier_produk_id UUID REFERENCES supplier_produk(id) ON DELETE CASCADE,
   qty INTEGER NOT NULL,
-  harga DECIMAL(10,2) NOT NULL,
-  subtotal DECIMAL(10,2) NOT NULL,
+  harga DECIMAL(14,2) NOT NULL,
+  subtotal DECIMAL(14,2) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -123,18 +123,18 @@ CREATE TABLE penjualan (
   no_npb TEXT NOT NULL,
   no_do TEXT,
   metode_pengambilan TEXT NOT NULL CHECK (metode_pengambilan IN ('Ambil Langsung', 'Diantar')),
-  total DECIMAL(10,2) NOT NULL,
-  total_dibayar DECIMAL(10,2) DEFAULT 0,
+  total DECIMAL(14,2) NOT NULL,
+  total_dibayar DECIMAL(14,2) DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('Lunas', 'Belum Lunas', 'Batal')),
   metode_pembayaran TEXT,
   nomor_rekening TEXT,
   nama_bank TEXT,
   nama_pemilik_rekening TEXT,
   tanggal_jatuh_tempo DATE,
-  diskon DECIMAL(10,2) DEFAULT 0,
+  diskon DECIMAL(14,2) DEFAULT 0,
   pajak_enabled BOOLEAN DEFAULT false,
-  pajak DECIMAL(10,2) DEFAULT 0,
-  total_akhir DECIMAL(10,2),
+  pajak DECIMAL(14,2) DEFAULT 0,
+  total_akhir DECIMAL(14,2),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

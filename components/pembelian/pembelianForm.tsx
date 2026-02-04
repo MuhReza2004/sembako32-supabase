@@ -63,7 +63,10 @@ export default function PembelianForm({
   const watchSupplierId = watch("supplier_id");
   const watchItems = watch("items");
 
-  const total = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
+  const total = watchItems.reduce(
+    (sum, i) => sum + Number(i.subtotal || 0),
+    0,
+  );
 
   const router = useRouter();
   const { showStatus } = useStatus();
@@ -72,7 +75,10 @@ export default function PembelianForm({
     useState<PembelianFormData | null>(null);
 
   const onSubmit = (data: PembelianFormData) => {
-    const totalAmount = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
+    const totalAmount = watchItems.reduce(
+      (sum, i) => sum + Number(i.subtotal || 0),
+      0,
+    );
     setPembelianToConfirm({
       ...data,
       total: totalAmount,
@@ -221,10 +227,12 @@ export default function PembelianForm({
                       onValueChange={(value) => {
                         const sp = supplierProduks.find((x) => x.id === value);
                         if (sp) {
-                          setValue(`items.${index}.harga`, sp.harga_beli);
+                          const harga = Number(sp.harga_beli || 0);
+                          const qty = Number(watchItems[index].qty || 0);
+                          setValue(`items.${index}.harga`, harga);
                           setValue(
                             `items.${index}.subtotal`,
-                            sp.harga_beli * watchItems[index].qty,
+                            harga * qty,
                           );
                         }
                         field.onChange(value);
@@ -253,14 +261,15 @@ export default function PembelianForm({
                 />
 
                 <Input
-                  type="text"
+                  type="number"
                   min={1}
+                  step={1}
                   {...register(`items.${index}.qty`, {
                     valueAsNumber: true,
                     onChange: (e) => {
-                      const qty = e.target.value;
-                      const harga = watchItems[index].harga;
-                      setValue(`items.${index}.subtotal`, Number(qty) * harga);
+                      const qty = Number(e.target.value || 0);
+                      const harga = Number(watchItems[index].harga || 0);
+                      setValue(`items.${index}.subtotal`, qty * harga);
                     },
                   })}
                   placeholder="Qty"

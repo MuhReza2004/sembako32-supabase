@@ -5,58 +5,65 @@ import { UserRole } from "@/app/types/user";
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 
+type AuthSession = Awaited<
+  ReturnType<typeof supabase.auth.getSession>
+>["data"]["session"];
+
 export function useUserRole() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          setLoading(true);
-          setError(null);
+    let isActive = true;
 
-          if (!session?.user) {
-            setRole(null);
-            setLoading(false);
-            return;
-          }
+    const loadRole = async (session: AuthSession) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-          // Use user.id for Supabase user object
-          const profile = await getUserById(session.user.id);
-          setRole(profile?.role ?? null);
-        } catch (err: any) {
-          console.error("Error fetching user role:", err);
+        if (!session?.user) {
+          if (isActive) setRole(null);
+          return;
+        }
+
+        const tokenRole =
+          (session.user as any)?.app_metadata?.role ??
+          (session.user as any)?.user_metadata?.role;
+
+        if (tokenRole) {
+          if (isActive) setRole(tokenRole);
+          return;
+        }
+
+        const profile = await getUserById(session.user.id);
+        if (isActive) setRole(profile?.role ?? null);
+      } catch (err: any) {
+        console.error("Error fetching user role:", err);
+        if (isActive) {
           setError(err?.message || "Gagal memuat role user");
           setRole(null);
-        } finally {
-          setLoading(false);
         }
-      },
-    );
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
 
     // Initial check for current session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-        try {
-            setLoading(true);
-            setError(null);
-            if (session?.user) {
-                const profile = await getUserById(session.user.id);
-                setRole(profile?.role ?? null);
-            } else {
-                setRole(null);
-            }
-        } catch (err: any) {
-            console.error("Error fetching initial user role:", err);
-            setError(err?.message || "Gagal memuat role user awal");
-            setRole(null);
-        } finally {
-            setLoading(false);
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      void loadRole(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip the initial event to avoid double fetch
+      if (event === "INITIAL_SESSION") return;
+      await loadRole(session);
     });
 
     return () => {
+      isActive = false;
       subscription.unsubscribe();
     };
   }, []);

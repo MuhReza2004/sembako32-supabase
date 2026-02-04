@@ -59,6 +59,8 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const tokenRole =
+    (user as any)?.app_metadata?.role ?? (user as any)?.user_metadata?.role;
 
   // If user is not logged in and tries to access protected routes, redirect to login
   if (!user && pathname.startsWith("/dashboard")) {
@@ -67,44 +69,55 @@ export async function middleware(request: NextRequest) {
 
   // If user is logged in and tries to access login/register, redirect to dashboard
   if (user && (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/register"))) {
-    // We need to know the user's role to redirect them correctly
+    if (tokenRole === "admin") {
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+    }
+    if (tokenRole && tokenRole !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard/staff", request.url));
+    }
+
+    // Fallback to DB lookup only if role isn't available in token
     const { data: userProfile } = await supabase
       .from("users")
       .select("role")
       .eq("id", user.id)
       .single();
-    
-    if (userProfile?.role === 'admin') {
+
+    if (userProfile?.role === "admin") {
       return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-    } else {
-      return NextResponse.redirect(new URL("/dashboard/staff", request.url));
     }
+    return NextResponse.redirect(new URL("/dashboard/staff", request.url));
   }
 
   // If user is trying to access admin dashboard, check their role
   if (user && pathname.startsWith("/dashboard/admin")) {
-    const { data: userProfile, error } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (error) {
-      console.error("Middleware DB Error:", error);
-      return NextResponse.redirect(new URL("/dashboard/staff?error=db_error", request.url));
+    if (tokenRole && tokenRole !== "admin") {
+      return NextResponse.redirect(new URL(`/dashboard/staff?error=not_admin&role=${tokenRole}`, request.url));
     }
 
-    if (!userProfile) {
-      return NextResponse.redirect(new URL("/dashboard/staff?error=no_profile", request.url));
-    }
+    if (!tokenRole) {
+      const { data: userProfile, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
-    if (userProfile.role !== "admin") {
-      return NextResponse.redirect(new URL(`/dashboard/staff?error=not_admin&role=${userProfile.role}`, request.url));
+      if (error) {
+        console.error("Middleware DB Error:", error);
+        return NextResponse.redirect(new URL("/dashboard/staff?error=db_error", request.url));
+      }
+
+      if (!userProfile) {
+        return NextResponse.redirect(new URL("/dashboard/staff?error=no_profile", request.url));
+      }
+
+      if (userProfile.role !== "admin") {
+        return NextResponse.redirect(
+          new URL(`/dashboard/staff?error=not_admin&role=${userProfile.role}`, request.url),
+        );
+      }
     }
   }
-
-  // Refresh session
-  await supabase.auth.getSession();
 
   return response;
 }

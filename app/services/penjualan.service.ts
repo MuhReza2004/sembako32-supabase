@@ -1,8 +1,35 @@
 import { supabase } from "@/app/lib/supabase";
 import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
 
+const DECIMAL_14_2_MAX = 999999999999.99;
+
+const assertValidMoney = (label: string, value: number) => {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} tidak valid`);
+  }
+  if (value > DECIMAL_14_2_MAX) {
+    throw new Error(
+      `${label} terlalu besar. Maksimal 999.999.999.999,99. Mohon pecah transaksi atau tingkatkan presisi kolom di database.`,
+    );
+  }
+  if (value < 0) {
+    throw new Error(`${label} tidak boleh negatif`);
+  }
+};
+
 // --- existing createPenjualan function ---
 export const createPenjualan = async (data: Penjualan) => {
+  assertValidMoney("Total penjualan", Number(data.total));
+  assertValidMoney("Total dibayar", Number(data.total_dibayar || 0));
+  assertValidMoney("Diskon", Number(data.diskon || 0));
+  assertValidMoney("Pajak", Number(data.pajak || 0));
+  assertValidMoney("Total akhir", Number(data.total_akhir || 0));
+
+  for (const item of data.items || []) {
+    assertValidMoney("Harga item", Number(item.harga));
+    assertValidMoney("Subtotal item", Number(item.subtotal));
+  }
+
   // 1. Validate stock for all items
   for (const item of data.items || []) {
     const { data: supplierProduk, error } = await supabase
@@ -30,18 +57,18 @@ export const createPenjualan = async (data: Penjualan) => {
     no_npb: data.no_npb,
     no_do: data.no_do,
     metode_pengambilan: data.metode_pengambilan,
-    total: data.total,
-    total_dibayar: data.total_dibayar || 0,
+    total: Number(data.total),
+    total_dibayar: Number(data.total_dibayar || 0),
     status: data.status,
     metode_pembayaran: data.metode_pembayaran,
     nomor_rekening: data.nomor_rekening,
     nama_bank: data.nama_bank,
     nama_pemilik_rekening: data.nama_pemilik_rekening,
     tanggal_jatuh_tempo: data.tanggal_jatuh_tempo,
-    diskon: data.diskon || 0,
+    diskon: Number(data.diskon || 0),
     pajak_enabled: data.pajak_enabled || false,
-    pajak: data.pajak || 0,
-    total_akhir: data.total_akhir,
+    pajak: Number(data.pajak || 0),
+    total_akhir: Number(data.total_akhir || 0),
   };
 
   const { data: penjualan, error: penjualanError } = await supabase
@@ -67,9 +94,9 @@ export const createPenjualan = async (data: Penjualan) => {
       .insert({
         penjualan_id: penjualan.id,
         supplier_produk_id: item.supplier_produk_id,
-        qty: item.qty,
-        harga: item.harga,
-        subtotal: item.subtotal,
+        qty: Number(item.qty),
+        harga: Number(item.harga),
+        subtotal: Number(item.subtotal),
       });
 
     if (detailError) {
@@ -302,6 +329,28 @@ export const updatePenjualanStatus = async (
 
 // --- existing updatePenjualan function ---
 export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
+  if (data.total !== undefined) {
+    assertValidMoney("Total penjualan", Number(data.total));
+  }
+  if (data.total_dibayar !== undefined) {
+    assertValidMoney("Total dibayar", Number(data.total_dibayar));
+  }
+  if (data.diskon !== undefined) {
+    assertValidMoney("Diskon", Number(data.diskon));
+  }
+  if (data.pajak !== undefined) {
+    assertValidMoney("Pajak", Number(data.pajak));
+  }
+  if (data.total_akhir !== undefined) {
+    assertValidMoney("Total akhir", Number(data.total_akhir));
+  }
+  if (data.items) {
+    for (const item of data.items) {
+      assertValidMoney("Harga item", Number(item.harga));
+      assertValidMoney("Subtotal item", Number(item.subtotal));
+    }
+  }
+
   const { data: currentPenjualan, error: fetchError } = await supabase
     .from("penjualan")
     .select("*, penjualan_detail(id, supplier_produk_id, qty)")
