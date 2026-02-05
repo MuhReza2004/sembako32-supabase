@@ -127,6 +127,8 @@ async function generatePdf(
   });
 
   const page = await browser.newPage();
+  await page.setDefaultNavigationTimeout(60000);
+  await page.setDefaultTimeout(60000);
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   await page.setExtraHTTPHeaders({
@@ -759,47 +761,113 @@ async function generatePdf(
   </html>
   `;
 
-  // Set content with multiple wait conditions
-  console.log("Setting page content for invoice:", penjualan.no_invoice);
-  await page.setContent(htmlContent, { 
-    waitUntil: ["load", "networkidle0", "domcontentloaded"],
-    timeout: 30000 
-  });
-  console.log("Page content set, starting font wait...");
+  console.log(`[INVOICE] Processing: ${penjualan.no_invoice}`);
+  console.log(`[INVOICE] HTML length: ${htmlContent.length} characters`);
+  console.log(`[INVOICE] Items count: ${(penjualan.items || []).length}`);
 
-  // Wait for fonts and content to be fully rendered
-  await waitForPdfFonts(page);
-  console.log("Font wait completed");
-
-  // Debug: Check if content is actually rendered
-  await debugPdfContent(page, penjualan.no_invoice);
-
-  // Additional stability check - ensure all elements are visible
-  await page.evaluate(() => {
-    return new Promise((resolve) => {
-      // Force a reflow to ensure all styles are applied
-      document.body.offsetHeight;
-      // Wait a bit more for any async rendering
-      setTimeout(resolve, 500);
+  try {
+    // Method: Use direct page content setting with explicit waits
+    console.log("[INVOICE] Clearing page...");
+    await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 10000 });
+    
+    console.log("[INVOICE] Setting HTML content...");
+    await page.setContent(htmlContent, {
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
     });
+    
+    console.log("[INVOICE] HTML content set, validating...");
+    
+    // Explicit wait for critical elements
+    const elementWaits = Promise.allSettled([
+      page.waitForSelector("body", { timeout: 10000 }),
+      page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
+      page.waitForFunction(
+        () => document.body?.textContent?.length || 0 > 100,
+        { timeout: 10000 }
+      ),
+    ]);
+    
+    await elementWaits;
+    console.log("[INVOICE] Element validation complete");
+
+  } catch (error) {
+    console.error("[INVOICE] Content setting failed:", error);
+    throw new Error(`Failed to set page content: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  // Wait for fonts and content
+  console.log("[INVOICE] Waiting for fonts...");
+  try {
+    await waitForPdfFonts(page);
+    console.log("[INVOICE] Font wait completed");
+  } catch (fontError) {
+    console.warn("[INVOICE] Font wait had issues (continuing):", fontError);
+  }
+  
+  // Debug: Check actual rendered content BEFORE PDF generation
+  console.log("[INVOICE] Running debug checks...");
+  const debugResult = await debugPdfContent(page, penjualan.no_invoice);
+  
+  if (debugResult && !debugResult.hasContent) {
+    console.error("[INVOICE] CRITICAL: Content not found in rendered page!");
+  }
+  if (debugResult && debugResult.tableCount === 0) {
+    console.error("[INVOICE] CRITICAL: No tables found in rendered HTML!");
+  }
+
+  // Final stability wait
+  console.log("[INVOICE] Final stability check...");
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // One more content check right before PDF
+  const finalCheck = await page.evaluate(() => {
+    return {
+      contentLength: document.body.textContent?.length || 0,
+      tableCount: document.querySelectorAll("table").length,
+      hasInvoiceElement: !!document.querySelector("[class*='invoice']"),
+    };
+  });
+  console.log("[INVOICE] Final check before PDF:", finalCheck);
+
+  console.log("[INVOICE] Starting PDF generation...");
+  
+  // Force final reflow before PDF
+  await page.evaluate(() => {
+    document.body.offsetHeight;
   });
 
-  console.log("Starting PDF generation...");
-  const pdfBuffer = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    margin: {
-      top: "20px",
-      right: "30px",
-      bottom: "20px",
-      left: "30px",
-    },
-  });
-  console.log("PDF generated, size:", pdfBuffer.length, "bytes");
+  try {
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      displayHeaderFooter: false,
+      margin: {
+        top: "20px",
+        right: "30px",
+        bottom: "20px",
+        left: "30px",
+      },
+    });
 
-  await browser.close();
+    console.log(`[INVOICE] PDF generated successfully: ${pdfBuffer.length} bytes`);
 
-  return Buffer.from(pdfBuffer);
+    if (pdfBuffer.length < 5000) {
+      console.warn(`[INVOICE] WARNING: PDF size suspiciously small (${pdfBuffer.length} bytes) - content may be missing`);
+    }
+
+    return Buffer.from(pdfBuffer);
+  } catch (pdfError) {
+    console.error("[INVOICE] PDF generation failed:", pdfError);
+    throw new Error(`PDF generation error: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`);
+  } finally {
+    try {
+      await browser.close();
+    } catch (closeError) {
+      console.warn("[INVOICE] Error closing browser:", closeError);
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -875,6 +943,9 @@ export async function POST(request: NextRequest) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("[INVOICE ERROR]", errorMessage);
+    console.error("[INVOICE STACK]", errorStack);
+    
     return NextResponse.json(
       {
         error: "Failed to generate PDF",
