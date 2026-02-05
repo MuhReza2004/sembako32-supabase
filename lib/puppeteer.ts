@@ -71,6 +71,9 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
   let defaultViewport: LaunchOptions["defaultViewport"];
 
   if (isServerless) {
+    if (!process.env.AWS_EXECUTION_ENV && !process.env.AWS_LAMBDA_JS_RUNTIME) {
+      process.env.AWS_EXECUTION_ENV = "AWS_Lambda_nodejs20.x";
+    }
     if (!executablePath) {
       const binPath = path.join(
         process.cwd(),
