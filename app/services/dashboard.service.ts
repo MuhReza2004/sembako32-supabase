@@ -87,7 +87,7 @@ export const getDashboardData = async (dateRange?: {
 const getTotalProducts = async (): Promise<number> => {
   const { count, error } = await supabase
     .from("produk")
-    .select("*", { count: "exact", head: true });
+    .select("id", { count: "planned", head: true });
 
   if (error) {
     console.error("Error counting products:", error);
@@ -100,7 +100,7 @@ const getTotalProducts = async (): Promise<number> => {
 const getTotalCustomers = async (): Promise<number> => {
   const { count, error } = await supabase
     .from("pelanggan")
-    .select("*", { count: "exact", head: true });
+    .select("id", { count: "planned", head: true });
 
   if (error) {
     console.error("Error counting customers:", error);
@@ -113,7 +113,7 @@ const getTotalCustomers = async (): Promise<number> => {
 const getTotalSuppliers = async (): Promise<number> => {
   const { count, error } = await supabase
     .from("suppliers")
-    .select("*", { count: "exact", head: true });
+    .select("id", { count: "planned", head: true });
 
   if (error) {
     console.error("Error counting suppliers:", error);
@@ -127,7 +127,7 @@ const getTotalSales = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<number> => {
-  let query = supabase.from("penjualan").select("*", { count: "exact", head: true });
+  let query = supabase.from("penjualan").select("id", { count: "planned", head: true });
 
   if (dateRange && dateRange.startDate && dateRange.endDate) {
     query = query
@@ -149,7 +149,7 @@ const getTotalPurchases = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<number> => {
-  let query = supabase.from("pembelian").select("*", { count: "exact", head: true });
+  let query = supabase.from("pembelian").select("id", { count: "planned", head: true });
 
   if (dateRange && dateRange.startDate && dateRange.endDate) {
     query = query
@@ -171,136 +171,75 @@ const getTotalRevenue = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<number> => {
-  let query = supabase.from("penjualan").select("total, status");
-
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc("sum_penjualan_total", {
+    p_start: dateRange?.startDate?.toISOString() || null,
+    p_end: dateRange?.endDate?.toISOString() || null,
+  });
 
   if (error) {
     console.error("Error fetching total revenue:", error);
     return 0;
   }
 
-  let total = 0;
-  data.forEach((sale) => {
-    if (sale.status !== "Batal") {
-      total += sale.total || 0;
-    }
-  });
-
-  return total;
+  return Number(data || 0);
 };
 
 const getTotalExpenses = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<number> => {
-  let query = supabase.from("pembelian").select("total, status");
-
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc("sum_pembelian_total", {
+    p_start: dateRange?.startDate?.toISOString() || null,
+    p_end: dateRange?.endDate?.toISOString() || null,
+  });
 
   if (error) {
     console.error("Error fetching total expenses:", error);
     return 0;
   }
 
-  let total = 0;
-  data.forEach((purchase) => {
-    if (purchase.status !== "Decline") {
-      total += purchase.total || 0;
-    }
-  });
-
-  return total;
+  return Number(data || 0);
 };
 
 const getTotalPiutang = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<{ count: number; total: number }> => {
-  let query = supabase
-    .from("penjualan")
-    .select("total, total_dibayar", { count: "exact" })
-    .eq("status", "Belum Lunas");
-
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
-  }
-
-  const { data, count, error } = await query;
+  const { data, error } = await supabase.rpc("piutang_summary", {
+    p_start: dateRange?.startDate?.toISOString() || null,
+    p_end: dateRange?.endDate?.toISOString() || null,
+  });
 
   if (error) {
     console.error("Error fetching total piutang:", error);
     return { count: 0, total: 0 };
   }
 
-  let totalNominal = 0;
-  data.forEach((sale) => {
-    const totalDibayar = sale.total_dibayar || 0;
-    const sisaTagihan = sale.total - totalDibayar;
-    totalNominal += sisaTagihan;
-  });
-
-  return { count: count || 0, total: totalNominal };
+  const row = Array.isArray(data) ? data[0] : data;
+  return { count: Number(row?.count || 0), total: Number(row?.total || 0) };
 };
 
 const getLowStockItems = async (): Promise<LowStockItem[]> => {
-  const { data: produkData, error: produkError } = await supabase
-    .from("produk")
-    .select("id, nama, kode");
-
-  if (produkError) {
-    console.error("Error fetching produk for low stock:", produkError);
-    return [];
-  }
-
-  const { data: supplierProdukData, error: supplierProdukError } = await supabase
-    .from("supplier_produk")
-    .select("produk_id, stok");
-
-  if (supplierProdukError) {
-    console.error("Error fetching supplier produk for low stock:", supplierProdukError);
-    return [];
-  }
-
-  const supplierProdukMap = new Map<string, number>(); // Map<produk_id, total_stok>
-  supplierProdukData.forEach((sp) => {
-    supplierProdukMap.set(sp.produk_id, (supplierProdukMap.get(sp.produk_id) || 0) + sp.stok);
-  });
-
-  const lowStockItems: LowStockItem[] = [];
   const minStock = 10;
+  const { data, error } = await supabase
+    .from("produk_stock_summary")
+    .select("id, nama, kode, total_stok")
+    .lt("total_stok", minStock)
+    .order("total_stok", { ascending: true })
+    .limit(5);
 
-  produkData.forEach((produk) => {
-    const currentStock = supplierProdukMap.get(produk.id) || 0;
+  if (error) {
+    console.error("Error fetching low stock items:", error);
+    return [];
+  }
 
-    if (currentStock < minStock) {
-      lowStockItems.push({
-        id: produk.id,
-        nama: produk.nama,
-        kode: produk.kode,
-        currentStock,
-        minStock,
-      });
-    }
-  });
-
-  return lowStockItems
-    .sort((a, b) => a.currentStock - b.currentStock)
-    .slice(0, 5);
+  return (data || []).map((row) => ({
+    id: row.id,
+    nama: row.nama,
+    kode: row.kode,
+    currentStock: row.total_stok || 0,
+    minStock,
+  }));
 };
 
 const getRecentSales = async (dateRange?: {

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useCachedList } from "@/hooks/useCachedList";
 
 interface Props {
   open: boolean;
@@ -40,8 +41,20 @@ export default function DialogEditHargaProduk({
   onStatusReport,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Produk[]>([]);
+  const {
+    data: suppliers,
+    error: suppliersError,
+  } = useCachedList<Supplier>(getAllSuppliers, {
+    enabled: open,
+    forceOnEnable: true,
+  });
+  const {
+    data: products,
+    error: productsError,
+  } = useCachedList<Produk>(getAllProduk, {
+    enabled: open,
+    forceOnEnable: true,
+  });
   const [displayPrice, setDisplayPrice] = useState("");
   const [displaySellPrice, setDisplaySellPrice] = useState("");
   const [margin, setMargin] = useState(0);
@@ -55,28 +68,16 @@ export default function DialogEditHargaProduk({
     stok: 0,
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [sups, prods] = await Promise.all([
-        getAllSuppliers(),
-        getAllProduk(),
-      ]);
-      setSuppliers(sups);
-      setProducts(prods);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+  useEffect(() => {
+    const supportError = suppliersError ?? productsError;
+    if (open && supportError) {
       onStatusReport({
-        message: "Gagal memuat data pendukung: " + errorMessage,
+        message: "Gagal memuat data pendukung: " + supportError.message,
         success: false,
       });
-      console.error("Failed to fetch support data:", error);
+      console.error("Failed to fetch support data:", supportError);
     }
-  }, [onStatusReport]);
-
-  useEffect(() => {
-    if (open) fetchData();
-  }, [open, fetchData]);
+  }, [open, suppliersError, productsError, onStatusReport]);
 
   useEffect(() => {
     if (item) {

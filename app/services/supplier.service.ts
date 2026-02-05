@@ -1,6 +1,15 @@
 import { supabase } from "../lib/supabase";
 import { Supplier, SupplierFormData } from "@/app/types/supplier";
 
+let supplierCache: Supplier[] | null = null;
+let supplierCacheAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+const invalidateSupplierCache = () => {
+  supplierCache = null;
+  supplierCacheAt = 0;
+};
+
 const generateSupplierCode = async (): Promise<string> => {
   const { data, error } = await supabase
     .from("suppliers")
@@ -60,13 +69,20 @@ export const addSupplier = async (
     console.error("Error adding supplier:", error);
     throw error;
   }
+  invalidateSupplierCache();
   return newSupplier.id;
 };
 
 /* ======================
    READ
 ====================== */
-export const getAllSuppliers = async (): Promise<Supplier[]> => {
+export const getAllSuppliers = async (
+  options: { force?: boolean } = {},
+): Promise<Supplier[]> => {
+  const now = Date.now();
+  if (!options.force && supplierCache && now - supplierCacheAt < CACHE_TTL_MS) {
+    return supplierCache;
+  }
   const { data, error } = await supabase
     .from("suppliers")
     .select("*");
@@ -75,7 +91,9 @@ export const getAllSuppliers = async (): Promise<Supplier[]> => {
     console.error("Error fetching all suppliers:", error);
     return [];
   }
-  return data as Supplier[];
+  supplierCache = data as Supplier[];
+  supplierCacheAt = now;
+  return supplierCache;
 };
 
 export const getSupplierById = async (id: string): Promise<Supplier | null> => {
@@ -111,6 +129,7 @@ export const updateSupplier = async (
     console.error("Error updating supplier:", error);
     throw error;
   }
+  invalidateSupplierCache();
 };
 
 /* ======================
@@ -126,4 +145,5 @@ export const deleteSupplier = async (id: string): Promise<void> => {
     console.error("Error deleting supplier:", error);
     throw error;
   }
+  invalidateSupplierCache();
 };

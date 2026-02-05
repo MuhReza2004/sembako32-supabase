@@ -14,6 +14,7 @@ import { PembelianDetail } from "@/app/types/pembelian";
 import { getAllSuppliers } from "@/app/services/supplier.service";
 import { Supplier } from "@/app/types/supplier";
 import { Button } from "../ui/button";
+import { useCachedList } from "@/hooks/useCachedList";
 
 interface Props {
   open: boolean;
@@ -27,19 +28,31 @@ export default function DialogDetailPembelian({
   pembelian,
 }: Props) {
   const [details, setDetails] = useState<PembelianDetail[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const {
+    data: suppliers,
+    error: suppliersError,
+  } = useCachedList<Supplier>(getAllSuppliers, {
+    enabled: open,
+    forceOnEnable: true,
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       if (pembelian && pembelian.id) {
         const det = await getPembelianDetails(pembelian.id);
-        const sups = await getAllSuppliers();
         setDetails(det);
-        setSuppliers(sups);
       }
     };
-    fetchData();
-  }, [pembelian]);
+    if (open) {
+      fetchData();
+    }
+  }, [pembelian, open]);
+
+  useEffect(() => {
+    if (open && suppliersError) {
+      console.error("Failed to fetch suppliers:", suppliersError);
+    }
+  }, [open, suppliersError]);
 
   if (!pembelian) return null;
 

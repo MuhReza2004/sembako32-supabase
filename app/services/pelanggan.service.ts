@@ -2,6 +2,15 @@ import { supabase } from "../lib/supabase";
 import { Pelanggan, PelangganFormData } from "../types/pelanggan";
 import { v4 as uuidv4 } from 'uuid'; // For temporary ID generation
 
+let pelangganCache: Pelanggan[] | null = null;
+let pelangganCacheAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+const invalidatePelangganCache = () => {
+  pelangganCache = null;
+  pelangganCacheAt = 0;
+};
+
 /* =============================
    AUTO GENERATE ID PELANGGAN
    ============================= */
@@ -44,13 +53,20 @@ export const addpelanggan = async (
     console.error("Error adding pelanggan:", error);
     throw error;
   }
+  invalidatePelangganCache();
   return newPelanggan.id;
 };
 
 /* =============================
    READ
    ============================= */
-export const getAllPelanggan = async (): Promise<Pelanggan[]> => {
+export const getAllPelanggan = async (
+  options: { force?: boolean } = {},
+): Promise<Pelanggan[]> => {
+  const now = Date.now();
+  if (!options.force && pelangganCache && now - pelangganCacheAt < CACHE_TTL_MS) {
+    return pelangganCache;
+  }
   const { data, error } = await supabase
     .from("pelanggan")
     .select("*")
@@ -60,7 +76,9 @@ export const getAllPelanggan = async (): Promise<Pelanggan[]> => {
     console.error("Error fetching all pelanggan:", error);
     return [];
   }
-  return data as Pelanggan[];
+  pelangganCache = data as Pelanggan[];
+  pelangganCacheAt = now;
+  return pelangganCache;
 };
 
 export const getPelangganById = async (
@@ -114,6 +132,7 @@ export const updatePelanggan = async (
     console.error("Error updating pelanggan:", error);
     throw error;
   }
+  invalidatePelangganCache();
 };
 
 export const deletePelanggan = async (id: string): Promise<void> => {
@@ -126,4 +145,5 @@ export const deletePelanggan = async (id: string): Promise<void> => {
     console.error("Error deleting pelanggan:", error);
     throw error;
   }
+  invalidatePelangganCache();
 };

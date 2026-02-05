@@ -4,29 +4,12 @@ import { rateLimit } from "@/app/lib/rate-limit";
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-type ProdukRow = {
+type InventoryRow = {
   id: string;
   stok?: number;
+  totalmasuk?: number;
+  totalkeluar?: number;
   [key: string]: unknown;
-};
-
-type SupplierProdukRow = {
-  id: string;
-  produk_id: string;
-  stok?: number;
-};
-
-type DetailRow = {
-  supplier_produk_id: string;
-  qty: number;
-};
-
-type PembelianRow = {
-  items?: DetailRow[];
-};
-
-type PenjualanRow = {
-  items?: DetailRow[];
 };
 
 export async function GET(request: NextRequest) {
@@ -50,71 +33,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data: produkData, error: produkError } = await supabaseAdmin
-      .from("produk")
+    const { data, error } = await supabaseAdmin
+      .from("inventory_report")
       .select("*");
-    if (produkError) throw produkError;
+    if (error) throw error;
 
-    const { data: supplierProdukData, error: supplierProdukError } =
-      await supabaseAdmin.from("supplier_produk").select("*");
-    if (supplierProdukError) throw supplierProdukError;
+    const mapped = (data as InventoryRow[]).map((row) => ({
+      ...row,
+      stok: row.stok ?? 0,
+      totalMasuk: row.totalmasuk ?? 0,
+      totalKeluar: row.totalkeluar ?? 0,
+    }));
 
-    const { data: pembelianData, error: pembelianError } = await supabaseAdmin
-      .from("pembelian")
-      .select("*, items:pembelian_detail(*)")
-      .eq("status", "Completed");
-    if (pembelianError) throw pembelianError;
-
-    const { data: penjualanData, error: penjualanError } = await supabaseAdmin
-      .from("penjualan")
-      .select("*, items:penjualan_detail(*)")
-      .neq("status", "Batal");
-    if (penjualanError) throw penjualanError;
-
-    const inventory = (produkData as ProdukRow[]).map((p) => {
-      const relatedSupplierProduk = (supplierProdukData as SupplierProdukRow[]).filter(
-        (sp) => sp.produk_id === p.id,
-      );
-
-      const totalMasuk = (pembelianData as PembelianRow[] || []).reduce(
-        (sum: number, beli) => {
-          return (
-            sum +
-            (beli.items || []).reduce((itemSum: number, item) => {
-              const isRelated = relatedSupplierProduk.some(
-                (sp) => sp.id === item.supplier_produk_id,
-              );
-              return isRelated ? itemSum + item.qty : itemSum;
-            }, 0)
-          );
-        },
-        0,
-      );
-
-      const totalKeluar = (penjualanData as PenjualanRow[] || []).reduce(
-        (sum: number, jual) => {
-          return (
-            sum +
-            (jual.items || []).reduce((itemSum: number, item) => {
-              const isRelated = relatedSupplierProduk.some(
-                (sp) => sp.id === item.supplier_produk_id,
-              );
-              return isRelated ? itemSum + item.qty : itemSum;
-            }, 0)
-          );
-        },
-        0,
-      );
-
-      const currentStok = relatedSupplierProduk.reduce(
-        (sum: number, sp) => sum + (sp.stok || 0),
-        0,
-      );
-
-      return { ...p, stok: currentStok, totalMasuk, totalKeluar };
-    });
-
-    return NextResponse.json(inventory);
+    return NextResponse.json(mapped);
   } catch (err: unknown) {
     const errorMessage =
       err instanceof Error ? err.message : "An unknown error occurred";

@@ -12,32 +12,49 @@ import { escapeHtml } from "@/helper/escapeHtml";
 
 type PembelianDetailRow = {
   id: string;
-  pembelian_id: string;
-  supplier_produk_id: string;
+  pembelian_id?: string;
+  supplier_produk_id?: string;
   qty: number;
   harga: number;
   subtotal: number;
-  created_at: string;
+  created_at?: string;
   supplier_produk?: {
-    produk?: { nama?: string; satuan?: string };
-  };
+    produk?: { nama?: string; satuan?: string } | { nama?: string; satuan?: string }[];
+  } | { produk?: { nama?: string; satuan?: string } | { nama?: string; satuan?: string }[] }[];
 };
 
 type PembelianRow = Pembelian & {
-  supplier?: { nama?: string } | null;
+  supplier?: { nama?: string } | { nama?: string }[] | null;
   items?: PembelianDetailRow[];
 };
 
 // This function is for server-side use with admin privileges
-const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
-  const { data, error } = await supabaseAdmin
+const getAllPembelianAdmin = async (params: {
+  startDate?: string | null;
+  endDate?: string | null;
+  pembelianId?: string | null;
+}): Promise<Pembelian[]> => {
+  let query = supabaseAdmin
     .from("pembelian")
     .select(
       `
-      *,
+      id,
+      supplier_id,
+      tanggal,
+      no_do,
+      no_npb,
+      invoice,
+      total,
+      status,
+      metode_pembayaran,
+      nama_bank,
+      nama_pemilik_rekening,
+      nomor_rekening,
+      created_at,
+      updated_at,
       supplier:supplier_id(nama),
       items:pembelian_detail(
-        id, qty, harga, subtotal,
+        id, pembelian_id, supplier_produk_id, qty, harga, subtotal, created_at,
         supplier_produk:supplier_produk_id(
           id,
           produk:produk_id(nama, satuan)
@@ -47,6 +64,17 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
     )
     .order("tanggal", { ascending: false });
 
+  if (params.pembelianId) {
+    query = query.eq("id", params.pembelianId);
+  }
+  if (params.startDate) {
+    query = query.gte("tanggal", params.startDate);
+  }
+  if (params.endDate) {
+    query = query.lte("tanggal", params.endDate);
+  }
+
+  const { data, error } = await query;
   if (error) {
     console.error("Error fetching purchase data for report:", error);
     throw error;
@@ -68,18 +96,31 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
       status: item.status,
       created_at: item.created_at,
       updated_at: item.updated_at,
-      namaSupplier: item.supplier?.nama || "Supplier Tidak Diketahui",
+      namaSupplier: Array.isArray(item.supplier)
+        ? item.supplier[0]?.nama || "Supplier Tidak Diketahui"
+        : item.supplier?.nama || "Supplier Tidak Diketahui",
       items: (item.items || []).map((detail: PembelianDetailRow) => ({
         id: detail.id,
-        pembelian_id: detail.pembelian_id,
-        supplier_produk_id: detail.supplier_produk_id,
+        pembelian_id: detail.pembelian_id || item.id,
+        supplier_produk_id: detail.supplier_produk_id || "",
         qty: detail.qty,
         harga: detail.harga,
         subtotal: detail.subtotal,
-        created_at: detail.created_at,
-        namaProduk:
-          detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-        satuan: detail.supplier_produk?.produk?.satuan || "",
+        created_at: detail.created_at || item.created_at,
+        namaProduk: (() => {
+          const sp = detail.supplier_produk;
+          const spObj = Array.isArray(sp) ? sp[0] : sp;
+          const prod = spObj?.produk;
+          const prodObj = Array.isArray(prod) ? prod[0] : prod;
+          return prodObj?.nama || "Produk Tidak Ditemukan";
+        })(),
+        satuan: (() => {
+          const sp = detail.supplier_produk;
+          const spObj = Array.isArray(sp) ? sp[0] : sp;
+          const prod = spObj?.produk;
+          const prodObj = Array.isArray(prod) ? prod[0] : prod;
+          return prodObj?.satuan || "";
+        })(),
       })),
     }),
   );
@@ -128,22 +169,11 @@ export async function POST(request: NextRequest) {
     const logoBase64 = logoBuffer.toString("base64");
     const logoSrc = `data:image/svg+xml;base64,${logoBase64}`;
 
-    const allPurchases = await getAllPembelianAdmin();
-
-    let filteredPurchases = allPurchases;
-    if (pembelianId) {
-      filteredPurchases = filteredPurchases.filter((p) => p.id === pembelianId);
-    }
-    if (startDate) {
-      filteredPurchases = filteredPurchases.filter(
-        (p) => new Date(p.tanggal) >= new Date(startDate),
-      );
-    }
-    if (endDate) {
-      filteredPurchases = filteredPurchases.filter(
-        (p) => new Date(p.tanggal) <= new Date(endDate),
-      );
-    }
+    const filteredPurchases = await getAllPembelianAdmin({
+      startDate,
+      endDate,
+      pembelianId,
+    });
 
     const totalPurchases = filteredPurchases.length;
     const totalCost = filteredPurchases.reduce((sum, p) => sum + p.total, 0);

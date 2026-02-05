@@ -7,6 +7,7 @@ import PiutangTable from "../../../../../components/Piutang/PiutangTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 export default function PiutangPage() {
   const [piutang, setPiutang] = useState<Penjualan[]>([]);
@@ -64,7 +65,7 @@ export default function PiutangPage() {
           )
         )
       `,
-        { count: "exact" },
+        { count: "planned" },
       )
       .eq("status", "Belum Lunas")
       .order("tanggal", { ascending: false })
@@ -96,6 +97,8 @@ export default function PiutangPage() {
     setLoading(false);
   }, [page, perPage, showStatus]);
 
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchPiutang);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       void fetchPiutang();
@@ -115,7 +118,7 @@ export default function PiutangPage() {
             payload.new?.status === "Belum Lunas" ||
             payload.old?.status === "Belum Lunas"
           ) {
-            fetchPiutang();
+            scheduleRefresh();
           }
         },
       )
@@ -125,7 +128,7 @@ export default function PiutangPage() {
       clearTimeout(timer);
       supabase.removeChannel(channel);
     };
-  }, [fetchPiutang]);
+  }, [fetchPiutang, scheduleRefresh]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);

@@ -199,6 +199,159 @@ CREATE INDEX idx_penjualan_no_invoice ON penjualan(no_invoice);
 CREATE INDEX idx_pembelian_detail_pembelian_id ON pembelian_detail(pembelian_id);
 CREATE INDEX idx_penjualan_detail_penjualan_id ON penjualan_detail(penjualan_id);
 CREATE INDEX idx_riwayat_pembayaran_penjualan_id ON riwayat_pembayaran(penjualan_id);
+CREATE INDEX idx_penjualan_created_at ON penjualan(created_at);
+CREATE INDEX idx_pembelian_created_at ON pembelian(created_at);
+CREATE INDEX idx_penjualan_status ON penjualan(status);
+CREATE INDEX idx_pembelian_status ON pembelian(status);
+CREATE INDEX idx_penjualan_created_by ON penjualan(created_by);
+CREATE INDEX idx_penjualan_detail_supplier_produk_id ON penjualan_detail(supplier_produk_id);
+CREATE INDEX idx_pembelian_detail_supplier_produk_id ON pembelian_detail(supplier_produk_id);
+
+-- Inventory report view (aggregated)
+CREATE OR REPLACE VIEW inventory_report AS
+SELECT
+  p.id,
+  p.kode,
+  p.nama,
+  p.kategori,
+  p.satuan,
+  p.status,
+  p.created_at,
+  p.updated_at,
+  COALESCE(sp_sum.total_stok, 0) AS stok,
+  COALESCE(pb_sum.total_masuk, 0) AS totalmasuk,
+  COALESCE(pj_sum.total_keluar, 0) AS totalkeluar
+FROM produk p
+LEFT JOIN (
+  SELECT produk_id, SUM(stok) AS total_stok
+  FROM supplier_produk
+  GROUP BY produk_id
+) sp_sum ON sp_sum.produk_id = p.id
+LEFT JOIN (
+  SELECT sp.produk_id, SUM(pd.qty) AS total_masuk
+  FROM pembelian_detail pd
+  JOIN pembelian pb ON pb.id = pd.pembelian_id
+  JOIN supplier_produk sp ON sp.id = pd.supplier_produk_id
+  WHERE pb.status = 'Completed'
+  GROUP BY sp.produk_id
+) pb_sum ON pb_sum.produk_id = p.id
+LEFT JOIN (
+  SELECT sp.produk_id, SUM(jd.qty) AS total_keluar
+  FROM penjualan_detail jd
+  JOIN penjualan j ON j.id = jd.penjualan_id
+  JOIN supplier_produk sp ON sp.id = jd.supplier_produk_id
+  WHERE j.status <> 'Batal'
+  GROUP BY sp.produk_id
+) pj_sum ON pj_sum.produk_id = p.id;
+
+-- Produk stock summary view
+CREATE OR REPLACE VIEW produk_stock_summary AS
+SELECT
+  p.id,
+  p.nama,
+  p.kode,
+  COALESCE(SUM(sp.stok), 0) AS total_stok
+FROM produk p
+LEFT JOIN supplier_produk sp ON sp.produk_id = p.id
+GROUP BY p.id, p.nama, p.kode;
+
+-- Stock adjustment helpers (atomic)
+CREATE OR REPLACE FUNCTION public.decrease_stock(
+  p_supplier_produk_id UUID,
+  p_qty INTEGER
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  new_stok INTEGER;
+BEGIN
+  UPDATE supplier_produk
+  SET stok = stok - p_qty
+  WHERE id = p_supplier_produk_id AND stok >= p_qty
+  RETURNING stok INTO new_stok;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Stok tidak mencukupi atau produk tidak ditemukan';
+  END IF;
+
+  RETURN new_stok;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.increase_stock(
+  p_supplier_produk_id UUID,
+  p_qty INTEGER
+)
+RETURNS INTEGER
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE supplier_produk
+  SET stok = stok + p_qty
+  WHERE id = p_supplier_produk_id
+  RETURNING stok;
+$$;
+
+-- Dashboard helpers
+CREATE OR REPLACE FUNCTION public.sum_penjualan_total(
+  p_start TIMESTAMPTZ,
+  p_end TIMESTAMPTZ
+)
+RETURNS NUMERIC
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(SUM(total), 0)
+  FROM penjualan
+  WHERE status <> 'Batal'
+    AND (p_start IS NULL OR created_at >= p_start)
+    AND (p_end IS NULL OR created_at <= p_end);
+$$;
+
+CREATE OR REPLACE FUNCTION public.sum_pembelian_total(
+  p_start TIMESTAMPTZ,
+  p_end TIMESTAMPTZ
+)
+RETURNS NUMERIC
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(SUM(total), 0)
+  FROM pembelian
+  WHERE status <> 'Decline'
+    AND (p_start IS NULL OR created_at >= p_start)
+    AND (p_end IS NULL OR created_at <= p_end);
+$$;
+
+CREATE OR REPLACE FUNCTION public.piutang_summary(
+  p_start TIMESTAMPTZ,
+  p_end TIMESTAMPTZ
+)
+RETURNS TABLE(count BIGINT, total NUMERIC)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    COUNT(*)::BIGINT AS count,
+    COALESCE(SUM(total - COALESCE(total_dibayar, 0)), 0) AS total
+  FROM penjualan
+  WHERE status = 'Belum Lunas'
+    AND (p_start IS NULL OR created_at >= p_start)
+    AND (p_end IS NULL OR created_at <= p_end);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.sum_penjualan_total(TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sum_pembelian_total(TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.piutang_summary(TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.increase_stock(UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.decrease_stock(UUID, INTEGER) TO authenticated;
 
 -- Row Level Security (RLS) Policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;

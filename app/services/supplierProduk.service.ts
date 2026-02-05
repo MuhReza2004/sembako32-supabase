@@ -6,6 +6,10 @@ type SupplierProdukRow = SupplierProduk & {
   produk?: { nama?: string; satuan?: string } | null;
 };
 
+let supplierProdukCache: SupplierProduk[] | null = null;
+let supplierProdukCacheAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 /* ======================
    CREATE
 ====================== */
@@ -35,7 +39,17 @@ export const addSupplierProduk = async (
 /* ======================
    READ
 ====================== */
-export const getAllSupplierProduk = async (): Promise<SupplierProduk[]> => {
+export const getAllSupplierProduk = async (
+  options: { force?: boolean } = {},
+): Promise<SupplierProduk[]> => {
+  const now = Date.now();
+  if (
+    !options.force &&
+    supplierProdukCache &&
+    now - supplierProdukCacheAt < CACHE_TTL_MS
+  ) {
+    return supplierProdukCache;
+  }
   const { data, error } = await supabase
     .from("supplier_produk")
     .select(
@@ -65,7 +79,7 @@ export const getAllSupplierProduk = async (): Promise<SupplierProduk[]> => {
     throw error;
   }
 
-  return (data as SupplierProdukRow[]).map((item) => ({
+  supplierProdukCache = (data as SupplierProdukRow[]).map((item) => ({
     id: item.id,
     supplier_id: item.supplier_id,
     produk_id: item.produk_id,
@@ -77,6 +91,8 @@ export const getAllSupplierProduk = async (): Promise<SupplierProduk[]> => {
     produkNama: item.produk?.nama,
     produkSatuan: item.produk?.satuan,
   }));
+  supplierProdukCacheAt = now;
+  return supplierProdukCache;
 };
 
 export const getSupplierProdukById = async (

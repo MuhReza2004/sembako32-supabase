@@ -12,10 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   cancelPenjualan as serviceCancelPenjualan,
-  getPenjualanForCurrentUser,
+  getPenjualanPageForCurrentUser,
 } from "@/app/services/penjualan.service";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function StaffPenjualanPage() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function StaffPenjualanPage() {
     string | null
   >(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0);
@@ -42,34 +45,15 @@ export default function StaffPenjualanPage() {
     setIsLoading(true);
 
     try {
-      const allData = await getPenjualanForCurrentUser();
-
-      let filteredData = allData;
-      if (startDate && endDate) {
-        filteredData = allData.filter((item) => {
-          const itemDate = new Date(item.tanggal);
-          const start = new Date(startDate);
-          const end = new Date(endDate);
-          return itemDate >= start && itemDate <= end;
-        });
-      }
-
-      if (searchTerm) {
-        filteredData = filteredData.filter(
-          (item) =>
-            item.no_invoice?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.namaPelanggan
-              ?.toLowerCase()
-              .includes(searchTerm.toLowerCase()),
-        );
-      }
-
-      const from = page * perPage;
-      const to = from + perPage;
-      const paginatedData = filteredData.slice(from, to);
-
-      setData(paginatedData);
-      setTotalCount(filteredData.length);
+      const result = await getPenjualanPageForCurrentUser({
+        page,
+        perPage,
+        searchTerm: debouncedSearch,
+        startDate,
+        endDate,
+      });
+      setData(result.data);
+      setTotalCount(result.count);
     } catch (err: unknown) {
       console.error("Error fetching sales:", err);
       showStatus({
@@ -81,7 +65,9 @@ export default function StaffPenjualanPage() {
       setData([]);
     }
     setIsLoading(false);
-  }, [page, perPage, startDate, endDate, searchTerm, showStatus]);
+  }, [page, perPage, startDate, endDate, debouncedSearch, showStatus]);
+
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchData);
 
   useEffect(() => {
     fetchData();
@@ -96,7 +82,7 @@ export default function StaffPenjualanPage() {
           table: "penjualan",
         },
         () => {
-          fetchData();
+          scheduleRefresh();
         },
       )
       .subscribe();
@@ -104,7 +90,11 @@ export default function StaffPenjualanPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchData]);
+  }, [fetchData, scheduleRefresh]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm, startDate, endDate]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);

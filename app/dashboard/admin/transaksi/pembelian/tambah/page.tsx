@@ -7,14 +7,16 @@ import Link from "next/link";
 export default async function PageTambahPembelian() {
   const { data: suppliers, error: suppliersError } = await supabaseAdmin
     .from("suppliers")
-    .select("*")
+    .select("id, nama")
     .order("nama", { ascending: true });
   const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
-    .select("*")
+    .select("id, nama")
     .order("nama", { ascending: true });
   const { data: supplierProduks, error: supplierProduksError } =
-    await supabaseAdmin.from("supplier_produk").select("*");
+    await supabaseAdmin
+      .from("supplier_produk")
+      .select("id, supplier_id, produk_id, harga_beli, harga_jual, stok");
 
   console.log("Suppliers fetched:", suppliers);
   console.log("Suppliers error:", suppliersError);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { SupplierProduk } from "@/app/types/supplier";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { getAllProduk } from "@/app/services/produk.service";
 import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
+import { useCachedList } from "@/hooks/useCachedList";
 
 interface Props {
   data: SupplierProduk[];
@@ -23,20 +24,8 @@ export default function TabelHargaProduk({
   onDelete,
   onAddProduct,
 }: Props) {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Produk[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const [sups, prods] = await Promise.all([
-        getAllSuppliers(),
-        getAllProduk(),
-      ]);
-      setSuppliers(sups);
-      setProducts(prods);
-    };
-    fetchData();
-  }, []);
+  const { data: suppliers } = useCachedList<Supplier>(getAllSuppliers);
+  const { data: products } = useCachedList<Produk>(getAllProduk);
 
   const getSupplierName = (supplierId: string) => {
     const supplier = suppliers.find((s) => s.id === supplierId);
@@ -49,15 +38,19 @@ export default function TabelHargaProduk({
   };
 
   // Group data by supplier
-  const groupedData = data.reduce(
-    (acc, item) => {
-      if (!acc[item.supplier_id]) {
-        acc[item.supplier_id] = [];
-      }
-      acc[item.supplier_id].push(item);
-      return acc;
-    },
-    {} as Record<string, SupplierProduk[]>,
+  const groupedData = useMemo(
+    () =>
+      data.reduce(
+        (acc, item) => {
+          if (!acc[item.supplier_id]) {
+            acc[item.supplier_id] = [];
+          }
+          acc[item.supplier_id].push(item);
+          return acc;
+        },
+        {} as Record<string, SupplierProduk[]>,
+      ),
+    [data],
   );
 
   return (

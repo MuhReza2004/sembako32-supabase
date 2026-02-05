@@ -10,10 +10,22 @@ import { Produk } from "@/app/types/produk";
 import { SupplierProduk } from "@/app/types/supplier";
 import { Pelanggan } from "@/app/types/pelanggan";
 
+type ProdukOption = Pick<Produk, "id" | "nama">;
+type PelangganOption = Pick<
+  Pelanggan,
+  "id" | "nama_pelanggan" | "kode_pelanggan" | "nama_toko"
+>;
+type SupplierProdukOption = Pick<
+  SupplierProduk,
+  "id" | "supplier_id" | "produk_id" | "harga_jual" | "stok"
+> & { produk?: ProdukOption | ProdukOption[] };
+
 export default function PageTambahPenjualanStaff() {
-  const [products, setProducts] = useState<Produk[]>([]);
-  const [supplierProduks, setSupplierProduks] = useState<SupplierProduk[]>([]);
-  const [pelangganList, setPelangganList] = useState<Pelanggan[]>([]);
+  const [products, setProducts] = useState<ProdukOption[]>([]);
+  const [supplierProduks, setSupplierProduks] = useState<SupplierProdukOption[]>(
+    [],
+  );
+  const [pelangganList, setPelangganList] = useState<PelangganOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,18 +36,20 @@ export default function PageTambahPenjualanStaff() {
       try {
         const [{ data: productsData, error: productsError }, { data: supplierProdukData, error: supplierProdukError }, { data: pelangganData, error: pelangganError }] =
           await Promise.all([
-            supabase.from("produk").select("*").order("nama", { ascending: true }),
-            supabase.from("supplier_produk").select("*, produk(*)"),
-            supabase.from("pelanggan").select("*"),
+            supabase.from("produk").select("id, nama").order("nama", { ascending: true }),
+            supabase
+              .from("supplier_produk")
+              .select("id, supplier_id, produk_id, harga_jual, stok, produk (id, nama)"),
+            supabase.from("pelanggan").select("id, nama_pelanggan, kode_pelanggan, nama_toko"),
           ]);
 
         if (productsError || supplierProdukError || pelangganError) {
           throw new Error("Gagal memuat data master untuk penjualan.");
         }
 
-        setProducts((productsData as Produk[]) || []);
-        setSupplierProduks((supplierProdukData as SupplierProduk[]) || []);
-        setPelangganList((pelangganData as Pelanggan[]) || []);
+        setProducts((productsData as ProdukOption[]) || []);
+        setSupplierProduks((supplierProdukData as SupplierProdukOption[]) || []);
+        setPelangganList((pelangganData as PelangganOption[]) || []);
 
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Terjadi kesalahan.");

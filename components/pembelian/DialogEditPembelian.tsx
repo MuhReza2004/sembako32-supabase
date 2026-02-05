@@ -25,6 +25,7 @@ import { formatRupiah } from "@/helper/format";
 import { X, Check, Package } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useCachedList } from "@/hooks/useCachedList";
 
 interface Props {
   open: boolean;
@@ -46,8 +47,14 @@ export default function DialogEditPembelian({
   const [invoice, setInvoice] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [details, setDetails] = useState<PembelianDetail[]>([]);
-  const [products, setProducts] = useState<Produk[]>([]);
   const [supplierProduks, setSupplierProduks] = useState<SupplierProduk[]>([]);
+  const {
+    data: products,
+    error: productsError,
+  } = useCachedList<Produk>(getAllProduk, {
+    enabled: open,
+    forceOnEnable: true,
+  });
 
   const confirm = useConfirm();
 
@@ -59,10 +66,8 @@ export default function DialogEditPembelian({
         setInvoice(pembelian.invoice || "");
         try {
           const det = await getPembelianDetails(pembelian.id);
-          const prods = await getAllProduk();
           const supProds = await getAllSupplierProduk();
           setDetails(det);
-          setProducts(prods);
           setSupplierProduks(supProds);
         } catch (error: unknown) {
           const errorMessage =
@@ -80,6 +85,15 @@ export default function DialogEditPembelian({
       fetchData();
     }
   }, [pembelian, open, onOpenChange, onStatusReport]);
+
+  useEffect(() => {
+    if (open && productsError) {
+      onStatusReport({
+        message: "Gagal memuat data produk: " + productsError.message,
+        success: false,
+      });
+    }
+  }, [open, productsError, onStatusReport]);
 
   const handleSubmit = async () => {
     if (!pembelian || !pembelian.id) return;

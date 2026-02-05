@@ -13,6 +13,8 @@ import { Plus, Search } from "lucide-react";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 export default function ProdukAdminPage() {
   const [products, setProducts] = useState<Produk[]>([]);
@@ -34,6 +36,7 @@ export default function ProdukAdminPage() {
 
   // Filter & Search
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -43,12 +46,14 @@ export default function ProdukAdminPage() {
 
     let queryBuilder = supabase
       .from("produk")
-      .select("*", { count: "exact" })
+      .select("id, kode, nama, kategori, satuan, stok, status, created_at, updated_at", {
+        count: "planned",
+      })
       .order("created_at", { ascending: false });
 
-    if (searchTerm) {
+    if (debouncedSearch) {
       queryBuilder = queryBuilder.or(
-        `kode.ilike.%${searchTerm}%,nama.ilike.%${searchTerm}%`
+        `kode.ilike.%${debouncedSearch}%,nama.ilike.%${debouncedSearch}%`
       );
     }
 
@@ -66,7 +71,9 @@ export default function ProdukAdminPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm, showStatus]);
+  }, [page, perPage, debouncedSearch, showStatus]);
+
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchProducts);
 
   // Load produk in real-time with pagination
   useEffect(() => {
@@ -83,7 +90,7 @@ export default function ProdukAdminPage() {
           table: "produk",
         },
         () => {
-          fetchProducts(); // Re-fetch the current page on any change
+          scheduleRefresh(); // Batch refresh on any change
         }
       )
       .subscribe();
@@ -92,7 +99,11 @@ export default function ProdukAdminPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchProducts]);
+  }, [fetchProducts, scheduleRefresh]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);

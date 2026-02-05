@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import { Supplier } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { formatRupiah } from "@/helper/format";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useCachedList } from "@/hooks/useCachedList";
 
 interface Props {
   open: boolean;
@@ -45,8 +46,20 @@ export default function DialogTambahHargaProduk({
   preselectedSupplierId,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Produk[]>([]);
+  const {
+    data: suppliers,
+    error: suppliersError,
+  } = useCachedList<Supplier>(getAllSuppliers, {
+    enabled: open,
+    forceOnEnable: true,
+  });
+  const {
+    data: products,
+    error: productsError,
+  } = useCachedList<Produk>(getAllProduk, {
+    enabled: open,
+    forceOnEnable: true,
+  });
   const [displayPrice, setDisplayPrice] = useState("");
   const [displaySellPrice, setDisplaySellPrice] = useState("");
   const [margin, setMargin] = useState(0);
@@ -62,19 +75,16 @@ export default function DialogTambahHargaProduk({
     stok: 0,
   });
 
-  const filteredProducts = products.filter((p) =>
-    p.nama.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((p) =>
+        p.nama.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [products, searchQuery],
   );
 
   useEffect(() => {
-    const fetchData = async () => {
-      const [sups, prods] = await Promise.all([
-        getAllSuppliers(),
-        getAllProduk(),
-      ]);
-      setSuppliers(sups);
-      setProducts(prods);
-
+    if (open) {
       // Reset form data when dialog opens
       setFormData({
         supplier_id: preselectedSupplierId || "",
@@ -87,11 +97,18 @@ export default function DialogTambahHargaProduk({
       setDisplaySellPrice("");
       setSearchQuery("");
       setShowDropdown(false);
-    };
-    if (open) {
-      fetchData();
     }
   }, [open, preselectedSupplierId]);
+
+  useEffect(() => {
+    const supportError = suppliersError ?? productsError;
+    if (open && supportError) {
+      onStatusReport({
+        message: "Gagal memuat data supplier/produk: " + supportError.message,
+        success: false,
+      });
+    }
+  }, [open, suppliersError, productsError, onStatusReport]);
 
   useEffect(() => {
     if (formData.produk_id && products.length > 0) {

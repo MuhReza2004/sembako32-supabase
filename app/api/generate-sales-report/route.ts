@@ -30,23 +30,39 @@ type PenjualanRow = Penjualan & {
 };
 
 // This function is for server-side use with admin privileges
-const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
-  const { data, error } = await supabaseAdmin
+const getAllPenjualanAdmin = async (params: {
+  startDate?: string | null;
+  endDate?: string | null;
+}): Promise<Penjualan[]> => {
+  let query = supabaseAdmin
     .from("penjualan")
     .select(
       `
-      *,
-      pelanggan:pelanggan_id(nama_pelanggan, alamat),
-      items:penjualan_detail(
-        id, qty, harga,
-        supplier_produk:supplier_produk_id(
-          id, harga_jual,
-          produk:produk_id(nama, satuan)
-        )
-      )
+      id,
+      tanggal,
+      pelanggan_id,
+      no_invoice,
+      no_npb,
+      no_do,
+      metode_pengambilan,
+      total,
+      status,
+      created_at,
+      updated_at,
+      pajak,
+      pelanggan:pelanggan_id(nama_pelanggan, alamat)
     `,
     )
     .order("tanggal", { ascending: false });
+
+  if (params.startDate) {
+    query = query.gte("tanggal", params.startDate);
+  }
+  if (params.endDate) {
+    query = query.lte("tanggal", params.endDate);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching sales data for report:", error);
@@ -82,19 +98,7 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
     namaPelanggan:
       item.pelanggan?.nama_pelanggan || "Pelanggan Tidak Diketahui",
     alamatPelanggan: item.pelanggan?.alamat || "",
-    items: (item.items || []).map((detail: PenjualanDetailRow) => ({
-      id: detail.id,
-      penjualan_id: detail.penjualan_id,
-      supplier_produk_id: detail.supplier_produk_id,
-      qty: detail.qty,
-      harga: detail.harga,
-      subtotal: detail.subtotal,
-      created_at: detail.created_at,
-      namaProduk:
-        detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-      satuan: detail.supplier_produk?.produk?.satuan || "",
-      hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
-    })),
+    items: [],
   }),
   );
 
@@ -143,20 +147,7 @@ export async function POST(request: NextRequest) {
     const logoSrc = `data:image/svg+xml;base64,${logoBase64}`;
 
     // Fetch sales data using admin privileges
-    const allSales = await getAllPenjualanAdmin();
-
-    // Filter data based on date range
-    let filteredSales = allSales;
-    if (startDate) {
-      filteredSales = filteredSales.filter(
-        (sale) => new Date(sale.tanggal) >= new Date(startDate),
-      );
-    }
-    if (endDate) {
-      filteredSales = filteredSales.filter(
-        (sale) => new Date(sale.tanggal) <= new Date(endDate),
-      );
-    }
+    const filteredSales = await getAllPenjualanAdmin({ startDate, endDate });
 
     // Calculate summary
     const totalSales = filteredSales.length;

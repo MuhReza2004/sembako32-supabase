@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 type PembelianRow = Pembelian & {
   suppliers?: { nama?: string } | null;
@@ -22,6 +24,7 @@ export default function PembelianPage() {
   const [isLoading, setIsLoading] = useState(true);
   // const [error, setError] = useState<string | null>(null); // No longer needed
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -42,26 +45,29 @@ export default function PembelianPage() {
       .from("pembelian")
       .select(
         `
-        *,
-        suppliers (nama),
-        pembelian_detail (
-          qty,
-          harga,
-          subtotal,
-          supplier_produk (
-            produk (
-              nama
-            )
-          )
-        )
+        id,
+        supplier_id,
+        tanggal,
+        no_do,
+        no_npb,
+        invoice,
+        metode_pembayaran,
+        nama_bank,
+        nama_pemilik_rekening,
+        nomor_rekening,
+        total,
+        status,
+        created_at,
+        updated_at,
+        suppliers (nama)
       `,
-        { count: "exact" },
+        { count: "planned" },
       )
       .order("tanggal", { ascending: false });
 
-    if (searchTerm) {
+    if (debouncedSearch) {
       queryBuilder = queryBuilder.or(
-        `invoice.ilike.%${searchTerm}%,no_do.ilike.%${searchTerm}%,suppliers.nama.ilike.%${searchTerm}%`,
+        `invoice.ilike.%${debouncedSearch}%,no_do.ilike.%${debouncedSearch}%,suppliers.nama.ilike.%${debouncedSearch}%`,
       );
     }
     if (startDate) {
@@ -91,7 +97,9 @@ export default function PembelianPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm, startDate, endDate, showStatus]);
+  }, [page, perPage, debouncedSearch, startDate, endDate, showStatus]);
+
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchPembelian);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -106,14 +114,18 @@ export default function PembelianPage() {
           schema: "public",
           table: "pembelian",
         },
-        () => fetchPembelian(),
+        () => scheduleRefresh(),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchPembelian]);
+  }, [fetchPembelian, scheduleRefresh]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, startDate, endDate]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);

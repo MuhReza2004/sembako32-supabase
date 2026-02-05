@@ -25,10 +25,17 @@ import { Separator } from "@/components/ui/separator";
 import { DialogKonfirmasiPembelian } from "./DialogKonfirmasiPembelian";
 import { useStatus } from "@/components/ui/StatusProvider";
 
+type SupplierOption = Pick<Supplier, "id" | "nama">;
+type ProdukOption = Pick<Produk, "id" | "nama">;
+type SupplierProdukOption = Pick<
+  SupplierProduk,
+  "id" | "supplier_id" | "produk_id" | "harga_beli" | "harga_jual" | "stok"
+>;
+
 interface PembelianFormProps {
-  suppliers: Supplier[];
-  products: Produk[];
-  supplierProduks: SupplierProduk[];
+  suppliers: SupplierOption[];
+  products: ProdukOption[];
+  supplierProduks: SupplierProdukOption[];
 }
 
 

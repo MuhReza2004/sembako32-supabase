@@ -150,7 +150,7 @@ export default function DeliveryOrderPage() {
           )
         )
       `,
-        { count: "exact" },
+        { count: "planned" },
       )
       .order("created_at", { ascending: false })
       .range(from, to);

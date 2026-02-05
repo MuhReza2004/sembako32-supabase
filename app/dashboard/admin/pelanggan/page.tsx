@@ -13,6 +13,8 @@ import { deletePelanggan, updatePelanggan } from "@/app/services/pelanggan.servi
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 export default function PelangganAdminPage() {
   const [customers, setCustomers] = useState<Pelanggan[]>([]);
@@ -38,6 +40,7 @@ export default function PelangganAdminPage() {
 
   // Filter & Search
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchCustomers = useCallback(async () => {
     setIsLoading(true);
@@ -48,12 +51,15 @@ export default function PelangganAdminPage() {
 
     let queryBuilder = supabase
       .from("pelanggan")
-      .select("*", { count: "exact" })
+      .select(
+        "id, id_pelanggan, kode_pelanggan, nama_pelanggan, nama_toko, nib, alamat, no_telp, email, status, created_at, updated_at",
+        { count: "planned" },
+      )
       .order("created_at", { ascending: false });
 
-    if (searchTerm) {
+    if (debouncedSearch) {
         queryBuilder = queryBuilder.or(
-            `id_pelanggan.ilike.%${searchTerm}%,kode_pelanggan.ilike.%${searchTerm}%,nama_pelanggan.ilike.%${searchTerm}%,no_telp.ilike.%${searchTerm}%`
+            `id_pelanggan.ilike.%${debouncedSearch}%,kode_pelanggan.ilike.%${debouncedSearch}%,nama_pelanggan.ilike.%${debouncedSearch}%,no_telp.ilike.%${debouncedSearch}%`
         );
     }
 
@@ -71,8 +77,9 @@ export default function PelangganAdminPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm, showStatus]);
+  }, [page, perPage, debouncedSearch, showStatus]);
 
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchCustomers);
 
   // Load pelanggan in real-time with pagination
   useEffect(() => {
@@ -89,7 +96,7 @@ export default function PelangganAdminPage() {
           table: "pelanggan",
         },
         () => {
-          fetchCustomers(); // Re-fetch the current page on any change
+          scheduleRefresh(); // Batch refresh on any change
         },
       )
       .subscribe();
@@ -97,7 +104,11 @@ export default function PelangganAdminPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchCustomers]);
+  }, [fetchCustomers, scheduleRefresh]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);

@@ -17,13 +17,20 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { formatRupiah } from "@/helper/format";
 
+type SupplierOption = Pick<Supplier, "id" | "nama">;
+type ProdukOption = Pick<Produk, "id" | "nama">;
+type SupplierProdukOption = Pick<
+  SupplierProduk,
+  "id" | "supplier_id" | "produk_id" | "harga_beli" | "harga_jual" | "stok"
+>;
+
 interface DialogKonfirmasiPembelianProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pembelianData: PembelianFormData | null;
-  supplier: Supplier | null;
-  produkList: Produk[];
-  supplierProdukList: SupplierProduk[];
+  supplier: SupplierOption | null;
+  produkList: ProdukOption[];
+  supplierProdukList: SupplierProdukOption[];
   onConfirm: () => void;
   isLoading?: boolean;
 }

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 const getDateRange = (
   filter: string,
@@ -85,6 +86,7 @@ export default function AdminDashboardPage() {
     error,
     refetch,
   } = useDashboardData(selectedDateRange);
+  const { schedule: scheduleRefresh } = useBatchedRefresh(refetch);
 
   useEffect(() => {
     // Only set up listeners if we are not in a custom date range that is empty
@@ -99,7 +101,7 @@ export default function AdminDashboardPage() {
       tables.forEach(table => {
         channel.on('postgres_changes', { event: '*', schema: 'public', table: table }, payload => {
             console.log(`Change detected on ${table}`, payload);
-            refetch();
+            scheduleRefresh();
         }).subscribe();
       });
 
@@ -107,7 +109,7 @@ export default function AdminDashboardPage() {
         supabase.removeChannel(channel);
       };
     }
-  }, [refetch, dateFilter, customStartDate, customEndDate]);
+  }, [refetch, scheduleRefresh, dateFilter, customStartDate, customEndDate]);
 
   const handleViewInventory = () => router.push("/dashboard/admin/inventory");
   const handleViewSales = () =>

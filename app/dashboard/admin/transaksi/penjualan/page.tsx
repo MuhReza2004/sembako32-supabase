@@ -12,10 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   cancelPenjualan as serviceCancelPenjualan,
-  getAllPenjualan,
+  getPenjualanById,
+  getPenjualanPage,
 } from "@/app/services/penjualan.service";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 export default function PenjualanPage() {
   const router = useRouter();
@@ -30,6 +33,7 @@ export default function PenjualanPage() {
     string | null
   >(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
@@ -44,38 +48,15 @@ export default function PenjualanPage() {
     // setError(null); // No longer needed
 
     try {
-      // Get all penjualan data from service (which already has proper mapping)
-      const allData = await getAllPenjualan();
-
-      // Filter by date range if provided
-      let filteredData = allData;
-      if (startDate && endDate) {
-        filteredData = allData.filter((item) => {
-          const itemDate = new Date(item.tanggal);
-          const start = new Date(startDate);
-          const end = new Date(endDate);
-          return itemDate >= start && itemDate <= end;
-        });
-      }
-
-      // Filter by search term if provided
-      if (searchTerm) {
-        filteredData = filteredData.filter(
-          (item) =>
-            item.no_invoice?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.namaPelanggan
-              ?.toLowerCase()
-              .includes(searchTerm.toLowerCase()),
-        );
-      }
-
-      // Apply pagination
-      const from = page * perPage;
-      const to = from + perPage;
-      const paginatedData = filteredData.slice(from, to);
-
-      setData(paginatedData);
-      setTotalCount(filteredData.length);
+      const result = await getPenjualanPage({
+        page,
+        perPage,
+        searchTerm: debouncedSearch,
+        startDate,
+        endDate,
+      });
+      setData(result.data);
+      setTotalCount(result.count);
     } catch (err: unknown) {
       console.error("Error fetching sales:", err);
       showStatus({
@@ -87,7 +68,9 @@ export default function PenjualanPage() {
       setData([]);
     }
     setIsLoading(false);
-  }, [page, perPage, startDate, endDate, searchTerm, showStatus]);
+  }, [page, perPage, startDate, endDate, debouncedSearch, showStatus]);
+
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchData);
 
   useEffect(() => {
     fetchData();
@@ -102,7 +85,7 @@ export default function PenjualanPage() {
           table: "penjualan",
         },
         () => {
-          fetchData(); // Re-fetch the current page on any change
+          scheduleRefresh(); // Batch refresh on any change
         },
       )
       .subscribe();
@@ -110,7 +93,11 @@ export default function PenjualanPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchData]);
+  }, [fetchData, scheduleRefresh]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm, startDate, endDate]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);
@@ -120,9 +107,23 @@ export default function PenjualanPage() {
     setPage((prevPage) => Math.max(0, prevPage - 1));
   };
 
-  const handleViewDetails = (penjualan: Penjualan) => {
-    setSelectedPenjualan(penjualan);
-    setDialogDetailOpen(true);
+  const handleViewDetails = async (penjualan: Penjualan) => {
+    try {
+      const detail = await getPenjualanById(penjualan.id);
+      if (!detail) {
+        throw new Error("Detail penjualan tidak ditemukan.");
+      }
+      setSelectedPenjualan(detail);
+      setDialogDetailOpen(true);
+    } catch (error: unknown) {
+      console.error("Error fetching penjualan detail:", error);
+      showStatus({
+        message:
+          "Gagal memuat detail penjualan: " +
+          (error instanceof Error ? error.message : "Unknown error"),
+        success: false,
+      });
+    }
   };
 
   const handleCancel = async (id: string) => {

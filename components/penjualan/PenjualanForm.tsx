@@ -50,10 +50,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+type ProdukOption = Pick<Produk, "id" | "nama">;
+type PelangganOption = Pick<
+  Pelanggan,
+  "id" | "nama_pelanggan" | "kode_pelanggan" | "nama_toko"
+>;
+type SupplierProdukOption = Pick<
+  SupplierProduk,
+  "id" | "supplier_id" | "produk_id" | "harga_jual" | "stok"
+> & { produk?: ProdukOption | ProdukOption[] };
+
 interface PenjualanFormProps {
-  products: Produk[];
-  supplierProduks: SupplierProduk[];
-  pelangganList: Pelanggan[];
+  products: ProdukOption[];
+  supplierProduks: SupplierProdukOption[];
+  pelangganList: PelangganOption[];
   editingPenjualan?: Penjualan | null;
 }
 
@@ -645,8 +655,8 @@ function AddItemForm({
   onAddItem,
   onStatusReport,
 }: {
-  supplierProduks: SupplierProduk[];
-  products: Produk[];
+  supplierProduks: SupplierProdukOption[];
+  products: ProdukOption[];
   onAddItem: (item: PenjualanFormItem) => void;
   onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // Added prop
 }) {
@@ -675,10 +685,15 @@ function AddItemForm({
       return;
     }
     if (qtyNumber > supplierProduk.stok) {
+      const produkFromSp = Array.isArray(supplierProduk.produk)
+        ? supplierProduk.produk[0]
+        : supplierProduk.produk;
+      const produkName =
+        produkFromSp?.nama ||
+        products.find((p) => p.id === supplierProduk.produk_id)?.nama ||
+        "Produk";
       onStatusReport({
-        message: `Stok ${
-          supplierProduk.produkNama || "Produk"
-        } tidak mencukupi (sisa: ${supplierProduk.stok})`,
+        message: `Stok ${produkName} tidak mencukupi (sisa: ${supplierProduk.stok})`,
         success: false,
       });
       return;

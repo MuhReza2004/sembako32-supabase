@@ -20,8 +20,13 @@ import {
 } from "@/components/ui/popover";
 import { Pelanggan } from "@/app/types/pelanggan";
 
+type PelangganOption = Pick<
+  Pelanggan,
+  "id" | "nama_pelanggan" | "kode_pelanggan" | "nama_toko"
+>;
+
 interface ComboboxPelangganProps {
-  pelangganList: Pelanggan[];
+  pelangganList: PelangganOption[];
   value: string;
   onChange: (value: string) => void;
   onAddNew?: () => void; // Made optional

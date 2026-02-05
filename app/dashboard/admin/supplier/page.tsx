@@ -16,6 +16,8 @@ import { Search } from "lucide-react";
 import { supabase } from "@/app/lib/supabase";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
 
 export default function SupplierPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -36,6 +38,7 @@ export default function SupplierPage() {
   const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchSuppliers = useCallback(async () => {
     setIsLoading(true);
@@ -46,12 +49,14 @@ export default function SupplierPage() {
 
     let queryBuilder = supabase
       .from("suppliers")
-      .select("*", { count: "exact" })
+      .select("id, kode, nama, alamat, telp, status, created_at, updated_at", {
+        count: "planned",
+      })
       .order("created_at", { ascending: false });
 
-    if (searchTerm) {
+    if (debouncedSearch) {
       queryBuilder = queryBuilder.or(
-        `kode.ilike.%${searchTerm}%,nama.ilike.%${searchTerm}%,telp.ilike.%${searchTerm}%`,
+        `kode.ilike.%${debouncedSearch}%,nama.ilike.%${debouncedSearch}%,telp.ilike.%${debouncedSearch}%`,
       );
     }
 
@@ -69,7 +74,9 @@ export default function SupplierPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, searchTerm, showStatus]);
+  }, [page, perPage, debouncedSearch, showStatus]);
+
+  const { schedule: scheduleRefresh } = useBatchedRefresh(fetchSuppliers);
 
   useEffect(() => {
     fetchSuppliers();
@@ -83,14 +90,18 @@ export default function SupplierPage() {
           schema: "public",
           table: "suppliers",
         },
-        () => fetchSuppliers(),
+        () => scheduleRefresh(),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchSuppliers]);
+  }, [fetchSuppliers, scheduleRefresh]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);

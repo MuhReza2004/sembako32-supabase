@@ -21,9 +21,15 @@ import { Badge } from "@/components/ui/badge";
 import { SupplierProduk } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 
+type ProdukOption = Pick<Produk, "id" | "nama">;
+type SupplierProdukOption = Pick<
+  SupplierProduk,
+  "id" | "supplier_id" | "produk_id" | "harga_jual" | "stok"
+> & { produk?: ProdukOption | ProdukOption[] };
+
 interface ComboboxSupplierProdukProps {
-  supplierProdukList: SupplierProduk[];
-  produkList: Produk[]; // Keep for now to avoid breaking changes, but logic will prefer nested object
+  supplierProdukList: SupplierProdukOption[];
+  produkList: ProdukOption[]; // Keep for now to avoid breaking changes, but logic will prefer nested object
   value: string;
   onChange: (value: string) => void;
 }
@@ -34,7 +40,7 @@ export function ComboboxSupplierProduk({
   value,
   onChange,
 }: ComboboxSupplierProdukProps) {
-  type SupplierProdukWithProduk = SupplierProduk & { produk?: Produk };
+  type SupplierProdukWithProduk = SupplierProdukOption & { produk?: ProdukOption | ProdukOption[] };
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
@@ -57,7 +63,9 @@ export function ComboboxSupplierProduk({
   const filteredItems = React.useMemo(() => {
     if (!search) return productsWithData;
     return productsWithData.filter((item) =>
-      item.produk?.nama?.toLowerCase().includes(search.toLowerCase()),
+      (Array.isArray(item.produk) ? item.produk[0] : item.produk)?.nama
+        ?.toLowerCase()
+        .includes(search.toLowerCase()),
     );
   }, [productsWithData, search]);
 
@@ -72,7 +80,10 @@ export function ComboboxSupplierProduk({
           className="w-full justify-between h-12 border-2"
         >
           {selectedItem
-            ? selectedItem.produk?.nama || "Produk tidak valid"
+            ? (Array.isArray(selectedItem.produk)
+                ? selectedItem.produk[0]
+                : selectedItem.produk
+              )?.nama || "Produk tidak valid"
             : "Pilih Produk"}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -104,7 +115,12 @@ export function ComboboxSupplierProduk({
                     )}
                   />
                   <div className="flex justify-between items-center w-full">
-                    <span>{item.produk?.nama || "Produk tidak ditemukan"}</span>
+                    <span>
+                      {(Array.isArray(item.produk)
+                        ? item.produk[0]
+                        : item.produk
+                      )?.nama || "Produk tidak ditemukan"}
+                    </span>
                     <Badge
                       variant={
                         item.stok > 10

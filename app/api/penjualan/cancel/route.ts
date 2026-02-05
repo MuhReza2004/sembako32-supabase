@@ -39,21 +39,16 @@ export async function POST(request: NextRequest) {
     }).penjualan_detail || [];
 
     for (const item of details) {
-      const { data: p, error: stockError } = await supabaseAdmin
-        .from("supplier_produk")
-        .select("stok")
-        .eq("id", item.supplier_produk_id)
-        .single();
-      if (stockError || !p) {
+      const { error: stockError } = await supabaseAdmin.rpc("increase_stock", {
+        p_supplier_produk_id: item.supplier_produk_id,
+        p_qty: Number(item.qty),
+      });
+      if (stockError) {
         return NextResponse.json(
-          { error: "stok_not_found" },
+          { error: "stok_update_failed" },
           { status: 400 },
         );
       }
-      await supabaseAdmin
-        .from("supplier_produk")
-        .update({ stok: p.stok + item.qty })
-        .eq("id", item.supplier_produk_id);
     }
 
     const { error: updateError } = await supabaseAdmin
@@ -64,6 +59,18 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       return NextResponse.json(
         { error: "update_failed" },
+        { status: 500 },
+      );
+    }
+
+    const { error: doError } = await supabaseAdmin
+      .from("delivery_orders")
+      .update({ status: "Batal" })
+      .eq("penjualan_id", id);
+
+    if (doError) {
+      return NextResponse.json(
+        { error: "delivery_order_update_failed" },
         { status: 500 },
       );
     }

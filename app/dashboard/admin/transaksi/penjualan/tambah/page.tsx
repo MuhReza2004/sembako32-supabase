@@ -14,15 +14,17 @@ async function TambahPenjualanDataLoader({
 
   const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
-    .select("*")
+    .select("id, nama")
     .order("nama", { ascending: true });
 
   const { data: supplierProduks, error: supplierProduksError } =
-    await supabaseAdmin.from("supplier_produk").select("*, produk(*)");
+    await supabaseAdmin
+      .from("supplier_produk")
+      .select("id, supplier_id, produk_id, harga_jual, stok, produk (id, nama)");
 
   const { data: pelangganList, error: pelError } = await supabaseAdmin
     .from("pelanggan")
-    .select("*");
+    .select("id, nama_pelanggan, kode_pelanggan, nama_toko");
 
   let editingPenjualan = null;
   if (editId) {

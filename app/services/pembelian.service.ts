@@ -28,6 +28,18 @@ const assertValidMoney = (label: string, value: number) => {
   }
 };
 
+const increaseStock = async (supplierProdukId: string, qty: number) => {
+  const { data, error } = await supabase.rpc("increase_stock", {
+    p_supplier_produk_id: supplierProdukId,
+    p_qty: qty,
+  });
+  if (error) {
+    console.error("Error increasing stock:", error);
+    throw error;
+  }
+  return data as number;
+};
+
 export const createPembelian = async (data: {
   supplier_id: string;
   tanggal: string;
@@ -102,35 +114,7 @@ export const createPembelian = async (data: {
 
     // Only update stock if status is not 'Pending'
     if (data.status !== "Pending") {
-      // 1. Fetch current stock
-      const { data: currentProduct, error: fetchError } = await supabase
-        .from("supplier_produk")
-        .select("stok")
-        .eq("id", item.supplier_produk_id)
-        .single();
-
-      if (fetchError) {
-        const errorMessage = fetchError?.message || "Gagal mengambil stok supplier produk";
-        console.error("Error fetching stock:", errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      // 2. Calculate new stock
-      const newStock = currentProduct.stok + item.qty;
-
-      // 3. Update with new stock value
-      const { error: stockError } = await supabase
-        .from("supplier_produk")
-        .update({
-          stok: newStock,
-        })
-        .eq("id", item.supplier_produk_id);
-
-      if (stockError) {
-        const errorMessage = stockError?.message || "Gagal memperbarui stok";
-        console.error("Error updating stock:", errorMessage);
-        throw new Error(errorMessage);
-      }
+      await increaseStock(item.supplier_produk_id, Number(item.qty));
     }
   }
 
@@ -241,35 +225,7 @@ export const updatePembelianAndStock = async (
   }
 
   for (const detail of details) {
-    // 1. Fetch current stock
-    const { data: currentProduct, error: fetchError } = await supabase
-      .from("supplier_produk")
-      .select("stok")
-      .eq("id", detail.supplier_produk_id)
-      .single();
-
-    if (fetchError) {
-      const errorMessage = fetchError?.message || "Gagal mengambil stok supplier produk untuk update";
-      console.error("Error fetching stock for supplier_produk:", errorMessage);
-      throw new Error(errorMessage);
-    }
-    
-    // 2. Calculate new stock
-    const newStock = currentProduct.stok + detail.qty;
-
-    // 3. Update with new stock value
-    const { error: stockError } = await supabase
-      .from("supplier_produk")
-      .update({
-        stok: newStock,
-      })
-      .eq("id", detail.supplier_produk_id);
-
-    if (stockError) {
-      const errorMessage = stockError?.message || "Gagal memperbarui stok supplier produk";
-      console.error("Error updating stock for supplier_produk:", errorMessage);
-      throw new Error(errorMessage);
-    }
+    await increaseStock(detail.supplier_produk_id, Number(detail.qty));
   }
 };
 

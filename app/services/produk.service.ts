@@ -2,6 +2,15 @@ import { supabase } from "../lib/supabase";
 import { Produk, ProdukFormData } from "../types/produk";
 import { v4 as uuidv4 } from 'uuid'; // For temporary kode generation
 
+let produkCache: Produk[] | null = null;
+let produkCacheAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+const invalidateProdukCache = () => {
+  produkCache = null;
+  produkCacheAt = 0;
+};
+
 /* =============================
    AUTO GENERATE ID PRODUK (Not directly needed for Supabase UUID primary keys)
    ============================= */
@@ -43,13 +52,20 @@ export const addProduk = async (data: ProdukFormData): Promise<string> => {
     console.error("Error adding produk:", error);
     throw error;
   }
+  invalidateProdukCache();
   return newProduk.id;
 };
 
 /* =============================
    READ
    ============================= */
-export const getAllProduk = async (): Promise<Produk[]> => {
+export const getAllProduk = async (
+  options: { force?: boolean } = {},
+): Promise<Produk[]> => {
+  const now = Date.now();
+  if (!options.force && produkCache && now - produkCacheAt < CACHE_TTL_MS) {
+    return produkCache;
+  }
   const { data, error } = await supabase
     .from("produk")
     .select("*")
@@ -59,7 +75,9 @@ export const getAllProduk = async (): Promise<Produk[]> => {
     console.error("Error fetching all produk:", error);
     return [];
   }
-  return data as Produk[];
+  produkCache = data as Produk[];
+  produkCacheAt = now;
+  return produkCache;
 };
 
 export const getProdukById = async (id: string): Promise<Produk | null> => {
@@ -112,6 +130,7 @@ export const updateProduk = async (
     console.error("Error updating produk:", error);
     throw error;
   }
+  invalidateProdukCache();
 };
 
 export const updateProdukStok = async (
@@ -127,6 +146,7 @@ export const updateProdukStok = async (
     console.error("Error updating produk stock:", error);
     throw error;
   }
+  invalidateProdukCache();
 };
 
 export const deleteProduk = async (id: string): Promise<void> => {
@@ -139,4 +159,5 @@ export const deleteProduk = async (id: string): Promise<void> => {
     console.error("Error deleting produk:", JSON.stringify(error, null, 2));
     throw error;
   }
+  invalidateProdukCache();
 };
