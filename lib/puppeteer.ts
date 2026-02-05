@@ -13,6 +13,8 @@ const isServerless = Boolean(
   process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME,
 );
 
+let fontsReady = false;
+
 const WINDOWS_CANDIDATES = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
@@ -73,6 +75,19 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
   if (isServerless) {
     if (!process.env.AWS_EXECUTION_ENV && !process.env.AWS_LAMBDA_JS_RUNTIME) {
       process.env.AWS_EXECUTION_ENV = "AWS_Lambda_nodejs20.x";
+    }
+    if (!fontsReady) {
+      try {
+        await chromium.font(
+          "https://raw.githubusercontent.com/google/fonts/main/apache/opensans/OpenSans-Regular.ttf",
+        );
+        await chromium.font(
+          "https://raw.githubusercontent.com/google/fonts/main/apache/opensans/OpenSans-Bold.ttf",
+        );
+      } catch {
+        // ignore font loading issues; fallback fonts may still render
+      }
+      fontsReady = true;
     }
     if (!executablePath) {
       const binPath = path.join(

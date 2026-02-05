@@ -169,7 +169,7 @@ async function generatePdf(
       }
 
       body {
-        font-family: 'Arial', 'Helvetica', sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         padding: 30px 40px;
         color: #333;
         font-size: 11px;

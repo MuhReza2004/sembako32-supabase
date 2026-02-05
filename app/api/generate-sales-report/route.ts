@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
           <meta charset="UTF-8">
           <title>Laporan Penjualan</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
+            body { font-family: 'Open Sans', Arial, sans-serif; margin: 20px; }
             h2 { color: #333; text-align: center; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
 
     const headerTemplate = `
       <div style="
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         width: 100%; /* This is the full margin box width */
         height: 100px;
         -webkit-print-color-adjust: exact;
@@ -314,7 +314,7 @@ export async function POST(request: NextRequest) {
 
     const footerTemplate = `
       <div style="
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         width: 100%;
         text-align: center;
         padding: 5px 20px;

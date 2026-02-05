@@ -340,7 +340,7 @@ export async function POST(request: NextRequest) {
           <title>Laporan Pembelian</title>
           <style>
             * { box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
+            body { font-family: 'Open Sans', Arial, sans-serif; margin: 20px; color: #222; }
             h2 { color: #333; text-align: center; margin-bottom: 8px; }
             .meta { margin: 12px 0 16px; font-size: 12px; color: #444; }
             .summary { margin-bottom: 16px; }
@@ -419,7 +419,7 @@ export async function POST(request: NextRequest) {
 
     const headerTemplate = `
       <div style="
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         width: 100%;
         height: 100px;
         -webkit-print-color-adjust: exact;
@@ -458,7 +458,7 @@ export async function POST(request: NextRequest) {
 
     const footerTemplate = `
       <div style="
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         width: 100%;
         text-align: center;
         padding: 5px 20px;

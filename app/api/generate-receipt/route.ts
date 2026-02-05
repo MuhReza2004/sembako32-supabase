@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     const headerTemplate = `
       <div style="
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         width: 100%;
         height: 100px;
         -webkit-print-color-adjust: exact;
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     const footerTemplate = `
       <div style="
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Open Sans', Arial, sans-serif;
         width: 100%;
         text-align: center;
         padding: 5px 20px;
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
           <meta charset="UTF-8">
           <title>Tanda Terima ${safe(penjualan.no_tanda_terima || "-")}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; color: #111827; }
+            body { font-family: 'Open Sans', Arial, sans-serif; margin: 20px; color: #111827; }
             h2 { color: #111827; text-align: center; margin: 0; }
             .meta { margin-top: 10px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
