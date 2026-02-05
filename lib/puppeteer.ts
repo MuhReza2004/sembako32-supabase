@@ -55,6 +55,25 @@ const firstExistingPath = async (candidates: string[]) => {
   return undefined;
 };
 
+const ensureChromiumLibs = async () => {
+  const libCandidates = ["/tmp/al2/lib", "/tmp/al2023/lib"];
+  const existing: string[] = [];
+  for (const p of libCandidates) {
+    try {
+      await fs.access(p);
+      existing.push(p);
+    } catch {
+      // ignore
+    }
+  }
+  if (existing.length === 0) return;
+
+  const current = process.env.LD_LIBRARY_PATH || "";
+  const currentParts = current ? current.split(":") : [];
+  const merged = [...new Set([...existing, ...currentParts])];
+  process.env.LD_LIBRARY_PATH = merged.join(":");
+};
+
 export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
   let executablePath = process.env.PUPPETEER_EXEC_PATH;
   let args: string[] = [];
@@ -63,6 +82,7 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
 
   if (isServerless) {
     executablePath = executablePath || (await chromium.executablePath());
+    await ensureChromiumLibs();
     args = chromium.args;
     const chromiumHeadless = chromium.headless as boolean | "new" | "shell";
     headless = chromiumHeadless === "new" ? true : chromiumHeadless;
