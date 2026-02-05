@@ -199,6 +199,33 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     throw penjualanError;
   }
 
+  const createdByIds = Array.from(
+    new Set(
+      (penjualanData as PenjualanRow[])
+        .map((item) => item.created_by)
+        .filter((id): id is string => !!id),
+    ),
+  );
+
+  let usersMap = new Map<string, { email?: string; role?: string }>();
+  if (createdByIds.length > 0) {
+    const { data: usersData, error: usersError } = await supabase
+      .from("users")
+      .select("id, email, role")
+      .in("id", createdByIds);
+
+    if (usersError) {
+      console.error("Error fetching users:", usersError);
+    } else {
+      usersMap = new Map(
+        (usersData || []).map((u) => [
+          u.id as string,
+          { email: u.email as string, role: u.role as string },
+        ]),
+      );
+    }
+  }
+
   // Then fetch penjualan_detail dengan supplier_produk
   const { data: detailsData, error: detailsError } = await supabase.from(
     "penjualan_detail",
@@ -248,6 +275,9 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     total_akhir: item.total_akhir,
     created_at: item.created_at,
     updated_at: item.updated_at,
+    created_by: item.created_by,
+    createdByEmail: usersMap.get(item.created_by || "")?.email,
+    createdByRole: usersMap.get(item.created_by || "")?.role,
     namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
     alamatPelanggan: item.pelanggan?.alamat || "",
     // Get items from detailsData that belong to this penjualan
@@ -271,6 +301,127 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
 
   console.log("Mapped penjualan data:", mappedData);
   return mappedData;
+};
+
+export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error("User tidak terautentikasi.");
+  }
+
+  const { data: penjualanData, error: penjualanError } = await supabase
+    .from("penjualan")
+    .select(
+      `
+      *,
+      pelanggan (
+        id,
+        nama_pelanggan,
+        alamat
+      )
+    `,
+    )
+    .eq("created_by", user.id)
+    .order("created_at", { ascending: false });
+
+  if (penjualanError) {
+    console.error("Error fetching penjualan:", penjualanError);
+    throw penjualanError;
+  }
+
+  const { data: detailsData, error: detailsError } = await supabase.from(
+    "penjualan_detail",
+  ).select(`
+      *,
+      supplier_produk (
+        id,
+        harga_jual,
+        produk (
+          id,
+          nama,
+          satuan
+        )
+      )
+    `);
+
+  if (detailsError) {
+    console.error("Error fetching penjualan_detail:", detailsError);
+    throw detailsError;
+  }
+
+  const mappedData = (penjualanData as PenjualanRow[]).map((item) => ({
+    id: item.id,
+    tanggal: item.tanggal,
+    pelanggan_id: item.pelanggan_id,
+    catatan: item.catatan,
+    no_invoice: item.no_invoice,
+    no_npb: item.no_npb,
+    no_do: item.no_do,
+    no_tanda_terima: item.no_tanda_terima,
+    metode_pengambilan: item.metode_pengambilan,
+    total: item.total,
+    total_dibayar: item.total_dibayar,
+    status: item.status,
+    metode_pembayaran: item.metode_pembayaran,
+    nomor_rekening: item.nomor_rekening,
+    nama_bank: item.nama_bank,
+    nama_pemilik_rekening: item.nama_pemilik_rekening,
+    tanggal_jatuh_tempo: item.tanggal_jatuh_tempo,
+    diskon: item.diskon,
+    pajak_enabled: item.pajak_enabled,
+    pajak: item.pajak,
+    total_akhir: item.total_akhir,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+    created_by: item.created_by,
+    createdByEmail: user.email || "Anda",
+    namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
+    alamatPelanggan: item.pelanggan?.alamat || "",
+    items:
+      (detailsData as PenjualanDetailRow[])
+        .filter((detail) => detail.penjualan_id === item.id)
+        .map((detail) => ({
+          id: detail.id,
+          penjualan_id: detail.penjualan_id,
+          supplier_produk_id: detail.supplier_produk_id,
+          qty: detail.qty,
+          harga: detail.harga,
+          subtotal: detail.subtotal,
+          created_at: detail.created_at,
+          namaProduk:
+            detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
+          satuan: detail.supplier_produk?.produk?.satuan || "",
+          hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
+        })) || [],
+  }));
+
+  return mappedData;
+};
+
+export const getPenjualanSummaryForCurrentUser = async () => {
+  const list = await getPenjualanForCurrentUser();
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+
+  const todayItems = list.filter((p) => p.tanggal === todayStr);
+  const totalHariIni = todayItems.reduce(
+    (sum, p) => sum + (p.total_akhir ?? p.total ?? 0),
+    0,
+  );
+
+  const jumlahHariIni = todayItems.length;
+  const belumLunas = list.filter((p) => p.status === "Belum Lunas").length;
+  const batal = list.filter((p) => p.status === "Batal").length;
+
+  return {
+    totalHariIni,
+    jumlahHariIni,
+    belumLunas,
+    batal,
+  };
 };
 
 // --- NEW getPiutang function ---

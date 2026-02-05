@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.ip ||
+      request.headers.get("x-real-ip") ||
       "unknown";
     const limit = rateLimit(`inventory-report:${ip}`, 30, 60_000);
     if (!limit.ok) {
@@ -124,3 +124,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

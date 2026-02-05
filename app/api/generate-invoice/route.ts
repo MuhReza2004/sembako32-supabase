@@ -777,7 +777,7 @@ export async function POST(request: NextRequest) {
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.ip ||
+      request.headers.get("x-real-ip") ||
       "unknown";
     const limit = rateLimit(`pdf:invoice:${ip}`, 10, 60_000);
     if (!limit.ok) {
@@ -852,3 +852,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

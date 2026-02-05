@@ -39,6 +39,8 @@ export interface Penjualan {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  createdByEmail?: string;
+  createdByRole?: string;
   items?: PenjualanDetail[]; // populated from penjualan_detail
 
   // Additional fields for detailed view

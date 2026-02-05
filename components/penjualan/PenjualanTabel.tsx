@@ -63,6 +63,7 @@ export default function PenjualanTabel({
             <TableHead>Metode Pengambilan</TableHead>
             <TableHead>Tanggal</TableHead>
             <TableHead>Pelanggan</TableHead>
+            <TableHead>Dibuat Oleh</TableHead>
             <TableHead className="text-center">Total</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead>Aksi</TableHead>
@@ -90,6 +91,9 @@ export default function PenjualanTabel({
                     (penjualan as PenjualanWithPelanggan).pelanggan
                       ?.nama_pelanggan ||
                     "-"}
+                </TableCell>
+                <TableCell>
+                  {penjualan.createdByEmail || penjualan.created_by || "-"}
                 </TableCell>
                 <TableCell className="text-center">
                   {formatRupiah(penjualan.total_akhir ?? penjualan.total)}

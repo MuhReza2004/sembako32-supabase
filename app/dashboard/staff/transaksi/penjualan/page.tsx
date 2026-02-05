@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   cancelPenjualan as serviceCancelPenjualan,
-  getAllPenjualan,
+  getPenjualanForCurrentUser,
 } from "@/app/services/penjualan.service";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
@@ -42,7 +42,7 @@ export default function StaffPenjualanPage() {
     setIsLoading(true);
 
     try {
-      const allData = await getAllPenjualan();
+      const allData = await getPenjualanForCurrentUser();
 
       let filteredData = allData;
       if (startDate && endDate) {
