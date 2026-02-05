@@ -13,6 +13,20 @@ const isServerless = Boolean(
   process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME,
 );
 
+let localFontsReady = false;
+
+const loadLocalChromiumFonts = async () => {
+  if (localFontsReady) return;
+  const fontDir = path.join(process.cwd(), "public", "fonts");
+  try {
+    await chromium.font(path.join(fontDir, "verdana.ttf"));
+    await chromium.font(path.join(fontDir, "verdanab.ttf"));
+  } catch {
+    // ignore font loading issues
+  }
+  localFontsReady = true;
+};
+
 let fontsReady = false;
 
 const WINDOWS_CANDIDATES = [
@@ -117,6 +131,8 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
     }
     args = ["--no-sandbox", "--disable-setuid-sandbox"];
   }
+
+  await loadLocalChromiumFonts();
 
   if (!executablePath) {
     throw new Error("Chrome/Chromium executable not found.");

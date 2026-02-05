@@ -1,7 +1,10 @@
 {
   "functions": {
     "app/api/**": {
-      "includeFiles": "node_modules/@sparticuz/chromium/**"
+      "includeFiles": [
+        "node_modules/@sparticuz/chromium/**",
+        "public/fonts/**"
+      ]
     }
   }
 }
