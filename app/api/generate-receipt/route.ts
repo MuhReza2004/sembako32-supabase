@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 import { formatRupiah } from "@/helper/format";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -9,6 +8,7 @@ import { requireAuth } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -225,17 +225,9 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    const executablePath =
-      process.env.PUPPETEER_EXEC_PATH || (await chromium.executablePath());
-    if (!executablePath) {
-      throw new Error("Chrome/Chromium executable not found.");
-    }
-
+    const launchOptions = await getPuppeteerLaunchOptions();
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
-      headless: chromium.headless,
+      ...launchOptions,
       timeout: 60000,
     });
 

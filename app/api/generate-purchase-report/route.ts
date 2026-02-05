@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 import { formatRupiah } from "@/helper/format";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -9,6 +8,7 @@ import { Pembelian } from "@/app/types/pembelian";
 import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
+import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -472,20 +472,14 @@ export async function POST(request: NextRequest) {
 
     console.log("Launching Puppeteer...");
 
-    const executablePath =
-      process.env.PUPPETEER_EXEC_PATH || (await chromium.executablePath());
-    console.log("Resolved executable path:", executablePath || "undefined");
-
-    if (!executablePath) {
-      throw new Error("Chrome/Chromium executable not found.");
-    }
-
-    console.log("Launching Puppeteer with executable:", executablePath);
+    const launchOptions = await getPuppeteerLaunchOptions();
+    console.log(
+      "Resolved executable path:",
+      launchOptions.executablePath || "undefined",
+    );
+    console.log("Launching Puppeteer with executable:", launchOptions.executablePath);
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
-      headless: chromium.headless,
+      ...launchOptions,
       timeout: 60000,
     });
 
