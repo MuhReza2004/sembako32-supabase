@@ -7,6 +7,7 @@ import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
+import { debugPdfContent } from "@/lib/pdf-debug";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -758,9 +759,32 @@ async function generatePdf(
   </html>
   `;
 
-  await page.setContent(htmlContent, { waitUntil: "networkidle0" });
-  await waitForPdfFonts(page);
+  // Set content with multiple wait conditions
+  console.log("Setting page content for invoice:", penjualan.no_invoice);
+  await page.setContent(htmlContent, { 
+    waitUntil: ["load", "networkidle0", "domcontentloaded"],
+    timeout: 30000 
+  });
+  console.log("Page content set, starting font wait...");
 
+  // Wait for fonts and content to be fully rendered
+  await waitForPdfFonts(page);
+  console.log("Font wait completed");
+
+  // Debug: Check if content is actually rendered
+  await debugPdfContent(page, penjualan.no_invoice);
+
+  // Additional stability check - ensure all elements are visible
+  await page.evaluate(() => {
+    return new Promise((resolve) => {
+      // Force a reflow to ensure all styles are applied
+      document.body.offsetHeight;
+      // Wait a bit more for any async rendering
+      setTimeout(resolve, 500);
+    });
+  });
+
+  console.log("Starting PDF generation...");
   const pdfBuffer = await page.pdf({
     format: "A4",
     printBackground: true,
@@ -771,6 +795,7 @@ async function generatePdf(
       left: "30px",
     },
   });
+  console.log("PDF generated, size:", pdfBuffer.length, "bytes");
 
   await browser.close();
 
