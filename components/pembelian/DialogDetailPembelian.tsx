@@ -44,6 +44,8 @@ export default function DialogDetailPembelian({
 
   const supplier = suppliers.find((s) => s.id === pembelian.supplier_id);
 
+  const metodePembayaran = pembelian.metode_pembayaran || "Tunai";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -83,6 +85,34 @@ export default function DialogDetailPembelian({
               </label>
               <p>{pembelian.invoice || "-"}</p>
             </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Metode Pembayaran
+              </label>
+              <p>{metodePembayaran}</p>
+            </div>
+            {metodePembayaran === "Transfer" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Nama Bank
+                  </label>
+                  <p>{pembelian.nama_bank || "-"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Nama Pemilik Rekening
+                  </label>
+                  <p>{pembelian.nama_pemilik_rekening || "-"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    No. Rekening
+                  </label>
+                  <p>{pembelian.nomor_rekening || "-"}</p>
+                </div>
+              </>
+            )}
             <div>
               <label className="text-sm font-medium text-gray-700">Total</label>
               <p className="text-lg font-bold text-blue-600">

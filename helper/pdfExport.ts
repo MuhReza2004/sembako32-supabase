@@ -53,10 +53,7 @@ const addLogo = async (pdf: jsPDF, x: number, y: number, widthMm: number) => {
 
 const drawHeader = async (
   pdf: jsPDF,
-  {
-    title,
-    dateText,
-  }: { title: string; dateText: string },
+  { title, dateText }: { title: string; dateText: string },
 ) => {
   type JsPDFRounded = jsPDF & {
     roundedRect: (
@@ -100,7 +97,11 @@ const drawHeader = async (
 
   pdf.setTextColor(0, 0, 0);
   pdf.setFontSize(8.5);
-  pdf.text("Alamat : Jl. Soekarno Hatta Pasangkayu", headerX + 28, headerY + 18);
+  pdf.text(
+    "Alamat : Jl. Soekarno Hatta Pasangkayu",
+    headerX + 28,
+    headerY + 18,
+  );
   pdf.text("Kontak : 0821-9030-9333", headerX + 28, headerY + 22.5);
   pdf.text("Email  : sembako32@gmail.com", headerX + 28, headerY + 27);
 
@@ -215,7 +216,8 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
           metodePembayaran?: string;
           atasNama?: string;
         };
-        const metode = paymentAlt.metodePembayaran ?? payment.metode_pembayaran ?? "-";
+        const metode =
+          paymentAlt.metodePembayaran ?? payment.metode_pembayaran ?? "-";
         const atasNama = paymentAlt.atasNama ?? payment.atas_nama ?? "N/A";
         const paymentText = `${safeTanggal(payment.tanggal)} - ${formatRupiah(payment.jumlah)} (${metode}) - ${atasNama}`;
         pdf.text(paymentText, 25, yPosition + 3);
@@ -246,13 +248,10 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     (sum, item) => sum + (item.total_akhir ?? item.total ?? 0),
     0,
   );
-  const totalDibayar = piutang.reduce(
-    (sum, item) => {
-      const it = item as PenjualanPdf;
-      return sum + (it.total_dibayar ?? it.totalDibayar ?? 0);
-    },
-    0,
-  );
+  const totalDibayar = piutang.reduce((sum, item) => {
+    const it = item as PenjualanPdf;
+    return sum + (it.total_dibayar ?? it.totalDibayar ?? 0);
+  }, 0);
   const totalSisa = totalTagihan - totalDibayar;
 
   yPosition += 20;
@@ -314,7 +313,9 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   pdf.rect(14, yPosition, 180, 25, "F");
 
   const invoiceNo =
-    piutang.no_invoice ?? (piutang as PenjualanPdf).noInvoice ?? piutang.nomorInvoice;
+    piutang.no_invoice ??
+    (piutang as PenjualanPdf).noInvoice ??
+    piutang.nomorInvoice;
   pdf.text(`No. Invoice: ${toText(invoiceNo)}`, 16, yPosition + 6);
   pdf.text(`Tanggal: ${safeTanggal(piutang.tanggal)}`, 16, yPosition + 12);
   pdf.text(
@@ -461,7 +462,7 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   pdf.setFontSize(8);
   pdf.setTextColor(128, 128, 128);
   pdf.text("Dokumen ini dihasilkan secara otomatis oleh sistem", 14, 285);
-  pdf.text("© 2024 - Sistem Manajemen Gudang", 14, 290);
+  pdf.text("© 2026 - Sistem Penjualan Sembako 32", 14, 290);
 
   // Save the PDF
   pdf.save(

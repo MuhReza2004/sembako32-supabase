@@ -60,6 +60,10 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
       no_do: item.no_do,
       no_npb: item.no_npb,
       invoice: item.invoice,
+      metode_pembayaran: item.metode_pembayaran || "Tunai",
+      nama_bank: item.nama_bank || undefined,
+      nama_pemilik_rekening: item.nama_pemilik_rekening || undefined,
+      nomor_rekening: item.nomor_rekening || undefined,
       total: item.total,
       status: item.status,
       created_at: item.created_at,
@@ -197,11 +201,59 @@ export async function POST(request: NextRequest) {
                         <li>No NPB: ${safe(p.no_npb || "-")}</li>
                         <li>No DO: ${safe(p.no_do || "-")}</li>
                         <li>Invoice: ${safe(p.invoice || "-")}</li>
+                        <li>Metode: ${safe(p.metode_pembayaran || "-")}</li>
+                        ${
+                          p.metode_pembayaran === "Transfer"
+                            ? `<li>Bank: ${safe(p.nama_bank || "-")}</li>
+                        <li>Rek: ${safe(p.nomor_rekening || "-")}</li>
+                        <li>Atas Nama: ${safe(p.nama_pemilik_rekening || "-")}</li>`
+                            : ""
+                        }
                       </ul>
                       </td>
                       <td>${safe(p.namaSupplier || "-")}</td>
                       <td>${safe(formatRupiah(p.total))}</td>
                       <td>${safe(p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline")}</td>
+                    </tr>
+                    <tr>
+                      <td></td>
+                      <td colspan="5">
+                        <div style="padding: 8px 0;">
+                          <div style="font-weight: bold; margin-bottom: 6px;">Detail Pembelian</div>
+                          <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                              <tr>
+                                <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Produk</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Qty</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Harga</th>
+                                <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              ${(p.items || [])
+                                .map(
+                                  (item) => `
+                                    <tr>
+                                      <td style="border: 1px solid #ddd; padding: 6px;">
+                                        ${safe(item.namaProduk || "-")}
+                                      </td>
+                                      <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                                        ${safe(item.qty)}
+                                      </td>
+                                      <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                                        ${safe(formatRupiah(item.harga))}
+                                      </td>
+                                      <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
+                                        ${safe(formatRupiah(item.subtotal))}
+                                      </td>
+                                    </tr>
+                                  `,
+                                )
+                                .join("")}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
                     </tr>
                   `,
                 )

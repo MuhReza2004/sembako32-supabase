@@ -34,6 +34,10 @@ export const createPembelian = async (data: {
   no_do?: string;
   no_npb?: string;
   invoice?: string;
+  metode_pembayaran: "Tunai" | "Transfer";
+  nama_bank?: string;
+  nama_pemilik_rekening?: string;
+  nomor_rekening?: string;
   total: number;
   status: "Pending" | "Completed" | "Decline";
   items: PembelianDetailInput[];
@@ -45,6 +49,11 @@ export const createPembelian = async (data: {
     assertValidMoney(`Harga item #${index + 1}`, Number(item.harga));
     assertValidMoney(`Subtotal item #${index + 1}`, Number(item.subtotal));
   });
+  if (data.metode_pembayaran === "Transfer") {
+    if (!data.nama_bank || !data.nama_pemilik_rekening || !data.nomor_rekening) {
+      throw new Error("Data transfer belum lengkap.");
+    }
+  }
 
   // Create pembelian record
   const pembelianData = {
@@ -53,6 +62,10 @@ export const createPembelian = async (data: {
     no_do: data.no_do,
     no_npb: data.no_npb,
     invoice: data.invoice,
+    metode_pembayaran: data.metode_pembayaran,
+    nama_bank: data.nama_bank,
+    nama_pemilik_rekening: data.nama_pemilik_rekening,
+    nomor_rekening: data.nomor_rekening,
     total: totalAmount,
     status: data.status,
   };
@@ -167,6 +180,10 @@ export const getAllPembelian = async (): Promise<Pembelian[]> => {
     no_do: item.no_do,
     no_npb: item.no_npb,
     invoice: item.invoice,
+    metode_pembayaran: item.metode_pembayaran || "Tunai",
+    nama_bank: item.nama_bank || undefined,
+    nama_pemilik_rekening: item.nama_pemilik_rekening || undefined,
+    nomor_rekening: item.nomor_rekening || undefined,
     total: item.total,
     status: item.status,
     created_at: item.created_at,

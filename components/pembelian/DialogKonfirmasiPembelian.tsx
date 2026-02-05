@@ -40,7 +40,18 @@ export function DialogKonfirmasiPembelian({
 }: DialogKonfirmasiPembelianProps) {
   if (!pembelianData || !supplier) return null;
 
-  const { tanggal, no_do, no_npb, invoice, items, total } = pembelianData;
+  const {
+    tanggal,
+    no_do,
+    no_npb,
+    invoice,
+    items,
+    total,
+    metode_pembayaran,
+    nama_bank,
+    nama_pemilik_rekening,
+    nomor_rekening,
+  } = pembelianData;
 
   const getProductName = (supplierProdukId: string) => {
     const supplierProduk = supplierProdukList.find(
@@ -91,6 +102,26 @@ export function DialogKonfirmasiPembelian({
                   <p className="text-muted-foreground">Invoice/Faktur</p>
                   <p className="font-medium">{invoice || "-"}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Metode Pembayaran</p>
+                  <p className="font-medium">{metode_pembayaran}</p>
+                </div>
+                {metode_pembayaran === "Transfer" && (
+                  <>
+                    <div>
+                      <p className="text-muted-foreground">Nama Bank</p>
+                      <p className="font-medium">{nama_bank || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Nama Pemilik Rekening</p>
+                      <p className="font-medium">{nama_pemilik_rekening || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">No. Rekening</p>
+                      <p className="font-medium">{nomor_rekening || "-"}</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

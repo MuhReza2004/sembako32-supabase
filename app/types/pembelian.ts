@@ -17,6 +17,10 @@ export interface Pembelian {
   no_do?: string;
   no_npb?: string;
   invoice?: string;
+  metode_pembayaran: "Tunai" | "Transfer";
+  nama_bank?: string;
+  nama_pemilik_rekening?: string;
+  nomor_rekening?: string;
   total: number;
   status: "Pending" | "Completed" | "Decline";
   created_at: string;

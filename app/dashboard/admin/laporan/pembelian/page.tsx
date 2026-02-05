@@ -76,6 +76,10 @@ export default function PembelianReportPage() {
 
         const formattedData = (pembelianData as PembelianRow[]).map((item) => ({
           ...item,
+          metode_pembayaran: item.metode_pembayaran || "Tunai",
+          nama_bank: item.nama_bank || undefined,
+          nama_pemilik_rekening: item.nama_pemilik_rekening || undefined,
+          nomor_rekening: item.nomor_rekening || undefined,
           namaSupplier: item.supplier?.nama,
           items: (item.items || []).map((detail: PembelianDetailRow) => ({
             ...detail,

@@ -42,11 +42,13 @@ export default function PembelianForm({
     control,
     handleSubmit,
     setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<PembelianFormData>({
     defaultValues: {
       tanggal: new Date().toISOString().split("T")[0],
       status: "Pending",
+      metode_pembayaran: "Tunai",
       items: [],
     },
   });
@@ -58,6 +60,7 @@ export default function PembelianForm({
 
   const watchSupplierId = useWatch({ control, name: "supplier_id" });
   const watchItems = useWatch({ control, name: "items" }) || [];
+  const watchMetode = useWatch({ control, name: "metode_pembayaran" });
 
   const total = watchItems.reduce(
     (sum, i) => sum + Number(i.subtotal || 0),
@@ -182,6 +185,109 @@ export default function PembelianForm({
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="metode_pembayaran" className="text-sm font-medium">
+                  Metode Pembayaran <span className="text-destructive">*</span>
+                </Label>
+                <Controller
+                  name="metode_pembayaran"
+                  control={control}
+                  rules={{ required: "Metode pembayaran wajib dipilih" }}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={(value) => {
+                        if (value === "Tunai") {
+                          setValue("nama_bank", "");
+                          setValue("nama_pemilik_rekening", "");
+                          setValue("nomor_rekening", "");
+                          clearErrors([
+                            "nama_bank",
+                            "nama_pemilik_rekening",
+                            "nomor_rekening",
+                          ]);
+                        }
+                        field.onChange(value);
+                      }}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger id="metode_pembayaran">
+                        <SelectValue placeholder="Pilih Metode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Tunai">Tunai</SelectItem>
+                        <SelectItem value="Transfer">Transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.metode_pembayaran && (
+                  <p className="text-sm text-red-500">
+                    {errors.metode_pembayaran.message}
+                  </p>
+                )}
+              </div>
+
+              {watchMetode === "Transfer" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="nama_bank" className="text-sm font-medium">
+                      Nama Bank <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="nama_bank"
+                      placeholder="Nama Bank"
+                      {...register("nama_bank", {
+                        required: "Nama bank wajib diisi",
+                      })}
+                    />
+                    {errors.nama_bank && (
+                      <p className="text-sm text-red-500">
+                        {errors.nama_bank.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="nama_pemilik_rekening"
+                      className="text-sm font-medium"
+                    >
+                      Nama Pemilik Rekening <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="nama_pemilik_rekening"
+                      placeholder="Nama Pemilik Rekening"
+                      {...register("nama_pemilik_rekening", {
+                        required: "Nama pemilik rekening wajib diisi",
+                      })}
+                    />
+                    {errors.nama_pemilik_rekening && (
+                      <p className="text-sm text-red-500">
+                        {errors.nama_pemilik_rekening.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nomor_rekening" className="text-sm font-medium">
+                      No. Rekening <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="nomor_rekening"
+                      placeholder="No. Rekening"
+                      {...register("nomor_rekening", {
+                        required: "No. rekening wajib diisi",
+                      })}
+                    />
+                    {errors.nomor_rekening && (
+                      <p className="text-sm text-red-500">
+                        {errors.nomor_rekening.message}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -279,13 +385,13 @@ export default function PembelianForm({
 
                 <Input
                   type="text"
-                  value={formatRupiah(watchItems[index].harga)}
+                  value={formatRupiah(watchItems[index]?.harga || 0)}
                   readOnly
                   className="bg-muted/50 h-9"
                 />
 
                 <div className="font-semibold text-sm flex items-center h-9 px-3 bg-muted/30 rounded-md">
-                  {formatRupiah(watchItems[index].subtotal)}
+                  {formatRupiah(watchItems[index]?.subtotal || 0)}
                 </div>
 
                 <Button
