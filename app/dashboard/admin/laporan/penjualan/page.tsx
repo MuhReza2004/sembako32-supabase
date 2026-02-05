@@ -9,6 +9,7 @@ import { PenjualanSummaryCards } from "@/components/laporan/PenjualanSummaryCard
 import { PenjualanFilter } from "@/components/laporan/PenjualanFilter";
 import { PenjualanTable } from "@/components/laporan/PenjualanTable";
 import { Button } from "@/components/ui/button";
+import { getAccessToken } from "@/app/lib/auth-client";
 
 const PAGE_SIZE = 10;
 
@@ -135,10 +136,13 @@ export default function PenjualanReportPage() {
     newTab.document.write("Menghasilkan laporan PDF, mohon tunggu...");
 
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-sales-report", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           startDate: startDate || null,

@@ -5,6 +5,7 @@ import { supabase } from "@/app/lib/supabase";
 import { useStatus } from "@/components/ui/StatusProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAccessToken } from "@/app/lib/auth-client";
 import {
   Select,
   SelectContent,
@@ -283,9 +284,14 @@ export default function DeliveryOrderPage() {
 
   const handlePrintDO = async (row: DeliveryOrderRow) => {
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-delivery-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           deliveryOrder: row,
         }),
@@ -309,9 +315,14 @@ export default function DeliveryOrderPage() {
 
   const handlePrintBAST = async (row: DeliveryOrderRow) => {
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-bast", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           deliveryOrder: row,
         }),

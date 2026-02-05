@@ -15,6 +15,7 @@ import { getAllSuppliers } from "@/app/services/supplier.service";
 import { Supplier } from "@/app/types/supplier";
 import { Button } from "../ui/button";
 import { useCachedList } from "@/hooks/useCachedList";
+import { getAccessToken } from "@/app/lib/auth-client";
 
 interface Props {
   open: boolean;
@@ -69,9 +70,14 @@ export default function DialogDetailPembelian({
     newTab.document.write("Menghasilkan PDF, mohon tunggu...");
 
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-purchase-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ pembelianId: pembelian.id }),
       });
 

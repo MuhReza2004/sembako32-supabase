@@ -32,6 +32,9 @@ export default function LoginForm() {
         throw new Error("Login failed: No user or session returned.");
       }
 
+      // Ensure session is persisted in storage/cookies
+      await supabase.auth.setSession(res.session);
+
       // Sync role into JWT metadata for faster middleware checks
       let role: string | null = null;
       const syncRes = await fetch("/api/auth/sync-role", { method: "POST" });

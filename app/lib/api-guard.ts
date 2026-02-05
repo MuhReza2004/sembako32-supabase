@@ -16,19 +16,51 @@ type GuardFail = {
 export const requireAuth = async (
   request: NextRequest,
 ): Promise<GuardOk | GuardFail> => {
+  const authHeader = request.headers.get("authorization") || "";
+  const bearerToken = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : authHeader;
+
+  if (bearerToken) {
+    const { data, error } = await supabaseAdmin.auth.getUser(bearerToken);
+    if (!error && data?.user) {
+      const userMeta = data.user as {
+        app_metadata?: { role?: string };
+        user_metadata?: { role?: string };
+      };
+      let role =
+        userMeta?.app_metadata?.role ?? userMeta?.user_metadata?.role ?? null;
+      if (!role) {
+        const { data: userProfile } = await supabaseAdmin
+          .from("users")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+        role = userProfile?.role || null;
+      }
+      if (!role) {
+        return {
+          ok: false,
+          response: NextResponse.json(
+            { error: "role_not_found" },
+            { status: 403 },
+          ),
+        };
+      }
+      return { ok: true, userId: data.user.id, role };
+    }
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set() {
-          // No-op: read-only for auth checks.
-        },
-        remove() {
-          // No-op: read-only for auth checks.
+        setAll() {
+          // No-op: read-only for auth checks in route handlers.
         },
       },
     },

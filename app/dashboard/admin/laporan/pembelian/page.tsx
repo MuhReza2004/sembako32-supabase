@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { getAccessToken } from "@/app/lib/auth-client";
 
 const PAGE_SIZE = 10;
 
@@ -136,9 +137,14 @@ export default function PembelianReportPage() {
     newTab.document.write("Menghasilkan laporan PDF, mohon tunggu...");
 
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-purchase-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           startDate: startDate || null,
           endDate: endDate || null,

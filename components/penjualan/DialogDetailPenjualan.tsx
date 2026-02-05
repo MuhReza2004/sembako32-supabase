@@ -24,6 +24,7 @@ import { Pelanggan } from "@/app/types/pelanggan";
 import { formatRupiah } from "@/helper/format";
 import { getPelangganById } from "@/app/services/pelanggan.service";
 import { FileText, Printer, Loader2, Truck } from "lucide-react";
+import { getAccessToken } from "@/app/lib/auth-client";
 
 interface DialogDetailPenjualanProps {
   open: boolean;
@@ -85,10 +86,13 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const handlePrintInvoice = async () => {
     setIsLoadingInvoice(true);
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-invoice", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           ...penjualan,
@@ -125,6 +129,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
     if (!penjualan.no_do) return;
     setIsLoadingDO(true);
     try {
+      const token = await getAccessToken();
       const payload = {
         deliveryOrder: {
           no_do: penjualan.no_do,
@@ -151,7 +156,11 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
 
       const response = await fetch("/api/generate-delivery-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -174,9 +183,14 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const handlePrintReceipt = async () => {
     setIsLoadingReceipt(true);
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/generate-receipt", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           ...penjualan,
           nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
