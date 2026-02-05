@@ -7,6 +7,24 @@ import * as path from "path";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Pembelian } from "@/app/types/pembelian";
 
+type PembelianDetailRow = {
+  id: string;
+  pembelian_id: string;
+  supplier_produk_id: string;
+  qty: number;
+  harga: number;
+  subtotal: number;
+  created_at: string;
+  supplier_produk?: {
+    produk?: { nama?: string; satuan?: string };
+  };
+};
+
+type PembelianRow = Pembelian & {
+  supplier?: { nama?: string } | null;
+  items?: PembelianDetailRow[];
+};
+
 // This function is for server-side use with admin privileges
 const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
   const { data, error } = await supabaseAdmin
@@ -31,31 +49,33 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
     throw error;
   }
 
-  const pembelianList: Pembelian[] = data.map((item: Pembelian) => ({
-    id: item.id,
-    supplier_id: item.supplier_id,
-    tanggal: item.tanggal,
-    no_do: item.no_do,
-    no_npb: item.no_npb,
-    invoice: item.invoice,
-    total: item.total,
-    status: item.status,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-    nama_supplier: item.supplier?.nama || "Supplier Tidak Diketahui",
-    items: item.items.map((detail: any) => ({
-      id: detail.id,
-      pembelian_id: detail.pembelian_id,
-      supplier_produk_id: detail.supplier_produk_id,
-      qty: detail.qty,
-      harga: detail.harga,
-      subtotal: detail.subtotal,
-      created_at: detail.created_at,
-      namaProduk:
-        detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-      satuan: detail.supplier_produk?.produk?.satuan || "",
-    })),
-  }));
+  const pembelianList: Pembelian[] = (data as PembelianRow[]).map(
+    (item: PembelianRow) => ({
+      id: item.id,
+      supplier_id: item.supplier_id,
+      tanggal: item.tanggal,
+      no_do: item.no_do,
+      no_npb: item.no_npb,
+      invoice: item.invoice,
+      total: item.total,
+      status: item.status,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      namaSupplier: item.supplier?.nama || "Supplier Tidak Diketahui",
+      items: (item.items || []).map((detail: PembelianDetailRow) => ({
+        id: detail.id,
+        pembelian_id: detail.pembelian_id,
+        supplier_produk_id: detail.supplier_produk_id,
+        qty: detail.qty,
+        harga: detail.harga,
+        subtotal: detail.subtotal,
+        created_at: detail.created_at,
+        namaProduk:
+          detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
+        satuan: detail.supplier_produk?.produk?.satuan || "",
+      })),
+    }),
+  );
 
   return pembelianList;
 };
@@ -155,7 +175,7 @@ export async function POST(request: NextRequest) {
                         <li>Invoice: ${p.invoice || "-"}</li>
                       </ul>
                       </td>
-                      <td>${p.nama_supplier}</td>
+                      <td>${p.namaSupplier || "-"}</td>
                       <td>${formatRupiah(p.total)}</td>
                       <td>${p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline"}</td>
                     </tr>

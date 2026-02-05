@@ -5,12 +5,12 @@ import { getAllPembelian } from "@/app/services/pembelian.service";
 export const usePembelianInfinite = () => {
   return useInfiniteQuery({
     queryKey: ["pembelian-infinite"],
-    queryFn: ({ pageParam = null }) => {
+    queryFn: () => {
       // This would be implemented with proper pagination API
       return getAllPembelian();
     },
     initialPageParam: null,
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: () => {
       // Return next page param based on your pagination logic
       return null;
     },

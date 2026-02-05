@@ -103,7 +103,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           throw new Error(
             `Failed to generate PDF: ${errorData.details || "Unknown error"}`,
           );
-        } catch (e) {
+        } catch {
           throw new Error(`Failed to generate PDF: ${errorText}`);
         }
       }
@@ -114,37 +114,6 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Terjadi kesalahan saat membuat preview invoice PDF.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePrintReceipt = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/generate-receipt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_toko: pelanggan?.nama_toko,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Failed to generate receipt PDF:", errorText);
-        throw new Error(`Failed to generate receipt PDF: ${errorText}`);
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-    } catch (error) {
-      console.error("Error generating receipt PDF:", error);
-      alert("Terjadi kesalahan saat membuat PDF tanda terima.");
     } finally {
       setIsLoading(false);
     }

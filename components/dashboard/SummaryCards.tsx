@@ -21,9 +21,9 @@ interface DashboardData {
   totalPurchases: number;
   totalRevenue: number;
   totalExpenses: number;
-  lowStockItems: any[];
-  recentSales: any[];
-  recentPurchases: any[];
+  lowStockItems: unknown[];
+  recentSales: unknown[];
+  recentPurchases: unknown[];
   totalPiutang: number;
   totalNominalPiutang: number;
 }

@@ -5,9 +5,32 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { formatRupiah } from "@/helper/format";
 
+type DOItem = {
+  qty: number;
+  harga?: number;
+  subtotal?: number;
+  supplier_produk?: {
+    produk?: {
+      nama?: string;
+    };
+  };
+};
+
+type DeliveryOrderPayload = {
+  no_do: string;
+  no_tanda_terima?: string;
+  penjualan: {
+    tanggal: string;
+    pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+    items?: DOItem[];
+  };
+};
+
 export async function POST(request: NextRequest) {
   try {
-    const { deliveryOrder } = await request.json();
+    const { deliveryOrder } = (await request.json()) as {
+      deliveryOrder: DeliveryOrderPayload;
+    };
     if (!deliveryOrder?.no_do || !deliveryOrder?.penjualan) {
       return NextResponse.json(
         { error: "Missing required delivery order data" },
@@ -86,7 +109,7 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
-    const items = deliveryOrder.penjualan.items || [];
+    const items: DOItem[] = deliveryOrder.penjualan.items || [];
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -131,7 +154,7 @@ export async function POST(request: NextRequest) {
               <tbody>
                 ${items
                   .map(
-                    (item: any, index: number) => `
+                    (item: DOItem, index: number) => `
                       <tr>
                         <td>${index + 1}</td>
                         <td>${item.supplier_produk?.produk?.nama || "Produk"}</td>

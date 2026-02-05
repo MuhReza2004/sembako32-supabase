@@ -36,7 +36,6 @@ export default function SupplierPage() {
   const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchSuppliers = useCallback(async () => {
     setIsLoading(true);
@@ -125,7 +124,6 @@ export default function SupplierPage() {
       return;
     }
 
-    setIsSubmitting(true);
     try {
       await deleteSupplier(supplier.id);
       showStatus({
@@ -135,14 +133,15 @@ export default function SupplierPage() {
       });
       // setDialogHapusOpen(false); // No longer needed
       setSelectedSupplier(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
-        message: "Gagal menghapus supplier: " + err.message,
+        message:
+          "Gagal menghapus supplier: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
       console.error("Error deleting supplier:", err);
     } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -215,9 +214,11 @@ export default function SupplierPage() {
             });
             // fetchSuppliers(); // Handled by refresh: true
             setDialogEditOpen(false);
-          } catch (err: any) {
+          } catch (err: unknown) {
             showStatus({
-              message: "Gagal mengupdate supplier: " + err.message,
+              message:
+                "Gagal mengupdate supplier: " +
+                (err instanceof Error ? err.message : "Unknown error"),
               success: false,
             });
             console.error("Error updating supplier:", err);

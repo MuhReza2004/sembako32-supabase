@@ -170,10 +170,12 @@ export default function DialogTambahHargaProduk({
         refresh: true,
       });
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Error adding supplier product:", error);
       onStatusReport({
-        message: "Gagal menambahkan harga produk: " + error.message,
+        message: "Gagal menambahkan harga produk: " + errorMessage,
         success: false,
       });
     } finally {

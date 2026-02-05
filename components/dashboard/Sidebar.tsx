@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { dashboardMenus } from "@/constants/menu";
+import { dashboardMenus, MenuItem } from "@/constants/menu";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
@@ -38,20 +38,16 @@ export default function Sidebar() {
     if (role && !timeoutReached && !error) {
       // Filter menu berdasarkan role
       return dashboardMenus.filter((menu) => {
-        if ("children" in menu && (menu as any).children) {
-          return (menu as any).children.some((child: any) =>
-            child.roles.includes(role),
-          );
+        if (menu.children && menu.children.length > 0) {
+          return menu.children.some((child) => child.roles.includes(role));
         }
         return menu.roles.includes(role);
       });
     } else {
       // Fallback: tampilkan menu admin jika role tidak ditemukan
       return dashboardMenus.filter((menu) => {
-        if ("children" in menu && (menu as any).children) {
-          return (menu as any).children.some((child: any) =>
-            child.roles.includes("admin"),
-          );
+        if (menu.children && menu.children.length > 0) {
+          return menu.children.some((child) => child.roles.includes("admin"));
         }
         return menu.roles.includes("admin");
       });
@@ -59,12 +55,17 @@ export default function Sidebar() {
   }, [role, timeoutReached, error]);
 
   useEffect(() => {
-    const parentMenu = menusToShow.find(
-      (menu) => "children" in menu && pathname.startsWith(menu.href),
-    );
+    const parentMenu = menusToShow.find((menu) => {
+      if (!menu.children || menu.children.length === 0) return false;
+      return pathname.startsWith(menu.href);
+    });
     if (parentMenu) {
-      setExpandedMenus([parentMenu.href]);
+      const timer = setTimeout(() => {
+        setExpandedMenus([parentMenu.href]);
+      }, 0);
+      return () => clearTimeout(timer);
     }
+    return undefined;
   }, [pathname, menusToShow]);
 
   // Jika loading dan belum timeout, tampilkan loading state
@@ -199,9 +200,9 @@ export default function Sidebar() {
 
         <nav className="flex-1 space-y-2 px-3 py-4 overflow-y-auto">
           {menusToShow.length > 0 ? (
-            menusToShow.map((menu, index) => {
+            menusToShow.map((menu: MenuItem, index) => {
               // Handle nested menu structure (jika ada children)
-              if ("children" in menu && (menu as any).children) {
+              if (menu.children && menu.children.length > 0) {
                 const isExpanded = expandedMenus.includes(menu.href);
                 const isActive = pathname.startsWith(menu.href);
 
@@ -243,8 +244,7 @@ export default function Sidebar() {
                       `}
                     >
                       <div className="space-y-1 pl-2">
-                        {(menu as any).children.map(
-                          (child: any, childIndex: number) => {
+                        {menu.children.map((child, childIndex: number) => {
                             const isChildActive = pathname === child.href;
 
                             return (

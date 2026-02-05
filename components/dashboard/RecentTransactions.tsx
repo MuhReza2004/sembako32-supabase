@@ -8,7 +8,7 @@ import { ShoppingCart, Truck, Clock } from "lucide-react";
 interface RecentSale {
   id: string;
   kode: string;
-  tanggal: Date;
+  tanggal: string | Date;
   total: number;
   status: string;
   pelanggan?: string;
@@ -17,7 +17,7 @@ interface RecentSale {
 interface RecentPurchase {
   id: string;
   kode: string;
-  tanggal: Date;
+  tanggal: string | Date;
   total: number;
   status: string;
   supplier?: string;
@@ -47,13 +47,14 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
     }).format(amount);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string | Date) => {
     try {
+      const parsedDate = date instanceof Date ? date : new Date(date);
       // Check if date is valid
       if (
-        !date ||
-        isNaN(date.getTime()) ||
-        date.toString() === "Invalid Date"
+        !parsedDate ||
+        isNaN(parsedDate.getTime()) ||
+        parsedDate.toString() === "Invalid Date"
       ) {
         console.error("Invalid date received:", date);
         return "Tanggal tidak valid";
@@ -62,7 +63,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
         day: "numeric",
         month: "short",
         year: "numeric",
-      }).format(date);
+      }).format(parsedDate);
     } catch (error) {
       console.error("Error formatting date:", date, error);
       return "Tanggal tidak valid";

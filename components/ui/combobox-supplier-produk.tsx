@@ -34,6 +34,7 @@ export function ComboboxSupplierProduk({
   value,
   onChange,
 }: ComboboxSupplierProdukProps) {
+  type SupplierProdukWithProduk = SupplierProduk & { produk?: Produk };
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
@@ -42,7 +43,8 @@ export function ComboboxSupplierProduk({
     return supplierProdukList.map((sp) => {
       // Prioritize the nested 'produk' object if it exists from the join
       const produk =
-        (sp as any).produk || produkList.find((p) => p.id === sp.produk_id);
+        (sp as SupplierProdukWithProduk).produk ||
+        produkList.find((p) => p.id === sp.produk_id);
       return {
         ...sp,
         produk: produk,

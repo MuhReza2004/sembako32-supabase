@@ -26,10 +26,7 @@ interface PenjualanTabelProps {
   isLoading: boolean;
   // error: string | null; // No longer needed
   onViewDetails: (penjualan: Penjualan) => void;
-  onUpdateStatus: (id: string, status: "Lunas" | "Belum Lunas") => void;
-  onEdit: (penjualan: Penjualan) => void;
   onCancel: (id: string) => void;
-  updatingStatus?: string | null;
   cancelingTransaction?: string | null;
 }
 
@@ -38,12 +35,12 @@ export default function PenjualanTabel({
   isLoading,
   // error, // No longer needed
   onViewDetails,
-  onUpdateStatus,
-  onEdit,
   onCancel,
-  updatingStatus,
   cancelingTransaction,
 }: PenjualanTabelProps) {
+  type PenjualanWithPelanggan = Penjualan & {
+    pelanggan?: { nama_pelanggan?: string };
+  };
   if (isLoading) {
     return <p>Loading...</p>;
   }
@@ -90,7 +87,8 @@ export default function PenjualanTabel({
                 <TableCell>
                   {penjualan.namaPelanggan ||
                     // fallback when payload includes nested pelanggan object
-                    (penjualan as any).pelanggan?.nama_pelanggan ||
+                    (penjualan as PenjualanWithPelanggan).pelanggan
+                      ?.nama_pelanggan ||
                     "-"}
                 </TableCell>
                 <TableCell className="text-center">

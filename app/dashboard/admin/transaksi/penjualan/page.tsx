@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
+import { Penjualan } from "@/app/types/penjualan";
 import PenjualanTabel from "@/components/penjualan/PenjualanTabel";
 import { DialogDetailPenjualan } from "@/components/penjualan/DialogDetailPenjualan";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
@@ -11,7 +11,6 @@ import { Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  updatePenjualanStatus as serviceUpdatePenjualanStatus,
   cancelPenjualan as serviceCancelPenjualan,
   getAllPenjualan,
 } from "@/app/services/penjualan.service";
@@ -27,7 +26,6 @@ export default function PenjualanPage() {
   const [selectedPenjualan, setSelectedPenjualan] = useState<Penjualan | null>(
     null,
   );
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [cancelingTransaction, setCancelingTransaction] = useState<
     string | null
   >(null);
@@ -78,10 +76,12 @@ export default function PenjualanPage() {
 
       setData(paginatedData);
       setTotalCount(filteredData.length);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching sales:", err);
       showStatus({
-        message: "Gagal memuat data penjualan: " + err.message,
+        message:
+          "Gagal memuat data penjualan: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
       setData([]);
@@ -125,29 +125,6 @@ export default function PenjualanPage() {
     setDialogDetailOpen(true);
   };
 
-  const handleUpdateStatus = async (
-    id: string,
-    status: "Lunas" | "Belum Lunas",
-  ) => {
-    setUpdatingStatus(id);
-    try {
-      await serviceUpdatePenjualanStatus(id, status);
-      showStatus({
-        message: `Status penjualan berhasil diubah menjadi ${status}`,
-        success: true,
-        refresh: true,
-      });
-    } catch (error: any) {
-      console.error("Error updating status:", error);
-      showStatus({
-        message: "Gagal mengubah status penjualan: " + error.message,
-        success: false,
-      });
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
   const handleCancel = async (id: string) => {
     const confirmed = await confirm({
       title: "Konfirmasi Pembatalan Transaksi",
@@ -170,21 +147,17 @@ export default function PenjualanPage() {
         success: true,
         refresh: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error canceling transaction:", error);
       showStatus({
-        message: "Gagal membatalkan transaksi: " + error.message,
+        message:
+          "Gagal membatalkan transaksi: " +
+          (error instanceof Error ? error.message : "Unknown error"),
         success: false,
       });
     } finally {
       setCancelingTransaction(null);
     }
-  };
-
-  const handleEdit = (penjualan: Penjualan) => {
-    router.push(
-      `/dashboard/admin/transaksi/penjualan/tambah?id=${penjualan.id}`,
-    );
   };
 
   const hasNextPage = (page + 1) * perPage < totalCount;
@@ -239,10 +212,7 @@ export default function PenjualanPage() {
         data={data} // Use raw data from fetchData, filtering moved to Supabase query
         isLoading={isLoading}
         onViewDetails={handleViewDetails}
-        onUpdateStatus={handleUpdateStatus}
-        onEdit={handleEdit}
         onCancel={handleCancel}
-        updatingStatus={updatingStatus}
         cancelingTransaction={cancelingTransaction}
       />
 

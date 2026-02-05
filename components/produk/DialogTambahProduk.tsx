@@ -19,7 +19,6 @@ import {
   addProduk,
   getProdukByName,
   updateProdukStok,
-  getProdukById,
 } from "@/app/services/produk.service";
 import { DialogProdukDuplikat } from "./DialogProdukDuplikat"; // Import the duplicate dialog
 import { useStatus } from "@/components/ui/StatusProvider";
@@ -58,7 +57,6 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
     handleSubmit,
     reset,
     formState: { errors },
-    watch,
   } = useForm<ProdukFormData>({
     defaultValues: {
       kode: "",
@@ -69,8 +67,6 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
       stok: 0, // Ensure stok has a default value
     },
   });
-
-  const watchNama = watch("nama"); // Watch nama field for duplicate check
 
   useEffect(() => {
     if (open) {
@@ -101,10 +97,12 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
           refresh: true,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to add produk:", error);
       onStatusReport({
-        message: "Gagal menambahkan produk: " + error.message,
+        message: "Gagal menambahkan produk: " + errorMessage,
         success: false,
       });
     } finally {
@@ -125,10 +123,12 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
         success: true,
         refresh: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to update stock:", error);
       onStatusReport({
-        message: "Gagal memperbarui stok: " + error.message,
+        message: "Gagal memperbarui stok: " + errorMessage,
         success: false,
       });
     } finally {
@@ -149,10 +149,12 @@ export const DialogTambahProduk: React.FC<DialogTambahProdukProps> = ({
         success: true,
         refresh: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to add new duplicate produk:", error);
       onStatusReport({
-        message: "Gagal menambahkan produk baru: " + error.message,
+        message: "Gagal menambahkan produk baru: " + errorMessage,
         success: false,
       });
     } finally {

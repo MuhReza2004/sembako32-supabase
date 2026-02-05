@@ -6,11 +6,14 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { Penjualan } from "@/app/types/penjualan";
 
+type PenjualanWithExtras = Penjualan & {
+  nama_pelanggan?: string;
+  nama_toko?: string;
+};
+
 export async function POST(request: NextRequest) {
   try {
-    const penjualan = (await request.json()) as Penjualan & {
-      nama_toko?: string;
-    };
+    const penjualan = (await request.json()) as PenjualanWithExtras;
 
     if (!penjualan?.no_invoice || !penjualan?.items) {
       return NextResponse.json(
@@ -120,8 +123,8 @@ export async function POST(request: NextRequest) {
             <span>No. NPB</span><span>:</span><span>${penjualan.no_npb || "-"}</span>
             <span>No. DO</span><span>:</span><span>${penjualan.no_do || "-"}</span>
             <span>Tanggal</span><span>:</span><span>${new Date(penjualan.tanggal).toLocaleDateString("id-ID")}</span>
-            <span>Pelanggan</span><span>:</span><span>${(penjualan as any).nama_pelanggan || penjualan.namaPelanggan || "-"}</span>
-            <span>Nama Toko</span><span>:</span><span>${(penjualan as any).nama_toko || "-"}</span>
+            <span>Pelanggan</span><span>:</span><span>${penjualan.nama_pelanggan || penjualan.namaPelanggan || "-"}</span>
+            <span>Nama Toko</span><span>:</span><span>${penjualan.nama_toko || "-"}</span>
           </div>
 
           <table>

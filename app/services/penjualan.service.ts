@@ -1,6 +1,17 @@
 import { supabase } from "@/app/lib/supabase";
 import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
 
+type PenjualanDetailRow = PenjualanDetail & {
+  supplier_produk?: {
+    harga_jual?: number;
+    produk?: { nama?: string; satuan?: string };
+  };
+};
+
+type PenjualanRow = Penjualan & {
+  pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+};
+
 const DECIMAL_14_2_MAX = 999999999999.99;
 
 const assertValidMoney = (label: string, value: number) => {
@@ -200,7 +211,7 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
   console.log("Raw details data:", detailsData);
 
   // Join penjualan dengan penjualan_detail
-  const mappedData = penjualanData.map((item: any) => ({
+  const mappedData = (penjualanData as PenjualanRow[]).map((item) => ({
     id: item.id,
     tanggal: item.tanggal,
     pelanggan_id: item.pelanggan_id,
@@ -228,9 +239,9 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     alamatPelanggan: item.pelanggan?.alamat || "",
     // Get items from detailsData that belong to this penjualan
     items:
-      detailsData
-        .filter((detail: any) => detail.penjualan_id === item.id)
-        .map((detail: any) => ({
+      (detailsData as PenjualanDetailRow[])
+        .filter((detail) => detail.penjualan_id === item.id)
+        .map((detail) => ({
           id: detail.id,
           penjualan_id: detail.penjualan_id,
           supplier_produk_id: detail.supplier_produk_id,
@@ -384,13 +395,13 @@ export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
   }
 
   if (data.items) {
-    for (const item of data.items) {
-      // Stock validation logic here...
-    }
-
     // Restore old stock
-    for (const item of (currentPenjualan as any).penjualan_detail || []) {
-      const { data: p, error } = await supabase
+    const currentDetails =
+      (currentPenjualan as {
+        penjualan_detail?: { supplier_produk_id: string; qty: number }[];
+      }).penjualan_detail || [];
+    for (const item of currentDetails) {
+      const { data: p } = await supabase
         .from("supplier_produk")
         .select("stok")
         .eq("id", item.supplier_produk_id)
@@ -415,7 +426,7 @@ export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
         harga: item.harga,
         subtotal: item.subtotal,
       });
-      const { data: p, error } = await supabase
+      const { data: p } = await supabase
         .from("supplier_produk")
         .select("stok")
         .eq("id", item.supplier_produk_id)
@@ -430,7 +441,8 @@ export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
   }
 
   // Update the main penjualan document
-  const { items, ...updateData } = data; // Exclude items from the main update
+  const { items: _items, ...updateData } = data; // Exclude items from the main update
+  void _items;
   const { error: updateError } = await supabase
     .from("penjualan")
     .update(updateData)
@@ -451,7 +463,7 @@ export const deletePenjualan = async (id: string) => {
   if (fetchDetailsError) throw fetchDetailsError;
 
   for (const item of penjualanDetails || []) {
-    const { data: p, error } = await supabase
+    const { data: p } = await supabase
       .from("supplier_produk")
       .select("stok")
       .eq("id", item.supplier_produk_id)
@@ -477,7 +489,7 @@ export const cancelPenjualan = async (id: string) => {
   if (fetchDetailsError) throw fetchDetailsError;
 
   for (const item of penjualanDetails || []) {
-    const { data: p, error } = await supabase
+    const { data: p } = await supabase
       .from("supplier_produk")
       .select("stok")
       .eq("id", item.supplier_produk_id)

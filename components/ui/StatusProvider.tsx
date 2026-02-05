@@ -36,7 +36,7 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter(); // Initialize useRouter
 
   React.useEffect(() => {
-    let t: any;
+    let t: ReturnType<typeof setTimeout> | undefined;
     if (open && opts?.timeoutMs) {
       t = setTimeout(() => {
         setOpen(false);

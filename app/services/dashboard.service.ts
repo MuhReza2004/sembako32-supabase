@@ -1,9 +1,4 @@
 import { supabase } from "../lib/supabase";
-import { Produk } from "../types/produk";
-import { Pelanggan } from "../types/pelanggan";
-import { Supplier } from "../types/suplyer";
-import { Penjualan } from "../types/penjualan";
-import { Pembelian } from "../types/pembelian";
 
 export interface DashboardData {
   totalProducts: number;
@@ -344,14 +339,22 @@ const getRecentSales = async (dateRange?: {
     return [];
   }
 
-  return data.map((sale) => ({
-    id: sale.id,
-    kode: sale.no_invoice || `SL-${sale.id.slice(-6)}`,
-    tanggal: sale.created_at,
-    total: sale.total || 0,
-    status: sale.status || "Belum Lunas",
-    pelanggan: sale.pelanggan?.nama_toko || sale.pelanggan?.nama_pelanggan || "Unknown",
-  }));
+  return data.map((sale) => {
+    const pelangganRaw = Array.isArray(sale.pelanggan)
+      ? sale.pelanggan[0]
+      : sale.pelanggan;
+    return {
+      id: sale.id,
+      kode: sale.no_invoice || `SL-${sale.id.slice(-6)}`,
+      tanggal: sale.created_at,
+      total: sale.total || 0,
+      status: sale.status || "Belum Lunas",
+      pelanggan:
+        pelangganRaw?.nama_toko ||
+        pelangganRaw?.nama_pelanggan ||
+        "Unknown",
+    };
+  });
 };
 
 const getRecentPurchases = async (dateRange?: {
@@ -389,12 +392,17 @@ const getRecentPurchases = async (dateRange?: {
     return [];
   }
 
-  return data.map((purchase) => ({
-    id: purchase.id,
-    kode: purchase.invoice || `PB-${purchase.id.slice(-6)}`,
-    tanggal: purchase.created_at,
-    total: purchase.total || 0,
-    status: purchase.status || "Pending",
-    supplier: purchase.suppliers?.nama || "Unknown",
-  }));
+  return data.map((purchase) => {
+    const supplierRaw = Array.isArray(purchase.suppliers)
+      ? purchase.suppliers[0]
+      : purchase.suppliers;
+    return {
+      id: purchase.id,
+      kode: purchase.invoice || `PB-${purchase.id.slice(-6)}`,
+      tanggal: purchase.created_at,
+      total: purchase.total || 0,
+      status: purchase.status || "Pending",
+      supplier: supplierRaw?.nama || "Unknown",
+    };
+  });
 };

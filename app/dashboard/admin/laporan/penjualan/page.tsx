@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
 import { supabase } from "@/app/lib/supabase";
 import { DialogDetailPenjualan } from "@/components/penjualan/DialogDetailPenjualan";
-import { formatRupiah } from "@/helper/format";
 import { PenjualanReportHeader } from "@/components/laporan/PenjualanReportHeader";
 import { PenjualanSummaryCards } from "@/components/laporan/PenjualanSummaryCards";
 import { PenjualanFilter } from "@/components/laporan/PenjualanFilter";
@@ -12,6 +11,17 @@ import { PenjualanTable } from "@/components/laporan/PenjualanTable";
 import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE = 10;
+
+type PenjualanDetailRow = PenjualanDetail & {
+  supplier_produk?: {
+    produk?: { nama?: string };
+  };
+};
+
+type PenjualanRow = Penjualan & {
+  pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+  items?: PenjualanDetailRow[];
+};
 
 export default function PenjualanReportPage() {
   const [data, setData] = useState<Penjualan[]>([]);
@@ -60,14 +70,14 @@ export default function PenjualanReportPage() {
           throw penjualanError;
         }
 
-        const formattedData = penjualanData.map((item) => ({
+        const formattedData = (penjualanData as PenjualanRow[]).map((item) => ({
           ...item,
           namaPelanggan: item.pelanggan?.nama_pelanggan,
           alamatPelanggan: item.pelanggan?.alamat,
-          items: item.items.map((detail: PenjualanDetail) => ({
+          items: (item.items || []).map((detail: PenjualanDetailRow) => ({
             ...detail,
             namaProduk:
-              (detail.supplier_produk as any)?.produk?.nama ||
+              detail.supplier_produk?.produk?.nama ||
               "Produk tidak ditemukan",
             hargaJual: detail.harga,
             qty: detail.qty,
@@ -206,7 +216,6 @@ export default function PenjualanReportPage() {
       <PenjualanTable
         data={data}
         onViewDetails={handleViewDetails}
-        isLoading={isLoading}
       />
 
       <div className="flex items-center justify-end space-x-2 py-4">

@@ -4,7 +4,7 @@ import { Penjualan } from "@/app/types/penjualan";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRupiah } from "@/helper/format";
-import { Download, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,13 +18,11 @@ import { Badge } from "@/components/ui/badge";
 interface PenjualanTableProps {
   data: Penjualan[];
   onViewDetails: (penjualan: Penjualan) => void;
-  onExportExcel: () => void;
 }
 
 export function PenjualanTable({
   data,
   onViewDetails,
-  onExportExcel,
 }: PenjualanTableProps) {
   return (
     <Card>

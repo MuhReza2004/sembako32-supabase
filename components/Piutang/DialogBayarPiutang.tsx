@@ -39,6 +39,18 @@ type FormData = {
   atas_nama: string;
 };
 
+type PenjualanWithExtras = Penjualan & {
+  totalDibayar?: number;
+  namaPelanggan?: string;
+  nama_pelanggan?: string;
+};
+
+type PenjualanItemWithExtras = Penjualan["items"] extends (infer U)[] ? U & {
+  namaProduk?: string;
+  nama_produk?: string;
+  produk?: { nama?: string };
+} : never;
+
 export default function DialogBayarPiutang({
   isOpen,
   onClose,
@@ -50,7 +62,6 @@ export default function DialogBayarPiutang({
     handleSubmit,
     control,
     setValue,
-    watch,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>();
@@ -58,9 +69,8 @@ export default function DialogBayarPiutang({
   const confirm = useConfirm();
   const [bayarLunas, setBayarLunas] = useState(false);
 
-  const totalDibayar = piutang.total_dibayar || 0;
   const totalDibayarResolved =
-    (piutang as any).totalDibayar || piutang.total_dibayar || 0;
+    (piutang as PenjualanWithExtras).totalDibayar || piutang.total_dibayar || 0;
   const sisaUtang = (piutang.total_akhir || piutang.total) - totalDibayarResolved;
 
   useEffect(() => {
@@ -70,8 +80,11 @@ export default function DialogBayarPiutang({
         jumlah: 0,
         metode_pembayaran: "Transfer",
         atas_nama:
-          (piutang as any).namaPelanggan || piutang.nama_pelanggan || "",
+          (piutang as PenjualanWithExtras).namaPelanggan ||
+          piutang.nama_pelanggan ||
+          "",
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBayarLunas(false);
     }
   }, [isOpen, piutang, sisaUtang, reset]);
@@ -124,9 +137,9 @@ export default function DialogBayarPiutang({
         refresh: true,
       });
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       onStatusReport({
-        message: err.message || "Gagal menyimpan pembayaran.",
+        message: err instanceof Error ? err.message : "Gagal menyimpan pembayaran.",
         success: false,
       });
     }
@@ -143,7 +156,11 @@ export default function DialogBayarPiutang({
             <div>
               <Label>Nama Pelanggan</Label>
               <Input
-                value={(piutang as any).namaPelanggan || piutang.nama_pelanggan || ""}
+                value={
+                  (piutang as PenjualanWithExtras).namaPelanggan ||
+                  piutang.nama_pelanggan ||
+                  ""
+                }
                 disabled
               />
             </div>
@@ -175,13 +192,15 @@ export default function DialogBayarPiutang({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {piutang.items.map((item, index) => (
+                    {piutang.items.map((item, index) => {
+                      const row = item as PenjualanItemWithExtras;
+                      return (
                       <TableRow key={index} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
                           {(
-                            (item as any).namaProduk ||
-                            (item as any).nama_produk ||
-                            (item as any).produk?.nama ||
+                            row.namaProduk ||
+                            row.nama_produk ||
+                            row.produk?.nama ||
                             "Produk Tidak Ditemukan"
                           )}
                         </TableCell>
@@ -195,7 +214,7 @@ export default function DialogBayarPiutang({
                           {formatRupiah(item.subtotal)}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                   </TableBody>
                 </Table>
               </div>

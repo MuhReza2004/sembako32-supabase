@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatRupiah } from "@/helper/format";
-import { Download, Calendar, FileText } from "lucide-react";
+import { Calendar, FileText } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,6 +20,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const PAGE_SIZE = 10;
+
+type PembelianDetailRow = PembelianDetail & {
+  supplier_produk?: {
+    produk?: { nama?: string; satuan?: string };
+  };
+};
+
+type PembelianRow = Pembelian & {
+  supplier?: { nama?: string } | null;
+  items?: PembelianDetailRow[];
+};
 
 export default function PembelianReportPage() {
   const [data, setData] = useState<Pembelian[]>([]);
@@ -63,15 +74,15 @@ export default function PembelianReportPage() {
           throw pembelianError;
         }
 
-        const formattedData = pembelianData.map((item) => ({
+        const formattedData = (pembelianData as PembelianRow[]).map((item) => ({
           ...item,
-          nama_supplier: item.supplier?.nama,
-          items: item.items.map((detail: PembelianDetail) => ({
+          namaSupplier: item.supplier?.nama,
+          items: (item.items || []).map((detail: PembelianDetailRow) => ({
             ...detail,
             namaProduk:
-              (detail.supplier_produk as any)?.produk?.nama ||
+              detail.supplier_produk?.produk?.nama ||
               "Produk tidak ditemukan",
-            satuan: (detail.supplier_produk as any)?.produk?.satuan || "",
+            satuan: detail.supplier_produk?.produk?.satuan || "",
             harga: detail.harga,
             qty: detail.qty,
           })),
@@ -293,7 +304,7 @@ export default function PembelianReportPage() {
                           <li>{purchase.no_npb || "-"}</li>
                         </ul>
                       </TableCell>
-                      <TableCell>{purchase.nama_supplier}</TableCell>
+                      <TableCell>{purchase.namaSupplier}</TableCell>
                       <TableCell>
                         {purchase.items && purchase.items.length > 0 ? (
                           <ul className="list-disc pl-4 text-xs">

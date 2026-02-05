@@ -34,9 +34,11 @@ export default function HargaProdukPage() {
     try {
       const res = await getAllSupplierProduk();
       setData(res);
-    } catch (error: any) {
+    } catch (error: unknown) {
       showStatus({
-        message: "Gagal memuat data harga produk: " + error.message,
+        message:
+          "Gagal memuat data harga produk: " +
+          (error instanceof Error ? error.message : "Unknown error"),
         success: false,
       });
       console.error("Failed to fetch supplier produk:", error);
@@ -44,6 +46,7 @@ export default function HargaProdukPage() {
   }, [showStatus]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
@@ -67,9 +70,11 @@ export default function HargaProdukPage() {
         refresh: true,
       });
       // fetchData(); // Handled by refresh: true
-    } catch (error: any) {
+    } catch (error: unknown) {
       showStatus({
-        message: "Gagal menghapus harga produk: " + error.message,
+        message:
+          "Gagal menghapus harga produk: " +
+          (error instanceof Error ? error.message : "Unknown error"),
         success: false,
       });
       console.error("Failed to delete supplier produk:", error);

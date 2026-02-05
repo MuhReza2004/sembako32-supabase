@@ -19,21 +19,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 
-interface DashboardData {
-  totalProducts: number;
-  totalCustomers: number;
-  totalSuppliers: number;
-  totalSales: number;
-  totalPurchases: number;
-  totalRevenue: number;
-  totalExpenses: number;
-  lowStockItems: unknown[];
-  recentSales: unknown[];
-  recentPurchases: unknown[];
-  totalPiutang: number;
-  totalNominalPiutang: number;
-}
-
 const getDateRange = (
   filter: string,
 ): { startDate: Date | null; endDate: Date | null } => {

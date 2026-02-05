@@ -1,6 +1,31 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 
+type ProdukRow = {
+  id: string;
+  stok?: number;
+  [key: string]: unknown;
+};
+
+type SupplierProdukRow = {
+  id: string;
+  produk_id: string;
+  stok?: number;
+};
+
+type DetailRow = {
+  supplier_produk_id: string;
+  qty: number;
+};
+
+type PembelianRow = {
+  items?: DetailRow[];
+};
+
+type PenjualanRow = {
+  items?: DetailRow[];
+};
+
 export async function GET() {
   try {
     const { data: produkData, error: produkError } = await supabaseAdmin
@@ -24,16 +49,16 @@ export async function GET() {
       .neq("status", "Batal");
     if (penjualanError) throw penjualanError;
 
-    const inventory = produkData.map((p) => {
-      const relatedSupplierProduk = supplierProdukData.filter(
-        (sp: any) => sp.produk_id === p.id,
+    const inventory = (produkData as ProdukRow[]).map((p) => {
+      const relatedSupplierProduk = (supplierProdukData as SupplierProdukRow[]).filter(
+        (sp) => sp.produk_id === p.id,
       );
 
-      const totalMasuk = (pembelianData || []).reduce(
-        (sum: number, beli: any) => {
+      const totalMasuk = (pembelianData as PembelianRow[] || []).reduce(
+        (sum: number, beli) => {
           return (
             sum +
-            (beli.items || []).reduce((itemSum: number, item: any) => {
+            (beli.items || []).reduce((itemSum: number, item) => {
               const isRelated = relatedSupplierProduk.some(
                 (sp) => sp.id === item.supplier_produk_id,
               );
@@ -44,11 +69,11 @@ export async function GET() {
         0,
       );
 
-      const totalKeluar = (penjualanData || []).reduce(
-        (sum: number, jual: any) => {
+      const totalKeluar = (penjualanData as PenjualanRow[] || []).reduce(
+        (sum: number, jual) => {
           return (
             sum +
-            (jual.items || []).reduce((itemSum: number, item: any) => {
+            (jual.items || []).reduce((itemSum: number, item) => {
               const isRelated = relatedSupplierProduk.some(
                 (sp) => sp.id === item.supplier_produk_id,
               );
@@ -60,7 +85,7 @@ export async function GET() {
       );
 
       const currentStok = relatedSupplierProduk.reduce(
-        (sum: number, sp: any) => sum + (sp.stok || 0),
+        (sum: number, sp) => sum + (sp.stok || 0),
         0,
       );
 

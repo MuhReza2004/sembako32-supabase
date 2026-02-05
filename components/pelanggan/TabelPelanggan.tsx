@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -18,6 +18,7 @@ interface TabelPelangganProps {
   isLoading?: boolean;
   onEdit: (customer: Pelanggan) => void;
   onDelete: (customer: Pelanggan) => void;
+  searchTerm?: string;
 }
 
 export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
@@ -40,7 +41,7 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
   if (customers.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">"Pelanggan tidak ditemukan"</div>
+        <div className="text-gray-500">Pelanggan tidak ditemukan</div>
       </div>
     );
   }
@@ -115,7 +116,7 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
                   >
-                    {customer.status === "aktif" ? "✓ Aktif" : "✕ Nonaktif"}
+                    {customer.status === "aktif" ? "Aktif" : "Nonaktif"}
                   </span>
                 </TableCell>
                 <TableCell className="text-center">
@@ -150,7 +151,6 @@ export const TabelPelanggan: React.FC<TabelPelangganProps> = ({
         </TableBody>
       </Table>
 
-      {/* Footer dengan info */}
       <div className="bg-gray-50 px-6 py-3 border-t text-sm text-gray-600">
         Menampilkan <span className="font-semibold">{customers.length}</span>{" "}
         pelanggan

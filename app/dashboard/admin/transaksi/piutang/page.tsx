@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Penjualan } from "@/app/types/penjualan";
+import { Penjualan, PenjualanDetail, RiwayatPembayaran } from "@/app/types/penjualan";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 import PiutangTable from "../../../../../components/Piutang/PiutangTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +13,20 @@ export default function PiutangPage() {
   const [loading, setLoading] = useState(true);
   // const [error, setError] = useState<string | null>(null); // No longer needed
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
-  const [perPage, setPerPage] = useState(10);
+  const perPage = 10;
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
 
   const { showStatus } = useStatus();
+
+  type PenjualanDetailRow = PenjualanDetail & {
+    supplier_produk?: { produk?: { nama?: string; satuan?: string } };
+  };
+
+  type PenjualanRow = Penjualan & {
+    pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+    riwayat_pembayaran?: RiwayatPembayaran[];
+    penjualan_detail?: PenjualanDetailRow[];
+  };
 
   const fetchPiutang = useCallback(async () => {
     setLoading(true);
@@ -68,12 +78,12 @@ export default function PiutangPage() {
       console.error("Error fetching piutang:", error);
       setPiutang([]);
     } else {
-      const mappedData: Penjualan[] = data.map((item: any) => ({
+      const mappedData: Penjualan[] = (data as PenjualanRow[]).map((item) => ({
         ...item,
-        nama_pelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
+        namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
         riwayatPembayaran: item.riwayat_pembayaran || [],
         items:
-          item.penjualan_detail?.map((detail: any) => ({
+          item.penjualan_detail?.map((detail) => ({
             ...detail,
             namaProduk:
               detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
@@ -87,7 +97,9 @@ export default function PiutangPage() {
   }, [page, perPage, showStatus]);
 
   useEffect(() => {
-    fetchPiutang();
+    const timer = setTimeout(() => {
+      void fetchPiutang();
+    }, 0);
 
     const channel = supabase
       .channel("piutang-changes")
@@ -98,7 +110,7 @@ export default function PiutangPage() {
           schema: "public",
           table: "penjualan",
         },
-        (payload) => {
+        (payload: { new?: { status?: string }; old?: { status?: string } }) => {
           if (
             payload.new?.status === "Belum Lunas" ||
             payload.old?.status === "Belum Lunas"
@@ -110,6 +122,7 @@ export default function PiutangPage() {
       .subscribe();
 
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [fetchPiutang]);

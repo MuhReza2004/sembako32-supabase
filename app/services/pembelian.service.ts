@@ -1,6 +1,17 @@
 import { supabase } from "../lib/supabase";
 import { Pembelian, PembelianDetail } from "../types/pembelian";
 
+type PembelianDetailRow = PembelianDetail & {
+  supplier_produk?: {
+    produk?: { nama?: string; satuan?: string };
+  };
+};
+
+type PembelianDetailInput = Pick<
+  PembelianDetail,
+  "supplier_produk_id" | "qty" | "harga" | "subtotal"
+>;
+
 const DECIMAL_14_2_MAX = 999999999999.99;
 
 const assertValidMoney = (label: string, value: number) => {
@@ -25,7 +36,7 @@ export const createPembelian = async (data: {
   invoice?: string;
   total: number;
   status: "Pending" | "Completed" | "Decline";
-  items: PembelianDetail[];
+  items: PembelianDetailInput[];
 }) => {
   const totalAmount = Number(data.total);
   assertValidMoney("Total pembelian", totalAmount);
@@ -162,7 +173,7 @@ export const getAllPembelian = async (): Promise<Pembelian[]> => {
     updated_at: item.updated_at,
     namaSupplier: item.suppliers?.nama || "Supplier Tidak Diketahui",
     items:
-      item.pembelian_detail?.map((detail: any) => ({
+      (item.pembelian_detail as PembelianDetailRow[] | undefined)?.map((detail) => ({
         id: detail.id,
         pembelian_id: detail.pembelian_id,
         supplier_produk_id: detail.supplier_produk_id,

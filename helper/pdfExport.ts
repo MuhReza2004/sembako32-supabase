@@ -1,6 +1,5 @@
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import { Penjualan } from "@/app/types/penjualan";
+import { Penjualan, RiwayatPembayaran } from "@/app/types/penjualan";
 import { formatRupiah, formatTanggal } from "./format";
 
 let logoDataUrlPromise: Promise<string | null> | null = null;
@@ -59,6 +58,18 @@ const drawHeader = async (
     dateText,
   }: { title: string; dateText: string },
 ) => {
+  type JsPDFRounded = jsPDF & {
+    roundedRect: (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      rx: number,
+      ry: number,
+      style?: string,
+    ) => void;
+  };
+  const pdfRounded = pdf as JsPDFRounded;
   const pageWidth = pdf.internal.pageSize.getWidth();
   const headerX = 12;
   const headerY = 6;
@@ -67,7 +78,7 @@ const drawHeader = async (
 
   // Background (match sales report header)
   pdf.setFillColor(254, 195, 53);
-  (pdf as any).roundedRect(
+  pdfRounded.roundedRect(
     headerX,
     headerY,
     headerWidth,
@@ -79,7 +90,7 @@ const drawHeader = async (
 
   // Logo container
   pdf.setFillColor(255, 255, 255);
-  (pdf as any).roundedRect(headerX + 6, headerY + 6, 18, 18, 2, 2, "F");
+  pdfRounded.roundedRect(headerX + 6, headerY + 6, 18, 18, 2, 2, "F");
   await addLogo(pdf, headerX + 8, headerY + 8, 14);
 
   // Company info (left)
@@ -121,6 +132,11 @@ const safeTanggal = (value: unknown) => {
 };
 
 export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
+  type PenjualanPdf = Penjualan & {
+    noInvoice?: string;
+    nama_pelanggan?: string;
+    totalDibayar?: number;
+  };
   const pdf = new jsPDF("l", "mm", "a4"); // landscape orientation
 
   await drawHeader(pdf, {
@@ -159,9 +175,10 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
   yPosition += 15;
 
   // Table data
-  piutang.forEach((item, index) => {
+  piutang.forEach((rawItem, index) => {
+    const item = rawItem as PenjualanPdf;
     const total = item.total_akhir ?? item.total ?? 0;
-    const totalDibayar = item.total_dibayar ?? (item as any).totalDibayar ?? 0;
+    const totalDibayar = item.total_dibayar ?? item.totalDibayar ?? 0;
     const sisaUtang = total - totalDibayar;
 
     // Alternate row colors
@@ -171,9 +188,9 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     }
 
     const rowData = [
-      item.no_invoice ?? (item as any).noInvoice ?? item.nomorInvoice ?? "-",
+      item.no_invoice ?? item.noInvoice ?? item.nomorInvoice ?? "-",
       safeTanggal(item.tanggal),
-      item.namaPelanggan || (item as any).nama_pelanggan || "-",
+      item.namaPelanggan || item.nama_pelanggan || "-",
       formatRupiah(total),
       formatRupiah(totalDibayar),
       formatRupiah(sisaUtang),
@@ -194,10 +211,12 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 
       item.riwayatPembayaran.forEach((payment) => {
         yPosition += 5;
-        const metode =
-          (payment as any).metodePembayaran ?? payment.metode_pembayaran ?? "-";
-        const atasNama =
-          (payment as any).atasNama ?? payment.atas_nama ?? "N/A";
+        const paymentAlt = payment as RiwayatPembayaran & {
+          metodePembayaran?: string;
+          atasNama?: string;
+        };
+        const metode = paymentAlt.metodePembayaran ?? payment.metode_pembayaran ?? "-";
+        const atasNama = paymentAlt.atasNama ?? payment.atas_nama ?? "N/A";
         const paymentText = `${safeTanggal(payment.tanggal)} - ${formatRupiah(payment.jumlah)} (${metode}) - ${atasNama}`;
         pdf.text(paymentText, 25, yPosition + 3);
       });
@@ -228,8 +247,10 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     0,
   );
   const totalDibayar = piutang.reduce(
-    (sum, item) =>
-      sum + (item.total_dibayar ?? (item as any).totalDibayar ?? 0),
+    (sum, item) => {
+      const it = item as PenjualanPdf;
+      return sum + (it.total_dibayar ?? it.totalDibayar ?? 0);
+    },
     0,
   );
   const totalSisa = totalTagihan - totalDibayar;
@@ -259,6 +280,11 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 };
 
 export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
+  type PenjualanPdf = Penjualan & {
+    noInvoice?: string;
+    nama_pelanggan?: string;
+    totalDibayar?: number;
+  };
   const pdf = new jsPDF("p", "mm", "a4"); // portrait orientation
 
   await drawHeader(pdf, {
@@ -288,11 +314,11 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   pdf.rect(14, yPosition, 180, 25, "F");
 
   const invoiceNo =
-    piutang.no_invoice ?? (piutang as any).noInvoice ?? piutang.nomorInvoice;
+    piutang.no_invoice ?? (piutang as PenjualanPdf).noInvoice ?? piutang.nomorInvoice;
   pdf.text(`No. Invoice: ${toText(invoiceNo)}`, 16, yPosition + 6);
   pdf.text(`Tanggal: ${safeTanggal(piutang.tanggal)}`, 16, yPosition + 12);
   pdf.text(
-    `Pelanggan: ${piutang.namaPelanggan || (piutang as any).nama_pelanggan || "-"}`,
+    `Pelanggan: ${piutang.namaPelanggan || (piutang as PenjualanPdf).nama_pelanggan || "-"}`,
     16,
     yPosition + 18,
   );
@@ -314,7 +340,7 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   // Financial details in boxes
   const totalTagihan = piutang.total_akhir ?? piutang.total ?? 0;
   const totalDibayar =
-    piutang.total_dibayar ?? (piutang as any).totalDibayar ?? 0;
+    piutang.total_dibayar ?? (piutang as PenjualanPdf).totalDibayar ?? 0;
   const sisaUtang = totalTagihan - totalDibayar;
 
   // Total Tagihan box
@@ -394,12 +420,16 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
       pdf.setFontSize(9);
       pdf.text(safeTanggal(payment.tanggal), 16, yPosition + 3);
       pdf.text(formatRupiah(payment.jumlah), 50, yPosition + 3);
+      const paymentAlt = payment as RiwayatPembayaran & {
+        metodePembayaran?: string;
+        atasNama?: string;
+      };
       pdf.text(
-        (payment as any).metodePembayaran ?? payment.metode_pembayaran ?? "-",
+        paymentAlt.metodePembayaran ?? payment.metode_pembayaran ?? "-",
         100,
         yPosition + 3,
       );
-      const atasNama = (payment as any).atasNama ?? payment.atas_nama ?? "-";
+      const atasNama = paymentAlt.atasNama ?? payment.atas_nama ?? "-";
       pdf.text(atasNama, 145, yPosition + 3);
 
       yPosition += 8;

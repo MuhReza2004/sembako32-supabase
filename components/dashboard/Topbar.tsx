@@ -7,14 +7,9 @@ import LogoutButton from "../auth/LogoutButton";
 import { Button } from "../ui/button";
 import {
   Home,
-  Package,
-  ShoppingCart,
-  FileText,
-  Truck,
   Menu,
   X,
 } from "lucide-react";
-import Image from "next/image";
 
 export default function Topbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

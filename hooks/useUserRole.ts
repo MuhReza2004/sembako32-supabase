@@ -9,6 +9,11 @@ type AuthSession = Awaited<
   ReturnType<typeof supabase.auth.getSession>
 >["data"]["session"];
 
+type UserWithRoleMeta = {
+  app_metadata?: { role?: UserRole };
+  user_metadata?: { role?: UserRole };
+};
+
 export function useUserRole() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,9 +32,8 @@ export function useUserRole() {
           return;
         }
 
-        const tokenRole =
-          (session.user as any)?.app_metadata?.role ??
-          (session.user as any)?.user_metadata?.role;
+        const user = session.user as UserWithRoleMeta;
+        const tokenRole = user.app_metadata?.role ?? user.user_metadata?.role;
 
         if (tokenRole) {
           if (isActive) setRole(tokenRole);
@@ -38,10 +42,10 @@ export function useUserRole() {
 
         const profile = await getUserById(session.user.id);
         if (isActive) setRole(profile?.role ?? null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching user role:", err);
         if (isActive) {
-          setError(err?.message || "Gagal memuat role user");
+          setError(err instanceof Error ? err.message : "Gagal memuat role user");
           setRole(null);
         }
       } finally {

@@ -1,6 +1,11 @@
 import { supabase } from "@/app/lib/supabase";
 import { SupplierProduk, SupplierProdukFormData } from "@/app/types/supplier";
 
+type SupplierProdukRow = SupplierProduk & {
+  suppliers?: { nama?: string } | null;
+  produk?: { nama?: string; satuan?: string } | null;
+};
+
 /* ======================
    CREATE
 ====================== */
@@ -60,7 +65,7 @@ export const getAllSupplierProduk = async (): Promise<SupplierProduk[]> => {
     throw error;
   }
 
-  return data.map((item) => ({
+  return (data as SupplierProdukRow[]).map((item) => ({
     id: item.id,
     supplier_id: item.supplier_id,
     produk_id: item.produk_id,
@@ -68,9 +73,9 @@ export const getAllSupplierProduk = async (): Promise<SupplierProduk[]> => {
     harga_jual: item.harga_jual,
     stok: item.stok,
     created_at: item.created_at, // Use as string
-    supplierNama: (item.suppliers as any)?.nama,
-    produkNama: (item.produk as any)?.nama,
-    produkSatuan: (item.produk as any)?.satuan,
+    supplierNama: item.suppliers?.nama,
+    produkNama: item.produk?.nama,
+    produkSatuan: item.produk?.satuan,
   }));
 };
 
@@ -107,6 +112,7 @@ export const getSupplierProdukById = async (
     return null;
   }
 
+  const row = data as SupplierProdukRow;
   return {
     id: data.id,
     supplier_id: data.supplier_id,
@@ -115,9 +121,9 @@ export const getSupplierProdukById = async (
     harga_jual: data.harga_jual,
     stok: data.stok,
     created_at: data.created_at, // Use as string
-    supplierNama: (data.suppliers as any)?.nama,
-    produkNama: (data.produk as any)?.nama,
-    produkSatuan: (data.produk as any)?.satuan,
+    supplierNama: row.suppliers?.nama,
+    produkNama: row.produk?.nama,
+    produkSatuan: row.produk?.satuan,
   };
 };
 
@@ -128,7 +134,7 @@ export const updateSupplierProduk = async (
   id: string,
   data: Partial<SupplierProdukFormData>,
 ): Promise<void> => {
-  const updateData: any = {};
+  const updateData: Partial<SupplierProdukFormData> = {};
   if (data.harga_beli !== undefined) updateData.harga_beli = data.harga_beli;
   if (data.harga_jual !== undefined) updateData.harga_jual = data.harga_jual;
   if (data.stok !== undefined) updateData.stok = data.stok;

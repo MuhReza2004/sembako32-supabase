@@ -6,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Pembelian } from "@/app/types/pembelian";
 import { formatRupiah } from "@/helper/format";
 import { useEffect, useState } from "react";
@@ -95,7 +94,7 @@ export default function DialogDetailPembelian({
           <div>
             <h3 className="text-lg font-semibold mb-4">Detail Produk</h3>
             <div className="space-y-2">
-              {details.map((detail, index) => {
+              {details.map((detail) => {
                 return (
                   <div
                     key={detail.id}

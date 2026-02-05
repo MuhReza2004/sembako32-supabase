@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import {
   Dialog,
@@ -62,9 +62,10 @@ export default function DialogTambahSupplier({
         refresh: true,
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
       onStatusReport({
-        message: "Gagal menambahkan supplier: " + err.message,
+        message: "Gagal menambahkan supplier: " + errorMessage,
         success: false,
       });
     }

@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pembelian, PembelianDetail } from "@/app/types/pembelian";
+import { Pembelian } from "@/app/types/pembelian";
 import { Supplier, SupplierProduk } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { Separator } from "@/components/ui/separator";

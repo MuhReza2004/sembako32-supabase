@@ -59,13 +59,13 @@ export default function LoginForm() {
       } else {
         router.push("/dashboard/staff");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("LOGIN ERROR:", err);
 
       let errorMessage = "Terjadi kesalahan saat login";
 
       // Supabase Auth errors typically come as objects with a 'message' property
-      if (err.message) {
+      if (err instanceof Error && err.message) {
         // Specific Supabase Auth errors
         if (err.message.includes("Invalid login credentials")) {
           errorMessage = "Email atau password tidak valid";
@@ -120,7 +120,7 @@ export default function LoginForm() {
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -132,13 +132,6 @@ export default function LoginForm() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Memproses..." : "Login"}
           </Button>
-
-          {/* <p className="text-sm text-center text-muted-foreground">
-            Belum punya akun?{" "}
-            <a href="/auth/register" className="text-blue-600 hover:underline">
-              Daftar
-            </a>
-          </p> */}
         </form>
       </CardContent>
     </Card>

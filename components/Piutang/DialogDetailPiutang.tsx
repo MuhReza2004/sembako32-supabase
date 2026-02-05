@@ -1,3 +1,5 @@
+"use client";
+
 import { Penjualan } from "@/app/types/penjualan";
 import {
   Dialog,
@@ -31,6 +33,11 @@ export default function DialogDetailPiutang({
 }: DialogDetailPiutangProps) {
   if (!piutang) return null;
 
+  const totalDibayar = piutang.total_dibayar ?? 0;
+  const sisaUtang = piutang.total - totalDibayar;
+  const invoiceNumber = piutang.no_invoice || piutang.nomorInvoice || "-";
+  const namaPelanggan = piutang.namaPelanggan || "-";
+
   const handleExportPDF = () => {
     exportPiutangDetailToPDF(piutang);
   };
@@ -41,7 +48,7 @@ export default function DialogDetailPiutang({
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle className="text-2xl font-bold text-gray-800">
-              Detail Piutang - {piutang.no_invoice || (piutang as any).noInvoice || "-"}
+              Detail Piutang - {invoiceNumber}
             </DialogTitle>
             <Button
               onClick={handleExportPDF}
@@ -56,18 +63,15 @@ export default function DialogDetailPiutang({
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
-          {/* Informasi Penjualan */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
               <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3">
-                ℹ️
+                i
               </span>
               Informasi Penjualan
             </h3>
             <div className="font-bold">
-              <h1>
-                Nama Pelanggan: {piutang.namaPelanggan || piutang.nama_pelanggan || "-"}
-              </h1>
+              <h1>Nama Pelanggan: {namaPelanggan}</h1>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white p-4 rounded-lg shadow-sm border">
@@ -84,7 +88,7 @@ export default function DialogDetailPiutang({
                 <div className="flex justify-between items-center">
                   <span className=" font-medium">Total Dibayar:</span>
                   <span className="text-sm font-semibold ">
-                    {formatRupiah((piutang as any).totalDibayar || piutang.total_dibayar || 0)}
+                    {formatRupiah(totalDibayar)}
                   </span>
                 </div>
               </div>
@@ -92,9 +96,7 @@ export default function DialogDetailPiutang({
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Sisa Utang:</span>
                   <span className="font-semibold">
-                    {formatRupiah(
-                      piutang.total - ((piutang as any).totalDibayar || piutang.total_dibayar || 0),
-                    )}
+                    {formatRupiah(sisaUtang)}
                   </span>
                 </div>
               </div>
@@ -115,11 +117,10 @@ export default function DialogDetailPiutang({
             </div>
           </div>
 
-          {/* Daftar Produk */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
               <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3">
-                📦
+                P
               </span>
               Daftar Produk
             </h3>
@@ -167,7 +168,7 @@ export default function DialogDetailPiutang({
               </div>
             ) : (
               <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <div className="text-gray-400 text-4xl mb-2">📦</div>
+                <div className="text-gray-400 text-4xl mb-2">P</div>
                 <p className="text-gray-500 font-medium">
                   Tidak ada data produk
                 </p>
@@ -178,11 +179,10 @@ export default function DialogDetailPiutang({
             )}
           </div>
 
-          {/* Riwayat Pembayaran */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
               <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3">
-                💰
+                $
               </span>
               Riwayat Pembayaran
             </h3>
@@ -220,11 +220,11 @@ export default function DialogDetailPiutang({
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {(payment as any).metodePembayaran || payment.metode_pembayaran || "-"}
+                            {payment.metode_pembayaran || "-"}
                           </span>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {(payment as any).atasNama || payment.atas_nama || "-"}
+                          {payment.atas_nama || "-"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -233,7 +233,7 @@ export default function DialogDetailPiutang({
               </div>
             ) : (
               <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <div className="text-gray-400 text-4xl mb-2">💳</div>
+                <div className="text-gray-400 text-4xl mb-2">$</div>
                 <p className="text-gray-500 font-medium">
                   Belum ada pembayaran tercatat
                 </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Supplier, SupplierFormData } from "@/app/types/supplier";
 import {
@@ -35,12 +35,9 @@ export default function EditSupplierDialog({
     control,
     formState: { errors, isSubmitting },
   } = useForm<SupplierFormData>();
-  const [error, setError] = useState<string>("");
-
   useEffect(() => {
     if (supplier) {
       reset(supplier);
-      setError("");
     }
   }, [supplier, reset]);
 
@@ -105,8 +102,6 @@ export default function EditSupplierDialog({
               )}
             />
           </div>
-
-          {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
 
           <DialogFooter>
             <Button

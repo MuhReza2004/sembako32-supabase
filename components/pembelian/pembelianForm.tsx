@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useState } from "react";
+import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
 import { createPembelian } from "@/app/services/pembelian.service";
-import { PembelianDetail, Pembelian } from "@/app/types/pembelian";
+import { Pembelian } from "@/app/types/pembelian";
 import { Produk } from "@/app/types/produk";
 import { Supplier, SupplierProduk } from "@/app/types/supplier";
 import { formatRupiah } from "@/helper/format";
@@ -18,9 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/app/lib/supabase";
 import { Trash2, Plus, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -44,7 +42,6 @@ export default function PembelianForm({
     register,
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<PembelianFormData>({
@@ -55,13 +52,13 @@ export default function PembelianForm({
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
   });
 
-  const watchSupplierId = watch("supplier_id");
-  const watchItems = watch("items");
+  const watchSupplierId = useWatch({ control, name: "supplier_id" });
+  const watchItems = useWatch({ control, name: "items" }) || [];
 
   const total = watchItems.reduce(
     (sum, i) => sum + Number(i.subtotal || 0),
@@ -90,7 +87,11 @@ export default function PembelianForm({
     if (!pembelianToConfirm) return;
 
     try {
-      await createPembelian(pembelianToConfirm);
+      const payload = {
+        ...pembelianToConfirm,
+        items: pembelianToConfirm.items || [],
+      };
+      await createPembelian(payload);
       showStatus({
         message: "Pembelian berhasil ditambahkan!",
         success: true,
@@ -98,10 +99,12 @@ export default function PembelianForm({
       });
       setIsConfirmDialogOpen(false);
       router.push("/dashboard/admin/transaksi/pembelian");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error(error);
       showStatus({
-        message: "Gagal menyimpan pembelian: " + error.message,
+        message: "Gagal menyimpan pembelian: " + errorMessage,
         success: false,
       });
     }

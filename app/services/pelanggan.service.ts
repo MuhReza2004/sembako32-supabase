@@ -69,11 +69,12 @@ export const getPelangganById = async (
   if (!idOrIdPelanggan) return null;
 
   // Try to get by primary key 'id' (UUID)
-  let { data, error } = await supabase
+  const { data: dataById, error } = await supabase
     .from("pelanggan")
     .select("*")
     .eq("id", idOrIdPelanggan)
     .single();
+  let data = dataById;
 
   if (error && error.code === "PGRST116") { // No rows found by 'id', try 'id_pelanggan'
     const { data: dataByIdPelanggan, error: errorByIdPelanggan } = await supabase

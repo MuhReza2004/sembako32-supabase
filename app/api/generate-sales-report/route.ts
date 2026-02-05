@@ -7,6 +7,25 @@ import * as path from "path";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Penjualan } from "@/app/types/penjualan";
 
+type PenjualanDetailRow = {
+  id: string;
+  penjualan_id: string;
+  supplier_produk_id: string;
+  qty: number;
+  harga: number;
+  subtotal: number;
+  created_at: string;
+  supplier_produk?: {
+    produk?: { nama?: string; satuan?: string };
+    harga_jual?: number;
+  };
+};
+
+type PenjualanRow = Penjualan & {
+  pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+  items?: PenjualanDetailRow[];
+};
+
 // This function is for server-side use with admin privileges
 const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
   const { data, error } = await supabaseAdmin
@@ -32,7 +51,8 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
   }
 
   // Manually map the data to match the Penjualan type, especially for nested objects
-  const penjualanList: Penjualan[] = data.map((item: Penjualan) => ({
+  const penjualanList: Penjualan[] = (data as PenjualanRow[]).map(
+    (item: PenjualanRow) => ({
     id: item.id,
     tanggal: item.tanggal,
     pelanggan_id: item.pelanggan_id,
@@ -56,10 +76,10 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
     total_akhir: item.total_akhir,
     created_at: item.created_at,
     updated_at: item.updated_at,
-    nama_pelanggan:
+    namaPelanggan:
       item.pelanggan?.nama_pelanggan || "Pelanggan Tidak Diketahui",
-    alamat_pelanggan: item.pelanggan?.alamat || "",
-    items: (item.items || []).map((detail: any) => ({
+    alamatPelanggan: item.pelanggan?.alamat || "",
+    items: (item.items || []).map((detail: PenjualanDetailRow) => ({
       id: detail.id,
       penjualan_id: detail.penjualan_id,
       supplier_produk_id: detail.supplier_produk_id,
@@ -72,7 +92,8 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
       satuan: detail.supplier_produk?.produk?.satuan || "",
       hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
     })),
-  }));
+  }),
+  );
 
   return penjualanList;
 };
@@ -187,7 +208,7 @@ export async function POST(request: NextRequest) {
                       </ul>
                       </td>
                       <td>${new Date(sale.tanggal).toLocaleDateString("id-ID")}</td>
-                      <td>${sale.nama_pelanggan || "Pelanggan Tidak Diketahui"}</td>
+                      <td>${sale.namaPelanggan || "Pelanggan Tidak Diketahui"}</td>
                       <td>${formatRupiah(sale.total)}</td>
                       <td>${sale.status}</td>
                     </tr>

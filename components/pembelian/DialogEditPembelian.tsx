@@ -20,7 +20,7 @@ import {
 import { getAllProduk } from "@/app/services/produk.service";
 import { getAllSupplierProduk } from "@/app/services/supplierProduk.service";
 import { Produk } from "@/app/types/produk";
-import { SupplierProduk } from "@/app/types/suplyer"; // Typo in original file: 'suplyer' should be 'supplier'
+import { SupplierProduk } from "@/app/types/supplier";
 import { formatRupiah } from "@/helper/format";
 import { X, Check, Package } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
@@ -64,10 +64,12 @@ export default function DialogEditPembelian({
           setDetails(det);
           setProducts(prods);
           setSupplierProduks(supProds);
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
           console.error("Error fetching purchase details:", error);
           onStatusReport({
-            message: "Gagal memuat detail pembelian: " + error.message,
+            message: "Gagal memuat detail pembelian: " + errorMessage,
             success: false,
           });
           onOpenChange(false);
@@ -92,10 +94,12 @@ export default function DialogEditPembelian({
       });
       // onSuccess(); // Replaced with onStatusReport
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to update pembelian:", error);
       onStatusReport({
-        message: "Gagal memperbarui pembelian: " + error.message,
+        message: "Gagal memperbarui pembelian: " + errorMessage,
         success: false,
       });
     } finally {
@@ -125,10 +129,12 @@ export default function DialogEditPembelian({
       });
       // onSuccess(); // Replaced with onStatusReport
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to decline transaction:", error);
       onStatusReport({
-        message: "Gagal menolak transaksi: " + error.message,
+        message: "Gagal menolak transaksi: " + errorMessage,
         success: false,
       });
     } finally {

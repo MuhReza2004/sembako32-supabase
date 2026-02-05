@@ -12,6 +12,10 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { useStatus } from "@/components/ui/StatusProvider";
 
+type PembelianRow = Pembelian & {
+  suppliers?: { nama?: string } | null;
+};
+
 export default function PembelianPage() {
   const router = useRouter();
   const [pembelianData, setPembelianData] = useState<Pembelian[]>([]);
@@ -79,7 +83,7 @@ export default function PembelianPage() {
     } else {
       // Map suppliers object to namaSupplier string
       const mappedData =
-        (data as any[])?.map((item) => ({
+        (data as PembelianRow[])?.map((item) => ({
           ...item,
           namaSupplier: item.suppliers?.nama || "Supplier Tidak Diketahui",
         })) || [];
@@ -90,6 +94,7 @@ export default function PembelianPage() {
   }, [page, perPage, searchTerm, startDate, endDate, showStatus]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPembelian();
 
     const channel = supabase

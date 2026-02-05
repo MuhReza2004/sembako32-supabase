@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
 import {
   createPenjualan,
   updatePenjualan,
@@ -14,6 +14,7 @@ import {
 import { PenjualanDetail, Penjualan } from "@/app/types/penjualan";
 import { Produk } from "@/app/types/produk";
 import { Pelanggan } from "@/app/types/pelanggan";
+import { SupplierProduk } from "@/app/types/supplier";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRupiah } from "@/helper/format";
-import { AlertCircle, Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { ComboboxPelanggan } from "@/components/ui/combobox-pelanggan";
@@ -53,7 +54,7 @@ type PenjualanFormData = Omit<Penjualan, "id" | "created_at" | "updated_at">;
 
 interface PenjualanFormProps {
   products: Produk[];
-  supplierProduks: any[];
+  supplierProduks: SupplierProduk[];
   pelangganList: Pelanggan[];
   editingPenjualan?: Penjualan | null;
 }
@@ -70,10 +71,8 @@ export function PenjualanForm({
     register,
     control,
     handleSubmit,
-    watch,
     setValue,
-    reset,
-    formState: { errors, isSubmitting },
+    formState: { isSubmitting },
   } = useForm<PenjualanFormData>({
     defaultValues: editingPenjualan
       ? {
@@ -96,7 +95,10 @@ export function PenjualanForm({
   });
 
   // const [error, setError] = useState<string | null>(null); // No longer needed
-  const watchMetodePengambilan = watch("metode_pengambilan");
+  const watchMetodePengambilan = useWatch({
+    control,
+    name: "metode_pengambilan",
+  });
 
   useEffect(() => {
     const generateNumbers = async () => {
@@ -117,11 +119,12 @@ export function PenjualanForm({
             setValue("no_do", "");
             setValue("no_tanda_terima", "");
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error generating document numbers:", error);
           showStatus({
             message:
-              "Gagal membuat nomor dokumen otomatis: " + error.message,
+              "Gagal membuat nomor dokumen otomatis: " +
+              (error instanceof Error ? error.message : "Unknown error"),
             success: false,
           });
         }
@@ -130,20 +133,20 @@ export function PenjualanForm({
     generateNumbers();
   }, [editingPenjualan, setValue, showStatus, watchMetodePengambilan]);
 
-  const watchItems = watch("items");
-  const watchPajakEnabled = watch("pajak_enabled");
-  const watchDiskon = watch("diskon");
-  const watchStatus = watch("status");
-  const watchMetodePembayaran = watch("metode_pembayaran");
-  const watchPelangganId = watch("pelanggan_id");
+  const watchItems = useWatch({ control, name: "items" }) || [];
+  const watchPajakEnabled = useWatch({ control, name: "pajak_enabled" });
+  const watchDiskon = useWatch({ control, name: "diskon" });
+  const watchStatus = useWatch({ control, name: "status" });
+  const watchMetodePembayaran = useWatch({
+    control,
+    name: "metode_pembayaran",
+  });
+  const watchPelangganId = useWatch({ control, name: "pelanggan_id" });
 
-  const { subTotal, totalPajak, total } = useMemo(() => {
-    const subTotal = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
-    const totalSetelahDiskon = subTotal - (watchDiskon || 0);
-    const totalPajak = watchPajakEnabled ? totalSetelahDiskon * 0.11 : 0;
-    const total = totalSetelahDiskon + totalPajak;
-    return { subTotal, totalPajak, total };
-  }, [watchItems, watchDiskon, watchPajakEnabled]);
+  const subTotal = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
+  const totalSetelahDiskon = subTotal - (watchDiskon || 0);
+  const totalPajak = watchPajakEnabled ? totalSetelahDiskon * 0.11 : 0;
+  const total = totalSetelahDiskon + totalPajak;
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState<PenjualanFormData | null>(
@@ -186,13 +189,13 @@ export function PenjualanForm({
         });
       }
       router.push("/dashboard/admin/transaksi/penjualan");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error during submit:", error);
-      console.error("Error details:", JSON.stringify(error, null, 2));
+      if (error instanceof Error) {
+        console.error("Error details:", error.message);
+      }
       const errorMessage =
-        error?.message ||
-        error?.error_description ||
-        "Gagal menyimpan penjualan";
+        error instanceof Error ? error.message : "Gagal menyimpan penjualan";
       showStatus({
         message: errorMessage,
         success: false,
@@ -641,7 +644,7 @@ function AddItemForm({
   onAddItem,
   onStatusReport,
 }: {
-  supplierProduks: any[];
+  supplierProduks: SupplierProduk[];
   onAddItem: (item: PenjualanDetail) => void;
   onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // Added prop
 }) {

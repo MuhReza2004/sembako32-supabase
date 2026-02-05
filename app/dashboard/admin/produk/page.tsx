@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogTambahProduk } from "@/components/produk/DialogTambahProduk";
 import { DialogEditProduk } from "@/components/produk/DialogEditProduk";
-import { DialogHapusProduk } from "@/components/produk/DialogHapusProduk";
 
 import { TabelProduk } from "@/components/produk/TabelProduk";
 import { updateProduk, deleteProduk } from "@/app/services/produk.service";
@@ -25,7 +24,6 @@ export default function ProdukAdminPage() {
   // Dialog states
   const [dialogTambahOpen, setDialogTambahOpen] = useState(false);
   const [dialogEditOpen, setDialogEditOpen] = useState(false);
-  const [dialogHapusOpen, setDialogHapusOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Produk | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -147,9 +145,11 @@ export default function ProdukAdminPage() {
       });
       setDialogEditOpen(false);
       setSelectedProduct(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
-        message: "Gagal mengupdate produk: " + err.message,
+        message:
+          "Gagal mengupdate produk: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
       console.error("Error updating product:", err);
@@ -187,9 +187,11 @@ export default function ProdukAdminPage() {
         refresh: true,
       });
       setSelectedProduct(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
-        message: "Gagal menghapus produk: " + err.message,
+        message:
+          "Gagal menghapus produk: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
       console.error("Error deleting product:", err);
@@ -260,13 +262,6 @@ export default function ProdukAdminPage() {
       <DialogTambahProduk
         open={dialogTambahOpen}
         onOpenChange={setDialogTambahOpen}
-        onProductAdded={() => {
-          showStatus({
-            message: "Produk berhasil ditambahkan",
-            success: true,
-            refresh: true,
-          });
-        }}
         isLoading={isSubmitting}
         onStatusReport={showStatus} // Pass showStatus down
       />

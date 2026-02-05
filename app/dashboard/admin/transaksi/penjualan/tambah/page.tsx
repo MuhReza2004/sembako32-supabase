@@ -12,11 +12,6 @@ async function TambahPenjualanDataLoader({
 }) {
   const editId = searchParams.id;
 
-  const { data: suppliers, error: suppliersError } = await supabaseAdmin
-    .from("suppliers")
-    .select("*")
-    .order("nama", { ascending: true });
-
   const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
     .select("*")
@@ -43,7 +38,7 @@ async function TambahPenjualanDataLoader({
     }
   }
 
-  if (suppliersError || productsError || supplierProduksError || pelError) {
+  if (productsError || supplierProduksError || pelError) {
     return (
       <div className="p-8 text-center text-red-500">
         Gagal memuat data yang dibutuhkan untuk form penjualan.
@@ -53,7 +48,6 @@ async function TambahPenjualanDataLoader({
 
   return (
     <PenjualanForm
-      suppliers={suppliers || []}
       products={products || []}
       supplierProduks={supplierProduks || []}
       pelangganList={pelangganList || []}

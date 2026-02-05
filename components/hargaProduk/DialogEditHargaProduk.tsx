@@ -63,9 +63,11 @@ export default function DialogEditHargaProduk({
       ]);
       setSuppliers(sups);
       setProducts(prods);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       onStatusReport({
-        message: "Gagal memuat data pendukung: " + error.message,
+        message: "Gagal memuat data pendukung: " + errorMessage,
         success: false,
       });
       console.error("Failed to fetch support data:", error);
@@ -147,10 +149,12 @@ export default function DialogEditHargaProduk({
         refresh: true,
       });
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       console.error("Error updating supplier product:", error);
       onStatusReport({
-        message: "Gagal memperbarui harga produk: " + error.message,
+        message: "Gagal memperbarui harga produk: " + errorMessage,
         success: false,
       });
     } finally {

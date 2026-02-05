@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -41,7 +41,7 @@ export const TabelProduk: React.FC<TabelProdukProps> = ({
   if (products.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">"Produk tidak ditemukan"</div>
+        <div className="text-gray-500">Produk tidak ditemukan</div>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export const TabelProduk: React.FC<TabelProdukProps> = ({
       <div className="bg-gray-50 px-6 py-3 border-t text-sm text-gray-600">
         Menampilkan <span className="font-semibold">{products.length}</span>{" "}
         dari <span className="font-semibold">{products.length}</span> produk
-        {searchTerm && ` (Pencarian: "${searchTerm}")`}
+        {searchTerm && ` (Pencarian: ${searchTerm})`}
       </div>
     </div>
   );

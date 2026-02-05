@@ -59,8 +59,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const tokenRole =
-    (user as any)?.app_metadata?.role ?? (user as any)?.user_metadata?.role;
+  const userMeta = user as {
+    app_metadata?: { role?: string };
+    user_metadata?: { role?: string };
+  } | null;
+  const tokenRole = userMeta?.app_metadata?.role ?? userMeta?.user_metadata?.role;
 
   // If user is not logged in and tries to access protected routes, redirect to login
   if (!user && pathname.startsWith("/dashboard")) {

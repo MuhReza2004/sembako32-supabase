@@ -9,11 +9,7 @@ import { DialogEditPelanggan } from "@/components/pelanggan/DialogEditPelanggan"
 import { TabelPelanggan } from "@/components/pelanggan/TabelPelanggan";
 import { Pelanggan, PelangganFormData } from "@/app/types/pelanggan";
 import { Plus, Search } from "lucide-react";
-import {
-  addpelanggan,
-  deletePelanggan,
-  updatePelanggan,
-} from "@/app/services/pelanggan.service";
+import { deletePelanggan, updatePelanggan } from "@/app/services/pelanggan.service";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
@@ -177,9 +173,11 @@ export default function PelangganAdminPage() {
       });
       setDialogEditOpen(false);
       setSelectedCustomer(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
-        message: "Gagal memperbarui pelanggan: " + err.message,
+        message:
+          "Gagal memperbarui pelanggan: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
       console.error("Error updating customer:", err);
@@ -214,9 +212,11 @@ export default function PelangganAdminPage() {
         refresh: true,
       });
       setSelectedCustomer(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
-        message: "Gagal menghapus pelanggan: " + err.message,
+        message:
+          "Gagal menghapus pelanggan: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
       console.error("Error deleting customer:", err);

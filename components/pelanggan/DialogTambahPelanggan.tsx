@@ -63,10 +63,12 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
         try {
           const newKode = await getNewKodePelanggan();
           setValue("kode_pelanggan", newKode);
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
           console.error("Error generating kode pelanggan:", error);
           onStatusReport({
-            message: "Gagal membuat kode pelanggan: " + error.message,
+            message: "Gagal membuat kode pelanggan: " + errorMessage,
             success: false,
           });
         }
@@ -85,9 +87,10 @@ export const DialogTambahPelanggan: React.FC<DialogTambahPelangganProps> = ({
       });
       onOpenChange(false);
       reset();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
       onStatusReport({
-        message: "Gagal menambah pelanggan: " + err.message,
+        message: "Gagal menambah pelanggan: " + errorMessage,
         success: false,
       });
       console.error("Error adding customer:", err);

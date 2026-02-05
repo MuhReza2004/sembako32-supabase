@@ -1,16 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 
 interface PenjualanReportHeaderProps {
   onExportPDF: () => void;
-  onExportExcel: () => void;
 }
 
 export function PenjualanReportHeader({
   onExportPDF,
-  onExportExcel,
 }: PenjualanReportHeaderProps) {
   return (
     <div className="flex justify-between items-center">

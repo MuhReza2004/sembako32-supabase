@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { formatRupiah, formatTanggal } from "@/helper/format";
 import { Badge } from "@/components/ui/badge";
-import { FileText, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -54,8 +54,46 @@ type DeliveryOrderRow = {
     no_npb: string;
     tanggal: string;
     pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
-    items?: any[];
+    items?: DeliveryOrderItem[];
   };
+};
+
+type DeliveryOrderItem = {
+  id: string;
+  qty: number;
+  harga: number;
+  subtotal: number;
+  supplier_produk?: {
+    produk?: { nama?: string; satuan?: string };
+  };
+};
+
+type DeliveryOrderRowRaw = {
+  id: string;
+  no_do: string;
+  no_tanda_terima?: string | null;
+  status: DOStatus;
+  tanggal_kirim?: string | null;
+  tanggal_terima?: string | null;
+  created_at: string;
+  penjualan:
+    | {
+        id: string;
+        no_invoice: string;
+        no_npb: string;
+        tanggal: string;
+        pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+        items?: DeliveryOrderItem[];
+      }
+    | {
+        id: string;
+        no_invoice: string;
+        no_npb: string;
+        tanggal: string;
+        pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+        items?: DeliveryOrderItem[];
+      }[]
+    | null;
 };
 
 export default function DeliveryOrderPage() {
@@ -137,7 +175,38 @@ export default function DeliveryOrderPage() {
       });
       setRows([]);
     } else {
-      setRows(data as DeliveryOrderRow[]);
+      const mappedRows: DeliveryOrderRow[] = (data as DeliveryOrderRowRaw[]).map(
+        (row) => {
+          const penjualanRaw = Array.isArray(row.penjualan)
+            ? row.penjualan[0]
+            : row.penjualan;
+          const pelangganRaw = Array.isArray(penjualanRaw?.pelanggan)
+            ? penjualanRaw?.pelanggan[0]
+            : penjualanRaw?.pelanggan;
+          const itemsRaw = Array.isArray(penjualanRaw?.items)
+            ? penjualanRaw?.items
+            : penjualanRaw?.items || [];
+
+          return {
+            id: row.id,
+            no_do: row.no_do,
+            no_tanda_terima: row.no_tanda_terima || undefined,
+            status: row.status,
+            tanggal_kirim: row.tanggal_kirim || undefined,
+            tanggal_terima: row.tanggal_terima || undefined,
+            created_at: row.created_at,
+            penjualan: {
+              id: penjualanRaw?.id || "",
+              no_invoice: penjualanRaw?.no_invoice || "",
+              no_npb: penjualanRaw?.no_npb || "",
+              tanggal: penjualanRaw?.tanggal || row.created_at,
+              pelanggan: pelangganRaw || null,
+              items: itemsRaw,
+            },
+          };
+        },
+      );
+      setRows(mappedRows);
       setTotalCount(count || 0);
     }
     setLoading(false);
@@ -169,7 +238,9 @@ export default function DeliveryOrderPage() {
   }, [rows, search]);
 
   const updateStatus = async (row: DeliveryOrderRow, status: DOStatus) => {
-    const payload: any = { status };
+    const payload: { status: DOStatus; tanggal_kirim?: string; tanggal_terima?: string } = {
+      status,
+    };
     if (status === "Dikirim") {
       payload.tanggal_kirim =
         row.tanggal_kirim || new Date().toISOString().split("T")[0];
@@ -226,9 +297,11 @@ export default function DeliveryOrderPage() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
-        message: "Gagal membuat PDF DO: " + (err?.message || "Unknown error"),
+        message:
+          "Gagal membuat PDF DO: " +
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
     }
@@ -250,11 +323,11 @@ export default function DeliveryOrderPage() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
-    } catch (err: any) {
+    } catch (err: unknown) {
       showStatus({
         message:
           "Gagal membuat PDF Berita Acara: " +
-          (err?.message || "Unknown error"),
+          (err instanceof Error ? err.message : "Unknown error"),
         success: false,
       });
     }
@@ -532,7 +605,7 @@ export default function DeliveryOrderPage() {
                   </TableHeader>
                   <TableBody>
                     {(selectedRow.penjualan?.items || []).map(
-                      (item: any, i) => (
+                      (item: DeliveryOrderItem, i) => (
                         <TableRow key={i}>
                           <TableCell>
                             {item.supplier_produk?.produk?.nama || "Produk"}
