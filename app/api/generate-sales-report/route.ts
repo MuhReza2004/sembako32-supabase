@@ -6,6 +6,9 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Penjualan } from "@/app/types/penjualan";
+import { requireAdmin } from "@/app/lib/api-guard";
+import { rateLimit } from "@/app/lib/rate-limit";
+import { escapeHtml } from "@/helper/escapeHtml";
 
 type PenjualanDetailRow = {
   id: string;
@@ -100,7 +103,38 @@ const getAllPenjualanAdmin = async (): Promise<Penjualan[]> => {
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin(request);
+    if (!guard.ok) return guard.response;
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+    const limit = rateLimit(`pdf:sales:${ip}`, 10, 60_000);
+    if (!limit.ok) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / 1000),
+      );
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const { startDate, endDate } = await request.json();
+    const safe = (value: string | number | null | undefined) =>
+      escapeHtml(String(value ?? ""));
+    const periodLabel =
+      startDate && endDate
+        ? new Date(startDate).toLocaleDateString("id-ID") +
+          " - " +
+          new Date(endDate).toLocaleDateString("id-ID")
+        : startDate
+          ? "Dari: " + new Date(startDate).toLocaleDateString("id-ID")
+          : endDate
+            ? "Sampai: " + new Date(endDate).toLocaleDateString("id-ID")
+            : "Semua Periode";
 
     // Read and encode the logo first
     const logoPath = path.join(process.cwd(), "public", "logo.svg");
@@ -159,26 +193,16 @@ export async function POST(request: NextRequest) {
         </head>
         <body>
           <h2>Laporan Penjualan</h2>
-          <p>Periode: ${
-            startDate && endDate
-              ? new Date(startDate).toLocaleDateString("id-ID") +
-                " - " +
-                new Date(endDate).toLocaleDateString("id-ID")
-              : startDate
-                ? "Dari: " + new Date(startDate).toLocaleDateString("id-ID")
-                : endDate
-                  ? "Sampai: " + new Date(endDate).toLocaleDateString("id-ID")
-                  : "Semua Periode"
-          }</p>
+          <p>Periode: ${safe(periodLabel)}</p>
 
 <div style="margin-bottom: 20px;">
   <div style="display: grid; grid-template-columns: 180px 10px auto;">
-    <span>Total Penjualan</span><span>:</span><span>${totalSales}</span>
-    <span>Pendapatan Bruto</span><span>:</span><span>${formatRupiah(totalRevenue)}</span>
-    <span>Total Pajak</span><span>:</span><span>${formatRupiah(totalPajak)}</span>
-    <span style="font-weight: bold;">Pendapatan Netto</span><span>:</span><span style="font-weight: bold;">${formatRupiah(penjualanBersih)}</span>
-    <span>Penjualan Lunas</span><span>:</span><span>${paidSales}</span>
-    <span>Belum Lunas</span><span>:</span><span>${unpaidSales}</span>
+    <span>Total Penjualan</span><span>:</span><span>${safe(totalSales)}</span>
+    <span>Pendapatan Bruto</span><span>:</span><span>${safe(formatRupiah(totalRevenue))}</span>
+    <span>Total Pajak</span><span>:</span><span>${safe(formatRupiah(totalPajak))}</span>
+    <span style="font-weight: bold;">Pendapatan Netto</span><span>:</span><span style="font-weight: bold;">${safe(formatRupiah(penjualanBersih))}</span>
+    <span>Penjualan Lunas</span><span>:</span><span>${safe(paidSales)}</span>
+    <span>Belum Lunas</span><span>:</span><span>${safe(unpaidSales)}</span>
   </div>
 </div>
 
@@ -202,15 +226,15 @@ export async function POST(request: NextRequest) {
                       <td>${index + 1}</td>
                       <td>
                       <ul>
-                        <li>Invoice: ${sale.no_invoice || "-"}</li>
-                        <li>DO: ${sale.no_do || "-"}</li>
-                        <li>NPB: ${sale.no_npb || "-"}</li>
+                        <li>Invoice: ${safe(sale.no_invoice || "-")}</li>
+                        <li>DO: ${safe(sale.no_do || "-")}</li>
+                        <li>NPB: ${safe(sale.no_npb || "-")}</li>
                       </ul>
                       </td>
-                      <td>${new Date(sale.tanggal).toLocaleDateString("id-ID")}</td>
-                      <td>${sale.namaPelanggan || "Pelanggan Tidak Diketahui"}</td>
-                      <td>${formatRupiah(sale.total)}</td>
-                      <td>${sale.status}</td>
+                      <td>${safe(new Date(sale.tanggal).toLocaleDateString("id-ID"))}</td>
+                      <td>${safe(sale.namaPelanggan || "Pelanggan Tidak Diketahui")}</td>
+                      <td>${safe(formatRupiah(sale.total))}</td>
+                      <td>${safe(sale.status)}</td>
                     </tr>
                   `,
                 )
@@ -219,7 +243,7 @@ export async function POST(request: NextRequest) {
           </table>
 
           <div style="margin-top: 30px; text-align: right;">
-            <p class="total">Total Nilai Transaksi: ${formatRupiah(totalRevenue)}</p>
+            <p class="total">Total Nilai Transaksi: ${safe(formatRupiah(totalRevenue))}</p>
           </div>
 
           <div style="text-align:end; margin-top: 30px; ">(Pasangkayu,...../......./......... )</div>

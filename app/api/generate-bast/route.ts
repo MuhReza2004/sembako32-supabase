@@ -4,6 +4,10 @@ import chrome from "chrome-aws-lambda";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { formatRupiah } from "@/helper/format";
+import { requireAuth } from "@/app/lib/api-guard";
+import { rateLimit } from "@/app/lib/rate-limit";
+import { escapeHtml } from "@/helper/escapeHtml";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type DOItem = {
   qty: number;
@@ -28,9 +32,55 @@ type DeliveryOrderPayload = {
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAuth(request);
+    if (!guard.ok) return guard.response;
+    const { role, userId } = guard;
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+    const limit = rateLimit(`pdf:bast:${ip}`, 10, 60_000);
+    if (!limit.ok) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / 1000),
+      );
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const { deliveryOrder } = (await request.json()) as {
       deliveryOrder: DeliveryOrderPayload;
     };
+    const safe = (value: string | number | null | undefined) =>
+      escapeHtml(String(value ?? ""));
+
+    if (role !== "admin") {
+      const identifier = deliveryOrder?.no_do || deliveryOrder?.no_tanda_terima;
+      if (!identifier) {
+        return NextResponse.json(
+          { error: "missing_identifier" },
+          { status: 400 },
+        );
+      }
+      const { data: owned } = await supabaseAdmin
+        .from("delivery_orders")
+        .select("id, penjualan:penjualan_id(created_by)")
+        .or(
+          deliveryOrder.no_do
+            ? `no_do.eq.${deliveryOrder.no_do}`
+            : `no_tanda_terima.eq.${deliveryOrder.no_tanda_terima}`,
+        )
+        .single();
+      const createdBy = (owned as { penjualan?: { created_by?: string } } | null)
+        ?.penjualan?.created_by;
+      if (!createdBy || createdBy !== userId) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+    }
     if (!deliveryOrder?.no_do || !deliveryOrder?.penjualan) {
       return NextResponse.json(
         { error: "Missing required delivery order data" },
@@ -131,12 +181,12 @@ export async function POST(request: NextRequest) {
         </head>
         <body>
           <h2 style="text-decoration: underline;">TANDA TERIMA BARANG</h2>
-          <h4 style="text-align: center;">NO: ${deliveryOrder.no_tanda_terima}</h4>
+          <h4 style="text-align: center;">NO: ${safe(deliveryOrder.no_tanda_terima)}</h4>
           <div class="meta">
-            <span>Referensi No. DO</span><span>:</span><span>${deliveryOrder.no_do}</span>
-            <span>Tanggal</span><span>:</span><span>${new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID")}</span>
-            <span>Penerima</span><span>:</span><span>${deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-"}</span>
-            <span>Alamat</span><span>:</span><span>${deliveryOrder.penjualan.pelanggan?.alamat || "-"}</span>
+            <span>Referensi No. DO</span><span>:</span><span>${safe(deliveryOrder.no_do)}</span>
+            <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
+            <span>Penerima</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
+            <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
           </div>
 
           <div class="box">
@@ -157,10 +207,10 @@ export async function POST(request: NextRequest) {
                     (item: DOItem, index: number) => `
                       <tr>
                         <td>${index + 1}</td>
-                        <td>${item.supplier_produk?.produk?.nama || "Produk"}</td>
-                        <td>${item.qty}</td>
-                        <td>${formatRupiah(item.harga || 0)}</td>
-                        <td>${formatRupiah(item.subtotal || 0)}</td>
+                        <td>${safe(item.supplier_produk?.produk?.nama || "Produk")}</td>
+                        <td>${safe(item.qty)}</td>
+                        <td>${safe(formatRupiah(item.harga || 0))}</td>
+                        <td>${safe(formatRupiah(item.subtotal || 0))}</td>
                       </tr>
                     `,
                   )

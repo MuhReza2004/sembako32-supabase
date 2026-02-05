@@ -109,8 +109,20 @@ export const dashboardMenus: MenuItem[] = [
     roles: ["staff"],
   },
   {
-    label: "Input Barang",
-    href: "/dashboard/staff/input",
+    label: "Transaksi",
+    href: "/dashboard/staff/transaksi",
     roles: ["staff"],
+    children: [
+      {
+        label: "Penjualan",
+        href: "/dashboard/staff/transaksi/penjualan",
+        roles: ["staff"],
+      },
+      {
+        label: "Buat Penjualan",
+        href: "/dashboard/staff/transaksi/penjualan/tambah",
+        roles: ["staff"],
+      },
+    ],
   },
 ];

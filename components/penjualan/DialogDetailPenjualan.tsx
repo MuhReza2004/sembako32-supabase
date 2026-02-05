@@ -23,7 +23,7 @@ import { Penjualan } from "@/app/types/penjualan";
 import { Pelanggan } from "@/app/types/pelanggan";
 import { formatRupiah } from "@/helper/format";
 import { getPelangganById } from "@/app/services/pelanggan.service";
-import { FileText, Printer, Loader2 } from "lucide-react";
+import { FileText, Printer, Loader2, Truck } from "lucide-react";
 
 interface DialogDetailPenjualanProps {
   open: boolean;
@@ -37,7 +37,9 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   penjualan,
 }) => {
   const [pelanggan, setPelanggan] = useState<Pelanggan | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
+  const [isLoadingDO, setIsLoadingDO] = useState(false);
+  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
   useEffect(() => {
     if (penjualan) {
@@ -81,7 +83,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
 
   const handlePrintInvoice = async () => {
-    setIsLoading(true);
+    setIsLoadingInvoice(true);
     try {
       const response = await fetch("/api/generate-invoice", {
         method: "POST",
@@ -115,7 +117,86 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
       console.error("Error generating PDF:", error);
       alert("Terjadi kesalahan saat membuat preview invoice PDF.");
     } finally {
-      setIsLoading(false);
+      setIsLoadingInvoice(false);
+    }
+  };
+
+  const handlePrintDeliveryOrder = async () => {
+    if (!penjualan.no_do) return;
+    setIsLoadingDO(true);
+    try {
+      const payload = {
+        deliveryOrder: {
+          no_do: penjualan.no_do,
+          no_tanda_terima: penjualan.no_tanda_terima,
+          penjualan: {
+            no_invoice: penjualan.no_invoice,
+            no_npb: penjualan.no_npb,
+            tanggal: penjualan.tanggal,
+            pelanggan: {
+              nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
+              alamat: pelanggan?.alamat || penjualan.alamatPelanggan,
+            },
+            items: (penjualan.items || []).map((item) => ({
+              qty: item.qty,
+              harga: item.hargaJual || item.harga || 0,
+              subtotal: item.subtotal || 0,
+              supplier_produk: {
+                produk: { nama: item.namaProduk || "Produk" },
+              },
+            })),
+          },
+        },
+      };
+
+      const response = await fetch("/api/generate-delivery-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate PDF: ${errorText}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Error generating DO PDF:", error);
+      alert("Terjadi kesalahan saat membuat Delivery Order PDF.");
+    } finally {
+      setIsLoadingDO(false);
+    }
+  };
+
+  const handlePrintReceipt = async () => {
+    setIsLoadingReceipt(true);
+    try {
+      const response = await fetch("/api/generate-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...penjualan,
+          nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
+          nama_toko: pelanggan?.nama_toko,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate PDF: ${errorText}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Error generating receipt PDF:", error);
+      alert("Terjadi kesalahan saat membuat Tanda Terima PDF.");
+    } finally {
+      setIsLoadingReceipt(false);
     }
   };
 
@@ -300,23 +381,63 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Tutup
           </Button>
-          <Button
-            onClick={handlePrintInvoice}
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Membuat Invoice...
-              </>
-            ) : (
-              <>
-                <Printer size={16} />
-                Cetak Invoice
-              </>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={handlePrintInvoice}
+              disabled={isLoadingInvoice}
+              className="flex items-center gap-2"
+            >
+              {isLoadingInvoice ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Membuat Invoice...
+                </>
+              ) : (
+                <>
+                  <Printer size={16} />
+                  Cetak Invoice
+                </>
+              )}
+            </Button>
+            {penjualan.no_do && (
+              <Button
+                variant="outline"
+                onClick={handlePrintDeliveryOrder}
+                disabled={isLoadingDO}
+                className="flex items-center gap-2"
+              >
+                {isLoadingDO ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Membuat DO...
+                  </>
+                ) : (
+                  <>
+                    <Truck size={16} />
+                    Cetak DO
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
+            <Button
+              variant="outline"
+              onClick={handlePrintReceipt}
+              disabled={isLoadingReceipt}
+              className="flex items-center gap-2"
+            >
+              {isLoadingReceipt ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Membuat Tanda Terima...
+                </>
+              ) : (
+                <>
+                  <Printer size={16} />
+                  Cetak Tanda Terima
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

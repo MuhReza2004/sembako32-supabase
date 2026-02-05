@@ -118,6 +118,7 @@ CREATE TABLE penjualan (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   tanggal DATE NOT NULL,
   pelanggan_id UUID REFERENCES pelanggan(id) ON DELETE CASCADE,
+  created_by UUID REFERENCES auth.users(id),
   catatan TEXT,
   no_invoice TEXT NOT NULL UNIQUE,
   no_npb TEXT NOT NULL,
@@ -210,51 +211,247 @@ ALTER TABLE delivery_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE penjualan_detail ENABLE ROW LEVEL SECURITY;
 ALTER TABLE riwayat_pembayaran ENABLE ROW LEVEL SECURITY;
 
--- Basic RLS policies (allow authenticated users to read/write)
-CREATE POLICY "Allow authenticated users to read users" ON users FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow users to insert their own user record" ON users FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
-CREATE POLICY "Allow authenticated users to read produk" ON produk FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert produk" ON produk FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update produk" ON produk FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to delete produk" ON produk FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read pelanggan" ON pelanggan FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert pelanggan" ON pelanggan FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update pelanggan" ON pelanggan FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to delete pelanggan" ON pelanggan FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read suppliers" ON suppliers FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert suppliers" ON suppliers FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update suppliers" ON suppliers FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to delete suppliers" ON suppliers FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read supplier_produk" ON supplier_produk FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert supplier_produk" ON supplier_produk FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update supplier_produk" ON supplier_produk FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to delete supplier_produk" ON supplier_produk FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read inventory" ON inventory FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert inventory" ON inventory FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update inventory" ON inventory FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read stock_adjustments" ON stock_adjustments FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert stock_adjustments" ON stock_adjustments FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to read pembelian" ON pembelian FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert pembelian" ON pembelian FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update pembelian" ON pembelian FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read pembelian_detail" ON pembelian_detail FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert pembelian_detail" ON pembelian_detail FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update pembelian_detail" ON pembelian_detail FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read delivery_orders" ON delivery_orders FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert delivery_orders" ON delivery_orders FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update delivery_orders" ON delivery_orders FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read penjualan" ON penjualan FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert penjualan" ON penjualan FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update penjualan" ON penjualan FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read penjualan_detail" ON penjualan_detail FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert penjualan_detail" ON penjualan_detail FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update penjualan_detail" ON penjualan_detail FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to read riwayat_pembayaran" ON riwayat_pembayaran FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated users to insert riwayat_pembayaran" ON riwayat_pembayaran FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Allow authenticated users to update riwayat_pembayaran" ON riwayat_pembayaran FOR UPDATE TO authenticated USING (true);
+-- Hardened RLS policies (admin write, authenticated read)
+-- Helper functions
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.users WHERE id = auth.uid();
+$$;
 
--- Allow users to update their own profile
-CREATE POLICY "Users can update own profile" ON users FOR UPDATE TO authenticated USING (auth.uid() = id);
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.current_user_role() = 'admin';
+$$;
+
+-- USERS
+CREATE POLICY "Users can read own profile" ON users
+  FOR SELECT TO authenticated
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile (staff only)" ON users
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = id AND role = 'staff');
+
+CREATE POLICY "Users can update own profile without role change" ON users
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id
+    AND role = (SELECT role FROM public.users u WHERE u.id = auth.uid())
+  );
+
+CREATE POLICY "Admins can manage users" ON users
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- PRODUK (read for all authenticated, write admin)
+CREATE POLICY "Authenticated can read produk" ON produk
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins can write produk" ON produk
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- PELANGGAN (read for all authenticated, write admin)
+CREATE POLICY "Authenticated can read pelanggan" ON pelanggan
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins can write pelanggan" ON pelanggan
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- SUPPLIERS (admin-only)
+CREATE POLICY "Admins can read suppliers" ON suppliers
+  FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "Admins can write suppliers" ON suppliers
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- SUPPLIER_PRODUK (read for all authenticated, write admin)
+CREATE POLICY "Authenticated can read supplier_produk" ON supplier_produk
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins can write supplier_produk" ON supplier_produk
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- INVENTORY (admin-only)
+CREATE POLICY "Admins can read inventory" ON inventory
+  FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "Admins can write inventory" ON inventory
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- STOCK_ADJUSTMENTS (admin-only)
+CREATE POLICY "Admins can read stock_adjustments" ON stock_adjustments
+  FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "Admins can write stock_adjustments" ON stock_adjustments
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- PEMBELIAN (admin-only)
+CREATE POLICY "Admins can read pembelian" ON pembelian
+  FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "Admins can write pembelian" ON pembelian
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- PEMBELIAN_DETAIL (admin-only)
+CREATE POLICY "Admins can read pembelian_detail" ON pembelian_detail
+  FOR SELECT TO authenticated USING (public.is_admin());
+CREATE POLICY "Admins can write pembelian_detail" ON pembelian_detail
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- DELIVERY_ORDERS (admin full, staff own)
+CREATE POLICY "Admins manage delivery_orders" ON delivery_orders
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+CREATE POLICY "Staff read own delivery_orders" ON delivery_orders
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = delivery_orders.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+CREATE POLICY "Staff insert own delivery_orders" ON delivery_orders
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = delivery_orders.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+CREATE POLICY "Staff update own delivery_orders" ON delivery_orders
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = delivery_orders.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = delivery_orders.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+
+-- PENJUALAN (admin full, staff own)
+CREATE POLICY "Admins manage penjualan" ON penjualan
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+CREATE POLICY "Staff read own penjualan" ON penjualan
+  FOR SELECT TO authenticated
+  USING (created_by = auth.uid());
+CREATE POLICY "Staff insert own penjualan" ON penjualan
+  FOR INSERT TO authenticated
+  WITH CHECK (created_by = auth.uid());
+CREATE POLICY "Staff update own penjualan" ON penjualan
+  FOR UPDATE TO authenticated
+  USING (created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
+
+-- PENJUALAN_DETAIL (admin full, staff own)
+CREATE POLICY "Admins manage penjualan_detail" ON penjualan_detail
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+CREATE POLICY "Staff read own penjualan_detail" ON penjualan_detail
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = penjualan_detail.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+CREATE POLICY "Staff insert own penjualan_detail" ON penjualan_detail
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = penjualan_detail.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+CREATE POLICY "Staff update own penjualan_detail" ON penjualan_detail
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = penjualan_detail.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = penjualan_detail.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+
+-- RIWAYAT_PEMBAYARAN (admin full, staff own)
+CREATE POLICY "Admins manage riwayat_pembayaran" ON riwayat_pembayaran
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+CREATE POLICY "Staff read own riwayat_pembayaran" ON riwayat_pembayaran
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = riwayat_pembayaran.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+CREATE POLICY "Staff insert own riwayat_pembayaran" ON riwayat_pembayaran
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = riwayat_pembayaran.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
+CREATE POLICY "Staff update own riwayat_pembayaran" ON riwayat_pembayaran
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = riwayat_pembayaran.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM penjualan p
+      WHERE p.id = riwayat_pembayaran.penjualan_id
+        AND p.created_by = auth.uid()
+    )
+  );
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -5,6 +5,10 @@ import { formatRupiah } from "@/helper/format";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { Penjualan } from "@/app/types/penjualan";
+import { requireAuth } from "@/app/lib/api-guard";
+import { rateLimit } from "@/app/lib/rate-limit";
+import { escapeHtml } from "@/helper/escapeHtml";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type PenjualanWithExtras = Penjualan & {
   nama_pelanggan?: string;
@@ -13,7 +17,51 @@ type PenjualanWithExtras = Penjualan & {
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAuth(request);
+    if (!guard.ok) return guard.response;
+    const { role, userId } = guard;
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+    const limit = rateLimit(`pdf:receipt:${ip}`, 10, 60_000);
+    if (!limit.ok) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / 1000),
+      );
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const penjualan = (await request.json()) as PenjualanWithExtras;
+    const safe = (value: string | number | null | undefined) =>
+      escapeHtml(String(value ?? ""));
+
+    if (role !== "admin") {
+      const selector = penjualan.no_invoice
+        ? { no_invoice: penjualan.no_invoice }
+        : penjualan.no_tanda_terima
+          ? { no_tanda_terima: penjualan.no_tanda_terima }
+          : null;
+      if (!selector) {
+        return NextResponse.json(
+          { error: "missing_identifier" },
+          { status: 400 },
+        );
+      }
+      const { data: owned } = await supabaseAdmin
+        .from("penjualan")
+        .select("id, created_by")
+        .match(selector)
+        .single();
+      if (!owned || owned.created_by !== userId) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+    }
 
     if (!penjualan?.no_invoice || !penjualan?.items) {
       return NextResponse.json(
@@ -102,7 +150,7 @@ export async function POST(request: NextRequest) {
       <html>
         <head>
           <meta charset="UTF-8">
-          <title>Tanda Terima ${penjualan.no_tanda_terima || "-"}</title>
+          <title>Tanda Terima ${safe(penjualan.no_tanda_terima || "-")}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; color: #111827; }
             h2 { color: #111827; text-align: center; margin: 0; }
@@ -118,13 +166,13 @@ export async function POST(request: NextRequest) {
         <body>
           <h2>TANDA TERIMA BARANG</h2>
           <div class="meta">
-            <span>No. Tanda Terima</span><span>:</span><span>${penjualan.no_tanda_terima || "-"}</span>
-            <span>No. Invoice</span><span>:</span><span>${penjualan.no_invoice || "-"}</span>
-            <span>No. NPB</span><span>:</span><span>${penjualan.no_npb || "-"}</span>
-            <span>No. DO</span><span>:</span><span>${penjualan.no_do || "-"}</span>
-            <span>Tanggal</span><span>:</span><span>${new Date(penjualan.tanggal).toLocaleDateString("id-ID")}</span>
-            <span>Pelanggan</span><span>:</span><span>${penjualan.nama_pelanggan || penjualan.namaPelanggan || "-"}</span>
-            <span>Nama Toko</span><span>:</span><span>${penjualan.nama_toko || "-"}</span>
+            <span>No. Tanda Terima</span><span>:</span><span>${safe(penjualan.no_tanda_terima || "-")}</span>
+            <span>No. Invoice</span><span>:</span><span>${safe(penjualan.no_invoice || "-")}</span>
+            <span>No. NPB</span><span>:</span><span>${safe(penjualan.no_npb || "-")}</span>
+            <span>No. DO</span><span>:</span><span>${safe(penjualan.no_do || "-")}</span>
+            <span>Tanggal</span><span>:</span><span>${safe(new Date(penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
+            <span>Pelanggan</span><span>:</span><span>${safe(penjualan.nama_pelanggan || penjualan.namaPelanggan || "-")}</span>
+            <span>Nama Toko</span><span>:</span><span>${safe(penjualan.nama_toko || "-")}</span>
           </div>
 
           <table>
@@ -143,10 +191,10 @@ export async function POST(request: NextRequest) {
                   (item, index) => `
                     <tr>
                       <td>${index + 1}</td>
-                      <td>${item.namaProduk || "Produk"}</td>
-                      <td>${item.qty}</td>
-                      <td>${formatRupiah(item.harga || 0)}</td>
-                      <td>${formatRupiah(item.subtotal || 0)}</td>
+                      <td>${safe(item.namaProduk || "Produk")}</td>
+                      <td>${safe(item.qty)}</td>
+                      <td>${safe(formatRupiah(item.harga || 0))}</td>
+                      <td>${safe(formatRupiah(item.subtotal || 0))}</td>
                     </tr>
                   `,
                 )
@@ -155,7 +203,7 @@ export async function POST(request: NextRequest) {
           </table>
 
           <div style="margin-top: 16px; text-align: right;">
-            <p class="total">Total: ${formatRupiah(total)}</p>
+            <p class="total">Total: ${safe(formatRupiah(total))}</p>
           </div>
 
           <div class="signature">

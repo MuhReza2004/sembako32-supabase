@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { Penjualan } from "@/app/types/penjualan";
+import { requireAuth } from "@/app/lib/api-guard";
+import { rateLimit } from "@/app/lib/rate-limit";
+import { escapeHtml } from "@/helper/escapeHtml";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 function numberToWords(num: number): string {
   const units = [
@@ -94,6 +98,8 @@ function numberToWords(num: number): string {
 async function generatePdf(
   penjualan: Penjualan & { nama_toko?: string },
 ): Promise<Buffer> {
+  const safe = (value: string | number | null | undefined) =>
+    escapeHtml(String(value ?? ""));
   // The customer store name ('nama_toko') is now passed directly in the 'penjualan' object.
 
   // Calculate total amount for terbilang
@@ -124,22 +130,22 @@ async function generatePdf(
   let paymentDetailsHtml = `
     <div class="invoice-item">
       <span class="label">Pembayaran</span>
-      <span class="value">${penjualan.metode_pembayaran || "N/A"}</span>
+      <span class="value">${safe(penjualan.metode_pembayaran || "N/A")}</span>
     </div>
   `;
   if (penjualan.metode_pembayaran === "Transfer") {
     paymentDetailsHtml += `
       <div class="invoice-item">
         <span class="label">Bank</span>
-        <span class="value">${penjualan.nama_bank || ""}</span>
+        <span class="value">${safe(penjualan.nama_bank || "")}</span>
       </div>
       <div class="invoice-item">
         <span class="label">A/n</span>
-        <span class="value">${penjualan.nama_pemilik_rekening || ""}</span>
+        <span class="value">${safe(penjualan.nama_pemilik_rekening || "")}</span>
       </div>
       <div class="invoice-item">
         <span class="label">No Rek</span>
-        <span class="value">${penjualan.nomor_rekening || ""}</span>
+        <span class="value">${safe(penjualan.nomor_rekening || "")}</span>
       </div>
     `;
   }
@@ -149,7 +155,7 @@ async function generatePdf(
   <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Invoice ${penjualan.no_invoice}</title>
+    <title>Invoice ${safe(penjualan.no_invoice)}</title>
     <style>
       * {
         margin: 0;
@@ -586,25 +592,25 @@ async function generatePdf(
           <div class="invoice-meta">
         <div class="invoice-item">
           <span class="label">No Invoice</span>
-          <span class="value">${penjualan.no_invoice}</span>
+          <span class="value">${safe(penjualan.no_invoice)}</span>
         </div>
         <div class="invoice-item">
           <span class="label">No. NPB</span>
-          <span class="value">${penjualan.no_npb}</span>
+          <span class="value">${safe(penjualan.no_npb)}</span>
         </div>
         ${
           penjualan.metode_pengambilan === "Diantar" && penjualan.no_do
             ? `
         <div class="invoice-item">
           <span class="label">No. DO</span>
-          <span class="value">${penjualan.no_do}</span>
+          <span class="value">${safe(penjualan.no_do)}</span>
         </div>
         `
             : ""
         }
         <div class="invoice-item">
           <span class="label">Tanggal</span>
-          <span class="value">${new Date(penjualan.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}</span>
+          <span class="value">${safe(new Date(penjualan.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }))}</span>
         </div>
         ${paymentDetailsHtml}
         ${
@@ -612,7 +618,7 @@ async function generatePdf(
             ? `
         <div class="invoice-item">
           <span class="label">Jatuh Tempo</span>
-          <span class="value">${new Date(penjualan.tanggal_jatuh_tempo).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}</span>
+          <span class="value">${safe(new Date(penjualan.tanggal_jatuh_tempo).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }))}</span>
         </div>
         `
             : ""
@@ -627,25 +633,25 @@ async function generatePdf(
           <p>Kepada Yth.</p>
           <div class="customer-item">
             <span class="label">Nama</span>
-            <span class="value">${penjualan.namaPelanggan}</span>
+            <span class="value">${safe(penjualan.namaPelanggan)}</span>
           </div>
           <div class="customer-item">
             <span class="label">Toko</span>
-            <span class="value">${penjualan.nama_toko || "-"}</span>
+            <span class="value">${safe(penjualan.nama_toko || "-")}</span>
           </div>
           <div class="customer-item">
             <span class="label">Status</span>
-            <span class="value">${penjualan.status}</span>
+            <span class="value">${safe(penjualan.status)}</span>
           </div>
           <div class="customer-item">
             <span class="label">Pengiriman</span>
-            <span class="value">${penjualan.metode_pengambilan}</span>
+            <span class="value">${safe(penjualan.metode_pengambilan)}</span>
           </div>
         </div>
 
         <div class="amount-highlight">
           <p>Total Yang Harus Dibayar</p>
-          <div class="amount">Rp ${totalAkhir.toLocaleString("id-ID")}</div>
+          <div class="amount">Rp ${safe(totalAkhir.toLocaleString("id-ID"))}</div>
         </div>
       </div>
 
@@ -667,11 +673,11 @@ async function generatePdf(
               (item, i) => `
             <tr>
               <td class="text-center">${i + 1}</td>
-              <td><strong>${item.namaProduk}</strong></td>
-              <td class="text-center">${item.qty}</td>
-              <td class="text-center">${item.satuan}</td>
-              <td class="text-right">Rp ${((item.hargaJual ?? item.harga) || 0).toLocaleString("id-ID")}</td>
-              <td class="text-right"><strong>Rp ${item.subtotal.toLocaleString("id-ID")}</strong></td>
+              <td><strong>${safe(item.namaProduk)}</strong></td>
+              <td class="text-center">${safe(item.qty)}</td>
+              <td class="text-center">${safe(item.satuan || "")}</td>
+              <td class="text-right">Rp ${safe(((item.hargaJual ?? item.harga) || 0).toLocaleString("id-ID"))}</td>
+              <td class="text-right"><strong>Rp ${safe(item.subtotal.toLocaleString("id-ID"))}</strong></td>
             </tr>
           `,
             )
@@ -681,7 +687,7 @@ async function generatePdf(
 
       <!-- TERBILANG -->
       <div class="terbilang-section">
-        <p><strong>Terbilang:</strong> <em>${numberToWords(Math.floor(totalAkhir))}</em></p>
+        <p><strong>Terbilang:</strong> <em>${safe(numberToWords(Math.floor(totalAkhir)))}</em></p>
       </div>
 
       <!-- SUMMARY AND FOOTER -->
@@ -697,14 +703,14 @@ async function generatePdf(
             <table>
               <tr>
                 <td>Subtotal</td>
-                <td class="text-right">Rp ${subTotal.toLocaleString("id-ID")}</td>
+                <td class="text-right">Rp ${safe(subTotal.toLocaleString("id-ID"))}</td>
               </tr>
               ${
                 penjualan.diskon && penjualan.diskon > 0
                   ? `
                 <tr>
                   <td>Diskon (${penjualan.diskon}%)</td>
-                  <td class="text-right">- Rp ${diskonAmount.toLocaleString("id-ID")}</td>
+                  <td class="text-right">- Rp ${safe(diskonAmount.toLocaleString("id-ID"))}</td>
                 </tr>
                 `
                   : ""
@@ -714,14 +720,14 @@ async function generatePdf(
                   ? `
                 <tr>
                   <td>PPN 11%</td>
-                  <td class="text-right">Rp ${pajakAmount.toLocaleString("id-ID")}</td>
+                  <td class="text-right">Rp ${safe(pajakAmount.toLocaleString("id-ID"))}</td>
                 </tr>
               `
                   : ""
               }
               <tr>
                 <td><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>Rp ${totalAkhir.toLocaleString("id-ID")}</strong></td>
+                <td class="text-right"><strong>Rp ${safe(totalAkhir.toLocaleString("id-ID"))}</strong></td>
               </tr>
             </table>
           </div>
@@ -736,7 +742,7 @@ async function generatePdf(
         </div>
         <div class="signature-box">
           <p>Diterima Oleh,</p>
-          <div class="signature-line">( ${penjualan.namaPelanggan} )</div>
+          <div class="signature-line">( ${safe(penjualan.namaPelanggan)} )</div>
         </div>
       </div>
 
@@ -765,6 +771,26 @@ async function generatePdf(
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAuth(request);
+    if (!guard.ok) return guard.response;
+    const { role, userId } = guard;
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+    const limit = rateLimit(`pdf:invoice:${ip}`, 10, 60_000);
+    if (!limit.ok) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / 1000),
+      );
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const penjualan: Penjualan = await request.json();
     console.log("Received penjualan data:", JSON.stringify(penjualan, null, 2));
 
@@ -790,6 +816,17 @@ export async function POST(request: NextRequest) {
         typeof priceValue !== "number"
       ) {
         throw new Error(`Invalid item data: ${JSON.stringify(item)}`);
+      }
+    }
+
+    if (role !== "admin") {
+      const { data: owned } = await supabaseAdmin
+        .from("penjualan")
+        .select("id, created_by")
+        .eq("no_invoice", penjualan.no_invoice)
+        .single();
+      if (!owned || owned.created_by !== userId) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
       }
     }
 

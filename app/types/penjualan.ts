@@ -38,6 +38,7 @@ export interface Penjualan {
   riwayatPembayaran?: RiwayatPembayaran[]; // Payment history
   created_at: string;
   updated_at: string;
+  created_by?: string;
   items?: PenjualanDetail[]; // populated from penjualan_detail
 
   // Additional fields for detailed view

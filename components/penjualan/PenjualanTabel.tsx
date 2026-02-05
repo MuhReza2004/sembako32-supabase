@@ -126,7 +126,10 @@ export default function PenjualanTabel({
                       <DropdownMenuItem
                         className="text-red-600"
                         onClick={() => onCancel(penjualan.id)}
-                        disabled={cancelingTransaction === penjualan.id}
+                        disabled={
+                          cancelingTransaction === penjualan.id ||
+                          penjualan.status === "Batal"
+                        }
                       >
                         {cancelingTransaction === penjualan.id ? (
                           <>

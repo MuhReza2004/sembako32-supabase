@@ -1,4 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { requireAdmin } from "@/app/lib/api-guard";
+import { rateLimit } from "@/app/lib/rate-limit";
+import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 type ProdukRow = {
@@ -26,8 +29,27 @@ type PenjualanRow = {
   items?: DetailRow[];
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const guard = await requireAdmin(request);
+    if (!guard.ok) return guard.response;
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+    const limit = rateLimit(`inventory-report:${ip}`, 30, 60_000);
+    if (!limit.ok) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / 1000),
+      );
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const { data: produkData, error: produkError } = await supabaseAdmin
       .from("produk")
       .select("*");

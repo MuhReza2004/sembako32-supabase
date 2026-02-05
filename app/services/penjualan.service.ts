@@ -45,6 +45,14 @@ export const createPenjualan = async (data: PenjualanFormData) => {
     assertValidMoney("Subtotal item", Number(item.subtotal));
   }
 
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error("User tidak terautentikasi.");
+  }
+
   // 1. Validate stock for all items
   for (const item of data.items || []) {
     const { data: supplierProduk, error } = await supabase
@@ -89,6 +97,7 @@ export const createPenjualan = async (data: PenjualanFormData) => {
     pajak_enabled: data.pajak_enabled || false,
     pajak: Number(data.pajak || 0),
     total_akhir: Number(data.total_akhir || 0),
+    created_by: user.id,
   };
 
   const { data: penjualan, error: penjualanError } = await supabase
@@ -489,27 +498,16 @@ export const deletePenjualan = async (id: string) => {
 
 // --- NEW cancelPenjualan function ---
 export const cancelPenjualan = async (id: string) => {
-  const { data: penjualanDetails, error: fetchDetailsError } = await supabase
-    .from("penjualan_detail")
-    .select("supplier_produk_id, qty")
-    .eq("penjualan_id", id);
-  if (fetchDetailsError) throw fetchDetailsError;
+  const response = await fetch("/api/penjualan/cancel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
 
-  for (const item of penjualanDetails || []) {
-    const { data: p } = await supabase
-      .from("supplier_produk")
-      .select("stok")
-      .eq("id", item.supplier_produk_id)
-      .single();
-    if (p) {
-      await supabase
-        .from("supplier_produk")
-        .update({ stok: p.stok + item.qty })
-        .eq("id", item.supplier_produk_id);
-    }
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gagal membatalkan transaksi: ${errorText}`);
   }
-
-  await supabase.from("penjualan").update({ status: "Batal" }).eq("id", id);
 };
 
 // --- existing generateInvoiceNumber function ---

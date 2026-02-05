@@ -6,6 +6,9 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Pembelian } from "@/app/types/pembelian";
+import { requireAdmin } from "@/app/lib/api-guard";
+import { rateLimit } from "@/app/lib/rate-limit";
+import { escapeHtml } from "@/helper/escapeHtml";
 
 type PembelianDetailRow = {
   id: string;
@@ -82,7 +85,38 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin(request);
+    if (!guard.ok) return guard.response;
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+    const limit = rateLimit(`pdf:purchase:${ip}`, 10, 60_000);
+    if (!limit.ok) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((limit.resetAt - Date.now()) / 1000),
+      );
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
+
     const { startDate, endDate } = await request.json();
+    const safe = (value: string | number | null | undefined) =>
+      escapeHtml(String(value ?? ""));
+    const periodLabel =
+      startDate && endDate
+        ? new Date(startDate).toLocaleDateString("id-ID") +
+          " - " +
+          new Date(endDate).toLocaleDateString("id-ID")
+        : startDate
+          ? "Dari: " + new Date(startDate).toLocaleDateString("id-ID")
+          : endDate
+            ? "Sampai: " + new Date(endDate).toLocaleDateString("id-ID")
+            : "Semua Periode";
 
     const logoPath = path.join(process.cwd(), "public", "logo.svg");
     const logoBuffer = await fs.readFile(logoPath);
@@ -129,23 +163,13 @@ export async function POST(request: NextRequest) {
         </head>
         <body>
           <h2>Laporan Pembelian</h2>
-          <p>Periode: ${
-            startDate && endDate
-              ? new Date(startDate).toLocaleDateString("id-ID") +
-                " - " +
-                new Date(endDate).toLocaleDateString("id-ID")
-              : startDate
-                ? "Dari: " + new Date(startDate).toLocaleDateString("id-ID")
-                : endDate
-                  ? "Sampai: " + new Date(endDate).toLocaleDateString("id-ID")
-                  : "Semua Periode"
-          }</p>
+          <p>Periode: ${safe(periodLabel)}</p>
 <div style="margin-bottom: 20px;">
   <div style="display: grid; grid-template-columns: 180px 10px auto;">
-    <span>Total Pembelian</span><span>:</span><span>${totalPurchases}</span>
-    <span>Total Dibayar</span><span>:</span><span>${paidPurchases}</span>
-    <span>Total Belum Dibayar</span><span>:</span><span>${unpaidPurchases}</span>
-    <span style="font-weight: bold;">Total Biaya</span><span>:</span><span style="font-weight: bold;">${formatRupiah(totalCost)}</span>
+    <span>Total Pembelian</span><span>:</span><span>${safe(totalPurchases)}</span>
+    <span>Total Dibayar</span><span>:</span><span>${safe(paidPurchases)}</span>
+    <span>Total Belum Dibayar</span><span>:</span><span>${safe(unpaidPurchases)}</span>
+    <span style="font-weight: bold;">Total Biaya</span><span>:</span><span style="font-weight: bold;">${safe(formatRupiah(totalCost))}</span>
   </div>
 </div>
 
@@ -167,17 +191,17 @@ export async function POST(request: NextRequest) {
                   (p, index) => `
                     <tr>
                       <td>${index + 1}</td>
-                      <td>${new Date(p.tanggal).toLocaleDateString("id-ID")}</td>
+                      <td>${safe(new Date(p.tanggal).toLocaleDateString("id-ID"))}</td>
                       <td>
                       <ul>
-                        <li>No NPB: ${p.no_npb || "-"}</li>
-                        <li>No DO: ${p.no_do || "-"}</li>
-                        <li>Invoice: ${p.invoice || "-"}</li>
+                        <li>No NPB: ${safe(p.no_npb || "-")}</li>
+                        <li>No DO: ${safe(p.no_do || "-")}</li>
+                        <li>Invoice: ${safe(p.invoice || "-")}</li>
                       </ul>
                       </td>
-                      <td>${p.namaSupplier || "-"}</td>
-                      <td>${formatRupiah(p.total)}</td>
-                      <td>${p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline"}</td>
+                      <td>${safe(p.namaSupplier || "-")}</td>
+                      <td>${safe(formatRupiah(p.total))}</td>
+                      <td>${safe(p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline")}</td>
                     </tr>
                   `,
                 )
@@ -186,7 +210,7 @@ export async function POST(request: NextRequest) {
           </table>
 
           <div style="margin-top: 30px; text-align: right;">
-            <p class="total">Total Nilai Transaksi: ${formatRupiah(totalCost)}</p>
+            <p class="total">Total Nilai Transaksi: ${safe(formatRupiah(totalCost))}</p>
           </div>
 
            <div style="text-align:end; margin-top: 30px; ">(Pasangkayu,...../......./......... )</div>
