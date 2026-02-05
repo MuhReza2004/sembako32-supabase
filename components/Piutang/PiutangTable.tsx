@@ -26,6 +26,7 @@ export default function PiutangTable({
   piutang = [],
   onStatusReport,
 }: PiutangTableProps) {
+  type PenjualanWithExtras = Penjualan & { nama_pelanggan?: string };
   const [selectedPiutang, setSelectedPiutang] = useState<Penjualan | null>(
     null,
   );
@@ -92,13 +93,18 @@ export default function PiutangTable({
         <TableBody>
           {(piutang || []).map((p) => {
             const totalDibayar = p.total_dibayar || 0;
-            const sisaUtang = p.total_akhir - totalDibayar;
+            const totalAkhir = p.total_akhir ?? p.total;
+            const sisaUtang = totalAkhir - totalDibayar;
+            const namaPelanggan =
+              (p as PenjualanWithExtras).namaPelanggan ||
+              (p as PenjualanWithExtras).nama_pelanggan ||
+              "";
             return (
               <TableRow key={p.id}>
                 <TableCell>{p.no_invoice}</TableCell>
                 <TableCell>{formatTanggal(p.tanggal)}</TableCell>
-                <TableCell>{p.nama_pelanggan}</TableCell>
-                <TableCell>{formatRupiah(p.total_akhir)}</TableCell>
+                <TableCell>{namaPelanggan}</TableCell>
+                <TableCell>{formatRupiah(totalAkhir)}</TableCell>
                 <TableCell>{formatRupiah(totalDibayar)}</TableCell>
                 <TableCell>{formatRupiah(sisaUtang)}</TableCell>
                 <TableCell>

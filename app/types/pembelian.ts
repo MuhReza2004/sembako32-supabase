@@ -24,3 +24,14 @@ export interface Pembelian {
   items?: PembelianDetail[]; // populated from pembelian_detail
   namaSupplier?: string; // Added for supplier name
 }
+
+export type PembelianFormItem = Omit<
+  PembelianDetail,
+  "id" | "pembelian_id" | "created_at"
+>;
+export type PembelianFormData = Omit<
+  Pembelian,
+  "id" | "created_at" | "updated_at" | "items"
+> & {
+  items?: PembelianFormItem[];
+};

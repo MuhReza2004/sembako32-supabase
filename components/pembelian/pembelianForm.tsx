@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
 import { createPembelian } from "@/app/services/pembelian.service";
-import { Pembelian } from "@/app/types/pembelian";
+import { PembelianFormData } from "@/app/types/pembelian";
 import { Produk } from "@/app/types/produk";
 import { Supplier, SupplierProduk } from "@/app/types/supplier";
 import { formatRupiah } from "@/helper/format";
@@ -31,7 +31,6 @@ interface PembelianFormProps {
   supplierProduks: SupplierProduk[];
 }
 
-type PembelianFormData = Omit<Pembelian, "id" | "created_at" | "updated_at">;
 
 export default function PembelianForm({
   suppliers,

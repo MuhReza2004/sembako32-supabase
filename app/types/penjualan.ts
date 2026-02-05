@@ -54,3 +54,14 @@ export interface Penjualan {
   pajak?: number;
   total_akhir?: number;
 }
+
+export type PenjualanFormItem = Omit<
+  PenjualanDetail,
+  "id" | "penjualan_id" | "created_at"
+>;
+export type PenjualanFormData = Omit<
+  Penjualan,
+  "id" | "created_at" | "updated_at" | "items"
+> & {
+  items?: PenjualanFormItem[];
+};

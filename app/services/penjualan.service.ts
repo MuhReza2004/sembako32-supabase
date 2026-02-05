@@ -1,5 +1,9 @@
 import { supabase } from "@/app/lib/supabase";
-import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
+import {
+  Penjualan,
+  PenjualanDetail,
+  PenjualanFormData,
+} from "@/app/types/penjualan";
 
 type PenjualanDetailRow = PenjualanDetail & {
   supplier_produk?: {
@@ -29,7 +33,7 @@ const assertValidMoney = (label: string, value: number) => {
 };
 
 // --- existing createPenjualan function ---
-export const createPenjualan = async (data: Penjualan) => {
+export const createPenjualan = async (data: PenjualanFormData) => {
   assertValidMoney("Total penjualan", Number(data.total));
   assertValidMoney("Total dibayar", Number(data.total_dibayar || 0));
   assertValidMoney("Diskon", Number(data.diskon || 0));
@@ -361,7 +365,10 @@ export const updatePenjualanStatus = async (
 };
 
 // --- existing updatePenjualan function ---
-export const updatePenjualan = async (id: string, data: Partial<Penjualan>) => {
+export const updatePenjualan = async (
+  id: string,
+  data: Partial<PenjualanFormData>,
+) => {
   if (data.total !== undefined) {
     assertValidMoney("Total penjualan", Number(data.total));
   }

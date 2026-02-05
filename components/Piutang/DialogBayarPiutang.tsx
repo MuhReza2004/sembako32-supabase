@@ -45,11 +45,11 @@ type PenjualanWithExtras = Penjualan & {
   nama_pelanggan?: string;
 };
 
-type PenjualanItemWithExtras = Penjualan["items"] extends (infer U)[] ? U & {
+type PenjualanItemWithExtras = NonNullable<Penjualan["items"]>[number] & {
   namaProduk?: string;
   nama_produk?: string;
   produk?: { nama?: string };
-} : never;
+};
 
 export default function DialogBayarPiutang({
   isOpen,
@@ -81,7 +81,7 @@ export default function DialogBayarPiutang({
         metode_pembayaran: "Transfer",
         atas_nama:
           (piutang as PenjualanWithExtras).namaPelanggan ||
-          piutang.nama_pelanggan ||
+          (piutang as PenjualanWithExtras).nama_pelanggan ||
           "",
       });
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -158,7 +158,7 @@ export default function DialogBayarPiutang({
               <Input
                 value={
                   (piutang as PenjualanWithExtras).namaPelanggan ||
-                  piutang.nama_pelanggan ||
+                  (piutang as PenjualanWithExtras).nama_pelanggan ||
                   ""
                 }
                 disabled

@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Pembelian } from "@/app/types/pembelian";
+import { PembelianFormData } from "@/app/types/pembelian";
 import { Supplier, SupplierProduk } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 import { Separator } from "@/components/ui/separator";
@@ -20,12 +20,12 @@ import { formatRupiah } from "@/helper/format";
 interface DialogKonfirmasiPembelianProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pembelianData: Omit<Pembelian, "id" | "created_at" | "updated_at"> | null;
+  pembelianData: PembelianFormData | null;
   supplier: Supplier | null;
   produkList: Produk[];
   supplierProdukList: SupplierProduk[];
   onConfirm: () => void;
-  isLoading: boolean;
+  isLoading?: boolean;
 }
 
 export function DialogKonfirmasiPembelian({
@@ -36,7 +36,7 @@ export function DialogKonfirmasiPembelian({
   produkList,
   supplierProdukList,
   onConfirm,
-  isLoading,
+  isLoading = false,
 }: DialogKonfirmasiPembelianProps) {
   if (!pembelianData || !supplier) return null;
 

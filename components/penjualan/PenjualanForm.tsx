@@ -11,7 +11,7 @@ import {
   generateDONumber,
   generateTandaTerimaNumber,
 } from "@/app/services/penjualan.service";
-import { PenjualanDetail, Penjualan } from "@/app/types/penjualan";
+import { Penjualan, PenjualanFormData, PenjualanFormItem } from "@/app/types/penjualan";
 import { Produk } from "@/app/types/produk";
 import { Pelanggan } from "@/app/types/pelanggan";
 import { SupplierProduk } from "@/app/types/supplier";
@@ -49,8 +49,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-type PenjualanFormData = Omit<Penjualan, "id" | "created_at" | "updated_at">;
 
 interface PenjualanFormProps {
   products: Produk[];
@@ -204,7 +202,8 @@ export function PenjualanForm({
   };
 
   const onSubmit = (data: PenjualanFormData) => {
-    if (data.items.length === 0) {
+    const items = data.items ?? [];
+    if (items.length === 0) {
       showStatus({
         message: "Pastikan ada produk yang dipilih",
         success: false,
@@ -318,13 +317,14 @@ export function PenjualanForm({
             <CardHeader>
               <CardTitle>2. Tambah Produk</CardTitle>
             </CardHeader>
-            <CardContent>
-              <AddItemForm
-                supplierProduks={supplierProduks}
-                onAddItem={(item) => append(item)}
-                onStatusReport={showStatus} // Pass showStatus down
-              />
-            </CardContent>
+          <CardContent>
+            <AddItemForm
+              supplierProduks={supplierProduks}
+              products={products}
+              onAddItem={(item) => append(item)}
+              onStatusReport={showStatus} // Pass showStatus down
+            />
+          </CardContent>
           </Card>
 
           {fields.length > 0 && (
@@ -641,11 +641,13 @@ export function PenjualanForm({
 
 function AddItemForm({
   supplierProduks,
+  products,
   onAddItem,
   onStatusReport,
 }: {
   supplierProduks: SupplierProduk[];
-  onAddItem: (item: PenjualanDetail) => void;
+  products: Produk[];
+  onAddItem: (item: PenjualanFormItem) => void;
   onStatusReport: ReturnType<typeof useStatus>["showStatus"]; // Added prop
 }) {
   const [supplierProdukId, setSupplierProdukId] = useState("");
@@ -654,7 +656,8 @@ function AddItemForm({
 
   const handleAddItem = () => {
     // setError(null); // No longer needed
-    if (!supplierProdukId || qty <= 0) {
+    const qtyNumber = Number(qty || 0);
+    if (!supplierProdukId || qtyNumber <= 0) {
       onStatusReport({
         message: "Pilih produk dan masukkan jumlah yang valid",
         success: false,
@@ -671,23 +674,20 @@ function AddItemForm({
       });
       return;
     }
-    if (qty > supplierProduk.stok) {
+    if (qtyNumber > supplierProduk.stok) {
       onStatusReport({
         message: `Stok ${
-          supplierProduk.produk?.nama || "Produk"
+          supplierProduk.produkNama || "Produk"
         } tidak mencukupi (sisa: ${supplierProduk.stok})`,
         success: false,
       });
       return;
     }
     onAddItem({
-      id: "",
-      penjualan_id: "",
       supplier_produk_id: supplierProdukId,
-      qty,
+      qty: qtyNumber,
       harga: supplierProduk.harga_jual,
-      subtotal: supplierProduk.harga_jual * qty,
-      created_at: new Date().toISOString(),
+      subtotal: supplierProduk.harga_jual * qtyNumber,
     });
     setSupplierProdukId("");
     setQty(1);
@@ -701,6 +701,7 @@ function AddItemForm({
           <Label>Pilih Produk</Label>
           <ComboboxSupplierProduk
             supplierProdukList={supplierProduks}
+            produkList={products}
             value={supplierProdukId}
             onChange={setSupplierProdukId}
           />

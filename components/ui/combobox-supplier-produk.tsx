@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { SupplierProduk } from "@/app/types/suplyer";
+import { SupplierProduk } from "@/app/types/supplier";
 import { Produk } from "@/app/types/produk";
 
 interface ComboboxSupplierProdukProps {
