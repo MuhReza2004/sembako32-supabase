@@ -8,6 +8,7 @@ import { Penjualan } from "@/app/types/penjualan";
 import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
+import { getPdfFontCss } from "@/lib/pdf-fonts";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
       (sale) => sale.status === "Belum Lunas",
     ).length;
 
+    const fontCss = await getPdfFontCss();
     // Generate HTML content for PDF
     const htmlContent = `
       <!DOCTYPE html>
@@ -177,7 +179,8 @@ export async function POST(request: NextRequest) {
           <meta charset="UTF-8">
           <title>Laporan Penjualan</title>
           <style>
-            body { font-family: 'Open Sans', Arial, sans-serif; margin: 20px; }
+            ${fontCss}
+            body { font-family: 'PdfFont', Arial, sans-serif; margin: 20px; }
             h2 { color: #333; text-align: center; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -275,7 +278,7 @@ export async function POST(request: NextRequest) {
 
     const headerTemplate = `
       <div style="
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         width: 100%; /* This is the full margin box width */
         height: 100px;
         -webkit-print-color-adjust: exact;
@@ -314,7 +317,7 @@ export async function POST(request: NextRequest) {
 
     const footerTemplate = `
       <div style="
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         width: 100%;
         text-align: center;
         padding: 5px 20px;

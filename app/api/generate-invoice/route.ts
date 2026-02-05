@@ -6,6 +6,7 @@ import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
+import { getPdfFontCss } from "@/lib/pdf-fonts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -162,6 +163,7 @@ async function generatePdf(
     <meta charset="UTF-8" />
     <title>Invoice ${safe(penjualan.no_invoice)}</title>
     <style>
+      ${await getPdfFontCss()}
       * {
         margin: 0;
         padding: 0;
@@ -169,7 +171,7 @@ async function generatePdf(
       }
 
       body {
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         padding: 30px 40px;
         color: #333;
         font-size: 11px;

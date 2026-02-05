@@ -8,6 +8,7 @@ import { Pembelian } from "@/app/types/pembelian";
 import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
+import { getPdfFontCss } from "@/lib/pdf-fonts";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -332,6 +333,7 @@ export async function POST(request: NextRequest) {
             .join("")}
     `;
 
+    const fontCss = await getPdfFontCss();
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -339,8 +341,9 @@ export async function POST(request: NextRequest) {
           <meta charset="UTF-8">
           <title>Laporan Pembelian</title>
           <style>
+            ${fontCss}
             * { box-sizing: border-box; }
-            body { font-family: 'Open Sans', Arial, sans-serif; margin: 20px; color: #222; }
+            body { font-family: 'PdfFont', Arial, sans-serif; margin: 20px; color: #222; }
             h2 { color: #333; text-align: center; margin-bottom: 8px; }
             .meta { margin: 12px 0 16px; font-size: 12px; color: #444; }
             .summary { margin-bottom: 16px; }
@@ -419,7 +422,7 @@ export async function POST(request: NextRequest) {
 
     const headerTemplate = `
       <div style="
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         width: 100%;
         height: 100px;
         -webkit-print-color-adjust: exact;
@@ -458,7 +461,7 @@ export async function POST(request: NextRequest) {
 
     const footerTemplate = `
       <div style="
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         width: 100%;
         text-align: center;
         padding: 5px 20px;

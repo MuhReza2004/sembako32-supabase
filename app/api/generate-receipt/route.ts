@@ -8,6 +8,7 @@ import { requireAuth } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getPdfFontCss } from "@/lib/pdf-fonts";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     const headerTemplate = `
       <div style="
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         width: 100%;
         height: 100px;
         -webkit-print-color-adjust: exact;
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     const footerTemplate = `
       <div style="
-        font-family: 'Open Sans', Arial, sans-serif;
+        font-family: 'PdfFont', Arial, sans-serif;
         width: 100%;
         text-align: center;
         padding: 5px 20px;
@@ -148,6 +149,7 @@ export async function POST(request: NextRequest) {
       penjualan.items?.reduce((sum, item) => sum + item.subtotal, 0) || 0;
     const total = penjualan.total_akhir ?? penjualan.total ?? subTotal;
 
+    const fontCss = await getPdfFontCss();
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -155,7 +157,8 @@ export async function POST(request: NextRequest) {
           <meta charset="UTF-8">
           <title>Tanda Terima ${safe(penjualan.no_tanda_terima || "-")}</title>
           <style>
-            body { font-family: 'Open Sans', Arial, sans-serif; margin: 20px; color: #111827; }
+            ${fontCss}
+            body { font-family: 'PdfFont', Arial, sans-serif; margin: 20px; color: #111827; }
             h2 { color: #111827; text-align: center; margin: 0; }
             .meta { margin-top: 10px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
