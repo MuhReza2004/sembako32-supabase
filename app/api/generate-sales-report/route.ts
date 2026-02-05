@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chrome from "chrome-aws-lambda";
+import chromium from "@sparticuz/chromium";
 import { formatRupiah } from "@/helper/format";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -9,6 +9,9 @@ import { Penjualan } from "@/app/types/penjualan";
 import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type PenjualanDetailRow = {
   id: string;
@@ -324,49 +327,20 @@ export async function POST(request: NextRequest) {
     `;
 
     // Launch Puppeteer and generate PDF
-    const getExecutablePath = async () => {
-      if (process.env.PUPPETEER_EXEC_PATH)
-        return process.env.PUPPETEER_EXEC_PATH;
-      try {
-        const execPath = await chrome.executablePath;
-        if (execPath) return execPath;
-      } catch {
-        // ignore
-      }
-      const defaultPaths = [
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      ];
-      for (const p of defaultPaths) {
-        try {
-          await fs.access(p);
-          return p;
-        } catch {
-          // continue
-        }
-      }
-      return undefined;
-    };
-
-    const executablePath = await getExecutablePath();
-    console.log("Resolved executable path:", executablePath);
+    const executablePath =
+      process.env.PUPPETEER_EXEC_PATH || (await chromium.executablePath());
+    console.log("Resolved executable path:", executablePath || "undefined");
 
     if (!executablePath) {
-      throw new Error(
-        "Chrome/Chromium executable not found. Set env PUPPETEER_EXEC_PATH to your Chrome path.",
-      );
+      throw new Error("Chrome/Chromium executable not found.");
     }
 
     console.log("Launching Puppeteer with executable:", executablePath);
     const browser = await puppeteer.launch({
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-      ],
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
       executablePath,
-      headless: true,
+      headless: chromium.headless,
       timeout: 60000,
     });
 
@@ -382,9 +356,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Wait for images and styles to load
-    await page.waitForTimeout(2000);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    let pdfBuffer: Buffer;
+    let pdfBuffer: Uint8Array;
     try {
       pdfBuffer = await page.pdf({
         format: "a4",

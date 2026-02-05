@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import { Penjualan } from "@/app/types/penjualan";
 import { requireAuth } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function numberToWords(num: number): string {
   const units = [
@@ -114,9 +118,18 @@ async function generatePdf(
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
   const totalAkhir = penjualan.total_akhir ?? totalSetelahDiskon + pajakAmount;
 
+  const executablePath =
+    process.env.PUPPETEER_EXEC_PATH || (await chromium.executablePath());
+  if (!executablePath) {
+    throw new Error("Chrome/Chromium executable not found.");
+  }
+
   const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath,
+    headless: chromium.headless,
+    timeout: 60000,
   });
 
   const page = await browser.newPage();
