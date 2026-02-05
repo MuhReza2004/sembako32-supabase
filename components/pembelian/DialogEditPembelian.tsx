@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pembelian, PembelianDetail } from "@/app/types/pembelian";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   updatePembelianAndStock,
   getPembelianDetails,
@@ -57,6 +58,7 @@ export default function DialogEditPembelian({
   });
 
   const confirm = useConfirm();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,7 +68,7 @@ export default function DialogEditPembelian({
         setInvoice(pembelian.invoice || "");
         try {
           const det = await getPembelianDetails(pembelian.id);
-          const supProds = await getAllSupplierProduk();
+          const supProds = await getAllSupplierProduk({ force: true });
           setDetails(det);
           setSupplierProduks(supProds);
         } catch (error: unknown) {
@@ -108,6 +110,7 @@ export default function DialogEditPembelian({
       });
       // onSuccess(); // Replaced with onStatusReport
       onOpenChange(false);
+      router.refresh();
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -143,6 +146,7 @@ export default function DialogEditPembelian({
       });
       // onSuccess(); // Replaced with onStatusReport
       onOpenChange(false);
+      router.refresh();
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";

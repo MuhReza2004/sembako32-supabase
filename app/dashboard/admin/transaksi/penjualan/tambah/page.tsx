@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Suspense } from "react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 async function TambahPenjualanDataLoader({
   searchParams,
 }: {

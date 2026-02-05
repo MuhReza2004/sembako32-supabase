@@ -87,7 +87,7 @@ export const getDashboardData = async (dateRange?: {
 const getTotalProducts = async (): Promise<number> => {
   const { count, error } = await supabase
     .from("produk")
-    .select("id", { count: "planned", head: true });
+    .select("id", { count: "exact", head: true });
 
   if (error) {
     console.error("Error counting products:", error);
@@ -100,7 +100,7 @@ const getTotalProducts = async (): Promise<number> => {
 const getTotalCustomers = async (): Promise<number> => {
   const { count, error } = await supabase
     .from("pelanggan")
-    .select("id", { count: "planned", head: true });
+    .select("id", { count: "exact", head: true });
 
   if (error) {
     console.error("Error counting customers:", error);
@@ -113,7 +113,7 @@ const getTotalCustomers = async (): Promise<number> => {
 const getTotalSuppliers = async (): Promise<number> => {
   const { count, error } = await supabase
     .from("suppliers")
-    .select("id", { count: "planned", head: true });
+    .select("id", { count: "exact", head: true });
 
   if (error) {
     console.error("Error counting suppliers:", error);
@@ -127,7 +127,7 @@ const getTotalSales = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<number> => {
-  let query = supabase.from("penjualan").select("id", { count: "planned", head: true });
+  let query = supabase.from("penjualan").select("id", { count: "exact", head: true });
 
   if (dateRange && dateRange.startDate && dateRange.endDate) {
     query = query
@@ -149,7 +149,7 @@ const getTotalPurchases = async (dateRange?: {
   startDate: Date | null;
   endDate: Date | null;
 }): Promise<number> => {
-  let query = supabase.from("pembelian").select("id", { count: "planned", head: true });
+  let query = supabase.from("pembelian").select("id", { count: "exact", head: true });
 
   if (dateRange && dateRange.startDate && dateRange.endDate) {
     query = query

@@ -14,4 +14,8 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     persistSession: false, // Important for server-side
   },
+  global: {
+    fetch: (input, init) =>
+      fetch(input, { ...init, cache: "no-store" }),
+  },
 });

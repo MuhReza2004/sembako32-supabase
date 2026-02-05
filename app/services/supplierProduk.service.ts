@@ -10,6 +10,11 @@ let supplierProdukCache: SupplierProduk[] | null = null;
 let supplierProdukCacheAt = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+const invalidateSupplierProdukCache = () => {
+  supplierProdukCache = null;
+  supplierProdukCacheAt = 0;
+};
+
 /* ======================
    CREATE
 ====================== */
@@ -33,6 +38,7 @@ export const addSupplierProduk = async (
     throw error;
   }
 
+  invalidateSupplierProdukCache();
   return result.id;
 };
 
@@ -164,6 +170,7 @@ export const updateSupplierProduk = async (
     console.error("Error updating supplier produk:", error);
     throw error;
   }
+  invalidateSupplierProdukCache();
 };
 
 /* ======================
@@ -179,6 +186,7 @@ export const deleteSupplierProduk = async (id: string): Promise<void> => {
     console.error("Error deleting supplier produk:", error.message || error);
     throw error;
   }
+  invalidateSupplierProdukCache();
 };
 
 /* ======================

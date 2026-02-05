@@ -306,23 +306,33 @@ export default function PembelianForm({
                 Tambahkan produk yang dibeli
               </p>
             </div>
-            <Button
-              type="button"
-              onClick={() =>
-                append({
-                  supplier_produk_id: "",
-                  qty: 1,
-                  harga: 0,
-                  subtotal: 0,
-                })
-              }
-              variant="outline"
-              size="sm"
-              disabled={!watchSupplierId}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Item
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => router.refresh()}
+              >
+                Refresh Harga
+              </Button>
+              <Button
+                type="button"
+                onClick={() =>
+                  append({
+                    supplier_produk_id: "",
+                    qty: 1,
+                    harga: 0,
+                    subtotal: 0,
+                  })
+                }
+                variant="outline"
+                size="sm"
+                disabled={!watchSupplierId}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Item
+              </Button>
+            </div>
           </div>
 
           <Separator />

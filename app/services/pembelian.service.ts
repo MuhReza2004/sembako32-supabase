@@ -213,10 +213,10 @@ export const updatePembelianAndStock = async (
   }
 
   // Then, fetch the purchase details to update stock
-  const { data: details, error: detailError } = await supabase
-    .from("pembelian_detail")
-    .select("supplier_produk_id, qty")
-    .eq("pembelian_id", pembelianId);
+    const { data: details, error: detailError } = await supabase
+      .from("pembelian_detail")
+      .select("supplier_produk_id, qty, harga")
+      .eq("pembelian_id", pembelianId);
 
   if (detailError) {
     const errorMessage = detailError?.message || "Gagal mengambil detail pembelian untuk update stok";
@@ -224,10 +224,19 @@ export const updatePembelianAndStock = async (
     throw new Error(errorMessage);
   }
 
-  for (const detail of details) {
-    await increaseStock(detail.supplier_produk_id, Number(detail.qty));
-  }
-};
+    for (const detail of details) {
+      await increaseStock(detail.supplier_produk_id, Number(detail.qty));
+      if (detail.harga !== null && detail.harga !== undefined) {
+        const { error: hargaError } = await supabase
+          .from("supplier_produk")
+          .update({ harga_beli: detail.harga })
+          .eq("id", detail.supplier_produk_id);
+        if (hargaError) {
+          console.error("Error updating harga_beli:", hargaError);
+        }
+      }
+    }
+  };
 
 export const updatePembelianStatus = async (
   pembelianId: string,
