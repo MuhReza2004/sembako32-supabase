@@ -18,14 +18,14 @@ async function TambahPenjualanDataLoader({
 
   const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
-    .select("id, nama")
+    .select("id, nama, satuan")
     .order("nama", { ascending: true });
 
   const { data: supplierProduks, error: supplierProduksError } =
     await supabaseAdmin
       .from("supplier_produk")
       .select(
-        "id, supplier_id, produk_id, harga_jual, harga_jual_normal, harga_jual_grosir, stok, produk (id, nama)",
+        "id, supplier_id, produk_id, harga_jual, harga_jual_normal, harga_jual_grosir, stok, produk (id, nama, satuan)",
       );
 
   const { data: pelangganList, error: pelError } = await supabaseAdmin

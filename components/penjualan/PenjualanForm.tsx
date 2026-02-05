@@ -11,7 +11,11 @@ import {
   generateDONumber,
   generateTandaTerimaNumber,
 } from "@/app/services/penjualan.service";
-import { Penjualan, PenjualanFormData, PenjualanFormItem } from "@/app/types/penjualan";
+import {
+  Penjualan,
+  PenjualanFormData,
+  PenjualanFormItem,
+} from "@/app/types/penjualan";
 import { Produk } from "@/app/types/produk";
 import { Pelanggan } from "@/app/types/pelanggan";
 import { SupplierProduk } from "@/app/types/supplier";
@@ -50,14 +54,19 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-type ProdukOption = Pick<Produk, "id" | "nama">;
+type ProdukOption = Pick<Produk, "id" | "nama" | "satuan">;
 type PelangganOption = Pick<
   Pelanggan,
   "id" | "nama_pelanggan" | "kode_pelanggan" | "nama_toko"
 >;
 type SupplierProdukOption = Pick<
   SupplierProduk,
-  "id" | "supplier_id" | "produk_id" | "harga_jual_normal" | "harga_jual_grosir" | "stok"
+  | "id"
+  | "supplier_id"
+  | "produk_id"
+  | "harga_jual_normal"
+  | "harga_jual_grosir"
+  | "stok"
 > & { produk?: ProdukOption | ProdukOption[] };
 
 interface PenjualanFormProps {
@@ -264,11 +273,11 @@ export function PenjualanForm({
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <input type="hidden" {...register("no_invoice")} />
-      <input type="hidden" {...register("no_npb")} />
-      <input type="hidden" {...register("no_do")} />
-      <input type="hidden" {...register("no_tanda_terima")} />
-      {/* {error && ( // No longer needed
+        <input type="hidden" {...register("no_invoice")} />
+        <input type="hidden" {...register("no_npb")} />
+        <input type="hidden" {...register("no_do")} />
+        <input type="hidden" {...register("no_tanda_terima")} />
+        {/* {error && ( // No longer needed
         <Card className="border-red-300 bg-red-50 p-4 mb-6">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600" />
@@ -278,255 +287,270 @@ export function PenjualanForm({
         </Card>
       )} */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>1. Informasi Pelanggan & Pengiriman</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="pelanggan_id">Pelanggan</Label>
-                <Controller
-                  name="pelanggan_id"
-                  control={control}
-                  rules={{ required: "Pelanggan wajib dipilih" }}
-                  render={({ field }) => (
-                    <ComboboxPelanggan
-                      pelangganList={pelangganList}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </div>
-              <div>
-                <Label htmlFor="metode_pengambilan">Metode Pengambilan</Label>
-                <Controller
-                  name="metode_pengambilan"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger id="metode_pengambilan">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Ambil Langsung">
-                          Ambil Langsung
-                        </SelectItem>
-                        <SelectItem value="Diantar">Diantar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>2. Tambah Produk</CardTitle>
-            </CardHeader>
-          <CardContent>
-            <AddItemForm
-              supplierProduks={supplierProduks}
-              products={products}
-              onAddItem={(item) => append(item)}
-              onStatusReport={showStatus} // Pass showStatus down
-            />
-          </CardContent>
-          </Card>
-
-          {fields.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Daftar Produk ({fields.length})</CardTitle>
+                <CardTitle>1. Informasi Pelanggan & Pengiriman</CardTitle>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produk</TableHead>
-                      <TableHead>Jumlah</TableHead>
-                      <TableHead>Harga</TableHead>
-                      <TableHead>Subtotal</TableHead>
-                      <TableHead>Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {fields.map((item, index) => {
-                      const produk = products.find(
-                        (p) =>
-                          p.id ===
-                          supplierProduks.find(
-                            (sp) => sp.id === item.supplier_produk_id,
-                          )?.produk_id,
-                      );
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>{produk?.nama || "..."}</TableCell>
-                          <TableCell>{item.qty}</TableCell>
-                          <TableCell>{formatRupiah(item.harga)}</TableCell>
-                          <TableCell>{formatRupiah(item.subtotal)}</TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="pelanggan_id">Pelanggan</Label>
+                  <Controller
+                    name="pelanggan_id"
+                    control={control}
+                    rules={{ required: "Pelanggan wajib dipilih" }}
+                    render={({ field }) => (
+                      <ComboboxPelanggan
+                        pelangganList={pelangganList}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="metode_pengambilan">Metode Pengambilan</Label>
+                  <Controller
+                    name="metode_pengambilan"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger id="metode_pengambilan">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Ambil Langsung">
+                            Ambil Langsung
+                          </SelectItem>
+                          <SelectItem value="Diantar">Diantar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
-          )}
-        </div>
 
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>3. Pembayaran & Total</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Metode Pembayaran</Label>
-                <Controller
-                  name="metode_pembayaran"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih Metode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Tunai">Tunai</SelectItem>
-                        <SelectItem value="Transfer">Transfer Bank</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+            <Card>
+              <CardHeader>
+                <CardTitle>2. Tambah Produk</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AddItemForm
+                  supplierProduks={supplierProduks}
+                  products={products}
+                  onAddItem={(item) => append(item)}
+                  onStatusReport={showStatus} // Pass showStatus down
                 />
-              </div>
-              {watchMetodePembayaran === "Transfer" && (
-                <>
-                  <div>
-                    <Label htmlFor="nama_bank">Nama Bank</Label>
-                    <Input id="nama_bank" {...register("nama_bank")} />
-                  </div>
-                  <div>
-                    <Label htmlFor="nama_pemilik_rekening">
-                      Nama Pemilik Rekening
-                    </Label>
-                    <Input
-                      id="nama_pemilik_rekening"
-                      {...register("nama_pemilik_rekening")}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nomor_rekening">Nomor Rekening</Label>
-                    <Input
-                      id="nomor_rekening"
-                      {...register("nomor_rekening")}
-                    />
-                  </div>
-                </>
-              )}
-              <div>
-                <Label>Status Pembayaran</Label>
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Lunas">Lunas</SelectItem>
-                        <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              {watchStatus === "Belum Lunas" && (
+              </CardContent>
+            </Card>
+
+            {fields.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daftar Produk ({fields.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produk</TableHead>
+                        <TableHead>qty</TableHead>
+                        <TableHead>Satuan</TableHead>
+                        <TableHead>Harga</TableHead>
+                        <TableHead>Subtotal</TableHead>
+                        <TableHead>Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.map((item, index) => {
+                        const produk = products.find(
+                          (p) =>
+                            p.id ===
+                            supplierProduks.find(
+                              (sp) => sp.id === item.supplier_produk_id,
+                            )?.produk_id,
+                        );
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>{produk?.nama || "..."}</TableCell>
+                            <TableCell>{item.qty}</TableCell>
+                            <TableCell>{produk?.satuan || "-"}</TableCell>
+                            <TableCell>{formatRupiah(item.harga)}</TableCell>
+                            <TableCell>{formatRupiah(item.subtotal)}</TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => remove(index)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="lg:col-span-1 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>3. Pembayaran & Total</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
-                  <Label>Tanggal Jatuh Tempo</Label>
-                  <Input type="date" {...register("tanggal_jatuh_tempo")} />
-                </div>
-              )}
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>Subtotal</span>
-                  <span className="font-semibold">
-                    {formatRupiah(subTotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <Label>Diskon (Rp)</Label>
+                  <Label>Metode Pembayaran</Label>
                   <Controller
-                    name="diskon"
+                    name="metode_pembayaran"
                     control={control}
                     render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih Metode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Tunai">Tunai</SelectItem>
+                          <SelectItem value="Transfer">
+                            Transfer Bank
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                {watchMetodePembayaran === "Transfer" && (
+                  <>
+                    <div>
+                      <Label htmlFor="nama_bank">Nama Bank</Label>
+                      <Input id="nama_bank" {...register("nama_bank")} />
+                    </div>
+                    <div>
+                      <Label htmlFor="nama_pemilik_rekening">
+                        Nama Pemilik Rekening
+                      </Label>
                       <Input
-                        type="text"
-                        value={formatRupiah(field.value || 0)}
-                        onChange={(e) => {
-                          const input = e.target.value;
-                          const numeric = input.replace(/[^0-9]/g, "");
-                          field.onChange(Number(numeric));
-                        }}
-                        className="w-28 h-8 text-right"
+                        id="nama_pemilik_rekening"
+                        {...register("nama_pemilik_rekening")}
                       />
-                    )}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <Label>Pajak 11%</Label>
+                    </div>
+                    <div>
+                      <Label htmlFor="nomor_rekening">Nomor Rekening</Label>
+                      <Input
+                        id="nomor_rekening"
+                        {...register("nomor_rekening")}
+                      />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <Label>Status Pembayaran</Label>
                   <Controller
-                    name="pajak_enabled"
+                    name="status"
                     control={control}
                     render={({ field }) => (
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Lunas">Lunas</SelectItem>
+                          <SelectItem value="Belum Lunas">
+                            Belum Lunas
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     )}
                   />
                 </div>
-                {watchPajakEnabled && (
-                  <div className="flex justify-between items-center">
-                    <span></span>
-                    <span className="text-sm">
-                      + {formatRupiah(totalPajak)}
-                    </span>
+                {watchStatus === "Belum Lunas" && (
+                  <div>
+                    <Label>Tanggal Jatuh Tempo</Label>
+                    <Input type="date" {...register("tanggal_jatuh_tempo")} />
                   </div>
                 )}
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center font-bold text-lg">
-                <span>Total Akhir</span>
-                <span>{formatRupiah(total)}</span>
-              </div>
-            </CardContent>
-          </Card>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span>Subtotal</span>
+                    <span className="font-semibold">
+                      {formatRupiah(subTotal)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Label>Diskon (Rp)</Label>
+                    <Controller
+                      name="diskon"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          type="text"
+                          value={formatRupiah(field.value || 0)}
+                          onChange={(e) => {
+                            const input = e.target.value;
+                            const numeric = input.replace(/[^0-9]/g, "");
+                            field.onChange(Number(numeric));
+                          }}
+                          className="w-28 h-8 text-right"
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Label>Pajak 11%</Label>
+                    <Controller
+                      name="pajak_enabled"
+                      control={control}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                  {watchPajakEnabled && (
+                    <div className="flex justify-between items-center">
+                      <span></span>
+                      <span className="text-sm">
+                        + {formatRupiah(totalPajak)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center font-bold text-lg">
+                  <span>Total Akhir</span>
+                  <span>{formatRupiah(total)}</span>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Button
-            type="submit"
-            disabled={isSubmitting || !watchMetodePembayaran}
-            className="w-full h-12 text-lg"
-          >
-            <Save className="h-5 w-5 mr-2" />
-            {editingPenjualan ? "Perbarui Transaksi" : "Simpan Transaksi"}
-          </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !watchMetodePembayaran}
+              className="w-full h-12 text-lg"
+            >
+              <Save className="h-5 w-5 mr-2" />
+              {editingPenjualan ? "Perbarui Transaksi" : "Simpan Transaksi"}
+            </Button>
+          </div>
         </div>
-      </div>
       </form>
 
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
@@ -554,7 +578,9 @@ export function PenjualanForm({
               </div>
               <div>
                 <div className="text-muted-foreground">Status</div>
-                <div className="font-semibold">{confirmData?.status || "-"}</div>
+                <div className="font-semibold">
+                  {confirmData?.status || "-"}
+                </div>
               </div>
               {confirmData?.status === "Belum Lunas" && (
                 <div>
@@ -581,9 +607,7 @@ export function PenjualanForm({
                     const sp = supplierProduks.find(
                       (x) => x.id === item.supplier_produk_id,
                     );
-                    const produk = products.find(
-                      (p) => p.id === sp?.produk_id,
-                    );
+                    const produk = products.find((p) => p.id === sp?.produk_id);
                     return (
                       <TableRow key={`${item.supplier_produk_id}-${index}`}>
                         <TableCell>{produk?.nama || "..."}</TableCell>
@@ -722,42 +746,45 @@ function AddItemForm({
   return (
     <div className="space-y-4">
       {/* {error && <p className="text-sm text-red-500">{error}</p>} */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div className="md:col-span-2">
-            <Label>Pilih Produk</Label>
-            <ComboboxSupplierProduk
-              supplierProdukList={supplierProduks}
-              produkList={products}
-              value={supplierProdukId}
-              onChange={setSupplierProdukId}
-            />
-          </div>
-          <div>
-            <Label>Jumlah</Label>
-            <Input
-              type="number"
-              min={0}
-              value={qty === 0 ? "" : qty}
-              onChange={(e) => {
-                const val = e.target.value;
-                setQty(val === "" ? "" : Number(val));
-              }}
-              placeholder="0"
-            />
-          </div>
-          <div>
-            <Label>Harga</Label>
-            <Select value={priceType} onValueChange={(val) => setPriceType(val as "normal" | "grosir")}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="grosir">Grosir</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div className="md:col-span-2">
+          <Label>Pilih Produk</Label>
+          <ComboboxSupplierProduk
+            supplierProdukList={supplierProduks}
+            produkList={products}
+            value={supplierProdukId}
+            onChange={setSupplierProdukId}
+          />
         </div>
+        <div>
+          <Label>qty</Label>
+          <Input
+            type="number"
+            min={0}
+            value={qty === 0 ? "" : qty}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQty(val === "" ? "" : Number(val));
+            }}
+            placeholder="0"
+          />
+        </div>
+        <div>
+          <Label>Harga</Label>
+          <Select
+            value={priceType}
+            onValueChange={(val) => setPriceType(val as "normal" | "grosir")}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="grosir">Grosir</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <Button type="button" onClick={handleAddItem} className="w-full">
         <Plus className="h-4 w-4 mr-2" />
         Tambah Produk ke Daftar
@@ -765,4 +792,3 @@ function AddItemForm({
     </div>
   );
 }
-

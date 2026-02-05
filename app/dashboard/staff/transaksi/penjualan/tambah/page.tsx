@@ -10,7 +10,7 @@ import { Produk } from "@/app/types/produk";
 import { SupplierProduk } from "@/app/types/supplier";
 import { Pelanggan } from "@/app/types/pelanggan";
 
-type ProdukOption = Pick<Produk, "id" | "nama">;
+type ProdukOption = Pick<Produk, "id" | "nama" | "satuan">;
 type PelangganOption = Pick<
   Pelanggan,
   "id" | "nama_pelanggan" | "kode_pelanggan" | "nama_toko"
@@ -36,11 +36,14 @@ export default function PageTambahPenjualanStaff() {
       try {
         const [{ data: productsData, error: productsError }, { data: supplierProdukData, error: supplierProdukError }, { data: pelangganData, error: pelangganError }] =
           await Promise.all([
-            supabase.from("produk").select("id, nama").order("nama", { ascending: true }),
+            supabase
+              .from("produk")
+              .select("id, nama, satuan")
+              .order("nama", { ascending: true }),
             supabase
               .from("supplier_produk")
               .select(
-                "id, supplier_id, produk_id, harga_jual, harga_jual_normal, harga_jual_grosir, stok, produk (id, nama)",
+                "id, supplier_id, produk_id, harga_jual, harga_jual_normal, harga_jual_grosir, stok, produk (id, nama, satuan)",
               ),
             supabase.from("pelanggan").select("id, nama_pelanggan, kode_pelanggan, nama_toko"),
           ]);
