@@ -1,5 +1,6 @@
 import chromium from "@sparticuz/chromium";
 import * as fs from "fs/promises";
+import * as path from "path";
 
 type LaunchOptions = {
   args: string[];
@@ -55,22 +56,11 @@ const firstExistingPath = async (candidates: string[]) => {
   return undefined;
 };
 
-const ensureChromiumLibs = async () => {
+const ensureChromiumLibs = () => {
   const libCandidates = ["/tmp/al2/lib", "/tmp/al2023/lib"];
-  const existing: string[] = [];
-  for (const p of libCandidates) {
-    try {
-      await fs.access(p);
-      existing.push(p);
-    } catch {
-      // ignore
-    }
-  }
-  if (existing.length === 0) return;
-
   const current = process.env.LD_LIBRARY_PATH || "";
   const currentParts = current ? current.split(":") : [];
-  const merged = [...new Set([...existing, ...currentParts])];
+  const merged = [...new Set([...libCandidates, ...currentParts])];
   process.env.LD_LIBRARY_PATH = merged.join(":");
 };
 
@@ -81,8 +71,17 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
   let defaultViewport: LaunchOptions["defaultViewport"];
 
   if (isServerless) {
-    executablePath = executablePath || (await chromium.executablePath());
-    await ensureChromiumLibs();
+    if (!executablePath) {
+      const binPath = path.join(
+        process.cwd(),
+        "node_modules",
+        "@sparticuz",
+        "chromium",
+        "bin",
+      );
+      executablePath = await chromium.executablePath(binPath);
+    }
+    ensureChromiumLibs();
     args = chromium.args;
     const chromiumHeadless = chromium.headless as boolean | "new" | "shell";
     headless = chromiumHeadless === "new" ? true : chromiumHeadless;
