@@ -61,6 +61,8 @@ CREATE TABLE supplier_produk (
   produk_id UUID REFERENCES produk(id) ON DELETE CASCADE,
   harga_beli DECIMAL(10,2) NOT NULL,
   harga_jual DECIMAL(10,2) NOT NULL,
+  harga_jual_normal DECIMAL(10,2) NOT NULL,
+  harga_jual_grosir DECIMAL(10,2) NOT NULL,
   stok INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(supplier_id, produk_id)

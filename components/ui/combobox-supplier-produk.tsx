@@ -24,7 +24,7 @@ import { Produk } from "@/app/types/produk";
 type ProdukOption = Pick<Produk, "id" | "nama">;
 type SupplierProdukOption = Pick<
   SupplierProduk,
-  "id" | "supplier_id" | "produk_id" | "harga_jual" | "stok"
+  "id" | "supplier_id" | "produk_id" | "harga_jual_normal" | "harga_jual_grosir" | "stok"
 > & { produk?: ProdukOption | ProdukOption[] };
 
 interface ComboboxSupplierProdukProps {

@@ -17,7 +17,7 @@ type PelangganOption = Pick<
 >;
 type SupplierProdukOption = Pick<
   SupplierProduk,
-  "id" | "supplier_id" | "produk_id" | "harga_jual" | "stok"
+  "id" | "supplier_id" | "produk_id" | "harga_jual_normal" | "harga_jual_grosir" | "stok"
 > & { produk?: ProdukOption | ProdukOption[] };
 
 export default function PageTambahPenjualanStaff() {
@@ -39,7 +39,9 @@ export default function PageTambahPenjualanStaff() {
             supabase.from("produk").select("id, nama").order("nama", { ascending: true }),
             supabase
               .from("supplier_produk")
-              .select("id, supplier_id, produk_id, harga_jual, stok, produk (id, nama)"),
+              .select(
+                "id, supplier_id, produk_id, harga_jual, harga_jual_normal, harga_jual_grosir, stok, produk (id, nama)",
+              ),
             supabase.from("pelanggan").select("id, nama_pelanggan, kode_pelanggan, nama_toko"),
           ]);
 

@@ -22,11 +22,6 @@ export default async function PageTambahPembelian() {
       .from("supplier_produk")
       .select("id, supplier_id, produk_id, harga_beli, harga_jual, stok");
 
-  console.log("Suppliers fetched:", suppliers);
-  console.log("Suppliers error:", suppliersError);
-  console.log("Products fetched:", products?.length || 0);
-  console.log("Supplier Products fetched:", supplierProduks?.length || 0);
-
   if (suppliersError || productsError || supplierProduksError) {
     return (
       <div className="p-8 text-center text-red-500">

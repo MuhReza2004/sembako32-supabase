@@ -27,7 +27,10 @@ export const addSupplierProduk = async (
       supplier_id: data.supplier_id,
       produk_id: data.produk_id,
       harga_beli: data.harga_beli,
-      harga_jual: data.harga_jual,
+      harga_jual_normal: data.harga_jual_normal,
+      harga_jual_grosir: data.harga_jual_grosir,
+      // keep legacy column in sync if still exists
+      harga_jual: data.harga_jual_normal,
       stok: data.stok,
     })
     .select()
@@ -65,6 +68,8 @@ export const getAllSupplierProduk = async (
       produk_id,
       harga_beli,
       harga_jual,
+      harga_jual_normal,
+      harga_jual_grosir,
       stok,
       created_at,
       suppliers (
@@ -90,12 +95,16 @@ export const getAllSupplierProduk = async (
       ? item.suppliers[0]
       : item.suppliers;
     const produkRaw = Array.isArray(item.produk) ? item.produk[0] : item.produk;
+    const hargaJualNormal = item.harga_jual_normal ?? item.harga_jual ?? 0;
+    const hargaJualGrosir = item.harga_jual_grosir ?? item.harga_jual ?? 0;
     return {
       id: item.id,
       supplier_id: item.supplier_id,
       produk_id: item.produk_id,
       harga_beli: item.harga_beli,
       harga_jual: item.harga_jual,
+      harga_jual_normal: hargaJualNormal,
+      harga_jual_grosir: hargaJualGrosir,
       stok: item.stok,
       created_at: item.created_at, // Use as string
       supplierNama: supplierRaw?.nama,
@@ -119,6 +128,8 @@ export const getSupplierProdukById = async (
       produk_id,
       harga_beli,
       harga_jual,
+      harga_jual_normal,
+      harga_jual_grosir,
       stok,
       created_at,
       suppliers (
@@ -145,12 +156,16 @@ export const getSupplierProdukById = async (
     ? row.suppliers[0]
     : row.suppliers;
   const produkRaw = Array.isArray(row.produk) ? row.produk[0] : row.produk;
+  const hargaJualNormal = row.harga_jual_normal ?? row.harga_jual ?? 0;
+  const hargaJualGrosir = row.harga_jual_grosir ?? row.harga_jual ?? 0;
   return {
     id: data.id,
     supplier_id: data.supplier_id,
     produk_id: data.produk_id,
     harga_beli: data.harga_beli,
     harga_jual: data.harga_jual,
+    harga_jual_normal: hargaJualNormal,
+    harga_jual_grosir: hargaJualGrosir,
     stok: data.stok,
     created_at: data.created_at, // Use as string
     supplierNama: supplierRaw?.nama,
@@ -168,12 +183,21 @@ export const updateSupplierProduk = async (
 ): Promise<void> => {
   const updateData: Partial<SupplierProdukFormData> = {};
   if (data.harga_beli !== undefined) updateData.harga_beli = data.harga_beli;
-  if (data.harga_jual !== undefined) updateData.harga_jual = data.harga_jual;
+  if (data.harga_jual_normal !== undefined)
+    updateData.harga_jual_normal = data.harga_jual_normal;
+  if (data.harga_jual_grosir !== undefined)
+    updateData.harga_jual_grosir = data.harga_jual_grosir;
   if (data.stok !== undefined) updateData.stok = data.stok;
 
   const { error } = await supabase
     .from("supplier_produk")
-    .update(updateData)
+    .update({
+      ...updateData,
+      // keep legacy column in sync if still exists
+      ...(updateData.harga_jual_normal !== undefined
+        ? { harga_jual: updateData.harga_jual_normal }
+        : {}),
+    })
     .eq("id", id);
 
   if (error) {

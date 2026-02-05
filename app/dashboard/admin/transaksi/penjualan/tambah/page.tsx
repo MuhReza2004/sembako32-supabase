@@ -24,7 +24,9 @@ async function TambahPenjualanDataLoader({
   const { data: supplierProduks, error: supplierProduksError } =
     await supabaseAdmin
       .from("supplier_produk")
-      .select("id, supplier_id, produk_id, harga_jual, stok, produk (id, nama)");
+      .select(
+        "id, supplier_id, produk_id, harga_jual, harga_jual_normal, harga_jual_grosir, stok, produk (id, nama)",
+      );
 
   const { data: pelangganList, error: pelError } = await supabaseAdmin
     .from("pelanggan")
@@ -62,11 +64,12 @@ async function TambahPenjualanDataLoader({
   );
 }
 
-export default function PageTambahPenjualan({
+export default async function PageTambahPenjualan({
   searchParams,
 }: {
-  searchParams: { id?: string };
+  searchParams: Promise<{ id?: string }>;
 }) {
+  const params = await searchParams;
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
@@ -79,10 +82,10 @@ export default function PageTambahPenjualan({
           </Link>
           <div>
             <h1 className="text-3xl font-bold">
-              {searchParams.id ? "Edit" : "Tambah"} Transaksi Penjualan
+              {params.id ? "Edit" : "Tambah"} Transaksi Penjualan
             </h1>
             <p className="text-muted-foreground mt-1">
-              {searchParams.id
+              {params.id
                 ? "Perbarui detail transaksi penjualan."
                 : "Buat transaksi penjualan baru."}
             </p>
@@ -93,7 +96,7 @@ export default function PageTambahPenjualan({
           <Suspense
             fallback={<div className="p-8 text-center">Loading form...</div>}
           >
-            <TambahPenjualanDataLoader searchParams={searchParams} />
+            <TambahPenjualanDataLoader searchParams={params} />
           </Suspense>
         </div>
       </div>

@@ -17,7 +17,10 @@ export interface SupplierProduk {
   supplier_id: string;
   produk_id: string;
   harga_beli: number;
-  harga_jual: number;
+  // legacy single price
+  harga_jual?: number;
+  harga_jual_normal: number;
+  harga_jual_grosir: number;
   stok: number;
   created_at: string;
   supplierNama?: string;
@@ -29,6 +32,7 @@ export interface SupplierProdukFormData {
   supplier_id: string;
   produk_id: string;
   harga_beli: number;
-  harga_jual: number;
+  harga_jual_normal: number;
+  harga_jual_grosir: number;
   stok: number;
 }

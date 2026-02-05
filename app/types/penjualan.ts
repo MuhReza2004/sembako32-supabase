@@ -5,6 +5,7 @@ export interface PenjualanDetail {
   qty: number;
   harga: number;
   subtotal: number;
+  harga_tipe?: "normal" | "grosir";
   // Additional fields for display
   namaProduk?: string;
   satuan?: string;

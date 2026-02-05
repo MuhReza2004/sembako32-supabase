@@ -8,6 +8,8 @@ import {
 type PenjualanDetailRow = PenjualanDetail & {
   supplier_produk?: {
     harga_jual?: number;
+    harga_jual_normal?: number;
+    harga_jual_grosir?: number;
     produk?: { nama?: string; satuan?: string };
   };
 };
@@ -191,9 +193,11 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
   ).select(`
       *,
       supplier_produk (
-        id,
-        harga_jual,
-        produk (
+          id,
+          harga_jual,
+          harga_jual_normal,
+          harga_jual_grosir,
+          produk (
           id,
           nama,
           satuan
@@ -254,7 +258,7 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
           namaProduk:
             detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
           satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
+          hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
         })) || [],
   }));
 
@@ -401,6 +405,8 @@ export const getPenjualanById = async (id: string): Promise<Penjualan | null> =>
         supplier_produk (
           id,
           harga_jual,
+          harga_jual_normal,
+          harga_jual_grosir,
           produk (
             id,
             nama,
@@ -474,7 +480,7 @@ export const getPenjualanById = async (id: string): Promise<Penjualan | null> =>
       namaProduk:
         detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
       satuan: detail.supplier_produk?.produk?.satuan || "",
-      hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
+      hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
     })),
   };
 };
@@ -550,6 +556,8 @@ export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
         supplier_produk (
           id,
           harga_jual,
+          harga_jual_normal,
+          harga_jual_grosir,
           produk (
             id,
             nama,
@@ -609,7 +617,7 @@ export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
           namaProduk:
             detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
           satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
+          hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
         })) || [],
   }));
 
@@ -715,6 +723,8 @@ export const getPenjualanPageForCurrentUser = async (params: {
         supplier_produk (
           id,
           harga_jual,
+          harga_jual_normal,
+          harga_jual_grosir,
           produk (
             id,
             nama,
@@ -774,7 +784,7 @@ export const getPenjualanPageForCurrentUser = async (params: {
           namaProduk:
             detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
           satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual: detail.supplier_produk?.harga_jual || detail.harga,
+          hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
         })) || [],
   }));
 
@@ -1147,3 +1157,8 @@ export const generateTandaTerimaNumber = async (): Promise<string> => {
   const nextNumber = (count || 0) + 1;
   return `${String(nextNumber).padStart(4, "0")}/S32/${month}/${year}`;
 };
+
+
+
+
+

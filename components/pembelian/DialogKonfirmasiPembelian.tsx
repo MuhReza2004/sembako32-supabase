@@ -21,7 +21,7 @@ type SupplierOption = Pick<Supplier, "id" | "nama">;
 type ProdukOption = Pick<Produk, "id" | "nama">;
 type SupplierProdukOption = Pick<
   SupplierProduk,
-  "id" | "supplier_id" | "produk_id" | "harga_beli" | "harga_jual" | "stok"
+  "id" | "supplier_id" | "produk_id" | "harga_beli" | "stok"
 >;
 
 interface DialogKonfirmasiPembelianProps {

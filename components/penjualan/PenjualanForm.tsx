@@ -57,7 +57,7 @@ type PelangganOption = Pick<
 >;
 type SupplierProdukOption = Pick<
   SupplierProduk,
-  "id" | "supplier_id" | "produk_id" | "harga_jual" | "stok"
+  "id" | "supplier_id" | "produk_id" | "harga_jual_normal" | "harga_jual_grosir" | "stok"
 > & { produk?: ProdukOption | ProdukOption[] };
 
 interface PenjualanFormProps {
@@ -662,6 +662,7 @@ function AddItemForm({
 }) {
   const [supplierProdukId, setSupplierProdukId] = useState("");
   const [qty, setQty] = useState<number | "">(0);
+  const [priceType, setPriceType] = useState<"normal" | "grosir">("normal");
   // const [error, setError] = useState<string | null>(null); // No longer needed
 
   const handleAddItem = () => {
@@ -698,11 +699,21 @@ function AddItemForm({
       });
       return;
     }
+    const hargaNormal =
+      supplierProduk.harga_jual_normal ??
+      (supplierProduk as { harga_jual?: number }).harga_jual ??
+      0;
+    const hargaGrosir =
+      supplierProduk.harga_jual_grosir ??
+      (supplierProduk as { harga_jual?: number }).harga_jual ??
+      0;
+    const hargaFinal = priceType === "grosir" ? hargaGrosir : hargaNormal;
     onAddItem({
       supplier_produk_id: supplierProdukId,
       qty: qtyNumber,
-      harga: supplierProduk.harga_jual,
-      subtotal: supplierProduk.harga_jual * qtyNumber,
+      harga: hargaFinal,
+      subtotal: hargaFinal * qtyNumber,
+      harga_tipe: priceType,
     });
     setSupplierProdukId("");
     setQty(1);
@@ -711,30 +722,42 @@ function AddItemForm({
   return (
     <div className="space-y-4">
       {/* {error && <p className="text-sm text-red-500">{error}</p>} */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-        <div className="md:col-span-2">
-          <Label>Pilih Produk</Label>
-          <ComboboxSupplierProduk
-            supplierProdukList={supplierProduks}
-            produkList={products}
-            value={supplierProdukId}
-            onChange={setSupplierProdukId}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="md:col-span-2">
+            <Label>Pilih Produk</Label>
+            <ComboboxSupplierProduk
+              supplierProdukList={supplierProduks}
+              produkList={products}
+              value={supplierProdukId}
+              onChange={setSupplierProdukId}
+            />
+          </div>
+          <div>
+            <Label>Jumlah</Label>
+            <Input
+              type="number"
+              min={0}
+              value={qty === 0 ? "" : qty}
+              onChange={(e) => {
+                const val = e.target.value;
+                setQty(val === "" ? "" : Number(val));
+              }}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <Label>Harga</Label>
+            <Select value={priceType} onValueChange={(val) => setPriceType(val as "normal" | "grosir")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="grosir">Grosir</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div>
-          <Label>Jumlah</Label>
-          <Input
-            type="number"
-            min={0}
-            value={qty === 0 ? "" : qty}
-            onChange={(e) => {
-              const val = e.target.value;
-              setQty(val === "" ? "" : Number(val));
-            }}
-            placeholder="0"
-          />
-        </div>
-      </div>
       <Button type="button" onClick={handleAddItem} className="w-full">
         <Plus className="h-4 w-4 mr-2" />
         Tambah Produk ke Daftar

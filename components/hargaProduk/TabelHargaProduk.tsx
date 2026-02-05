@@ -77,7 +77,8 @@ export default function TabelHargaProduk({
                   <th className="px-4 py-3">No</th>
                   <th className="px-4 py-3">Produk</th>
                   <th className="px-4 py-3">Harga Beli</th>
-                  <th className="px-4 py-3">Harga Jual</th>
+                  <th className="px-4 py-3">Harga Jual Normal</th>
+                  <th className="px-4 py-3">Harga Jual Grosir</th>
                   <th className="px-4 py-3">Stok</th>
                   <th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
@@ -94,7 +95,10 @@ export default function TabelHargaProduk({
                       {formatRupiah(item.harga_beli)}
                     </td>
                     <td className="px-4 py-3">
-                      {formatRupiah(item.harga_jual)}
+                      {formatRupiah(item.harga_jual_normal ?? item.harga_jual ?? 0)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatRupiah(item.harga_jual_grosir ?? item.harga_jual ?? 0)}
                     </td>
                     <td className="px-4 py-3">{item.stok}</td>
                     <td className="px-4 py-3">

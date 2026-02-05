@@ -61,9 +61,12 @@ export default function DialogTambahHargaProduk({
     forceOnEnable: true,
   });
   const [displayPrice, setDisplayPrice] = useState("");
-  const [displaySellPrice, setDisplaySellPrice] = useState("");
-  const [margin, setMargin] = useState(0);
-  const [marginPercentage, setMarginPercentage] = useState(0);
+  const [displaySellPriceNormal, setDisplaySellPriceNormal] = useState("");
+  const [displaySellPriceGrosir, setDisplaySellPriceGrosir] = useState("");
+  const [marginNormal, setMarginNormal] = useState(0);
+  const [marginPercentageNormal, setMarginPercentageNormal] = useState(0);
+  const [marginGrosir, setMarginGrosir] = useState(0);
+  const [marginPercentageGrosir, setMarginPercentageGrosir] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -71,7 +74,8 @@ export default function DialogTambahHargaProduk({
     supplier_id: "",
     produk_id: "",
     harga_beli: 0,
-    harga_jual: 0,
+    harga_jual_normal: 0,
+    harga_jual_grosir: 0,
     stok: 0,
   });
 
@@ -90,11 +94,13 @@ export default function DialogTambahHargaProduk({
         supplier_id: preselectedSupplierId || "",
         produk_id: "",
         harga_beli: 0,
-        harga_jual: 0,
+        harga_jual_normal: 0,
+        harga_jual_grosir: 0,
         stok: 0,
       });
       setDisplayPrice("");
-      setDisplaySellPrice("");
+      setDisplaySellPriceNormal("");
+      setDisplaySellPriceGrosir("");
       setSearchQuery("");
       setShowDropdown(false);
     }
@@ -128,11 +134,20 @@ export default function DialogTambahHargaProduk({
 
     setFormData((p) => {
       const newFormData = { ...p, harga_beli: numberValue };
-      const newMargin = newFormData.harga_jual - newFormData.harga_beli;
-      setMargin(newMargin);
-      setMarginPercentage(
+      const newMarginNormal =
+        newFormData.harga_jual_normal - newFormData.harga_beli;
+      setMarginNormal(newMarginNormal);
+      setMarginPercentageNormal(
         newFormData.harga_beli > 0
-          ? (newMargin / newFormData.harga_beli) * 100
+          ? (newMarginNormal / newFormData.harga_beli) * 100
+          : 0,
+      );
+      const newMarginGrosir =
+        newFormData.harga_jual_grosir - newFormData.harga_beli;
+      setMarginGrosir(newMarginGrosir);
+      setMarginPercentageGrosir(
+        newFormData.harga_beli > 0
+          ? (newMarginGrosir / newFormData.harga_beli) * 100
           : 0,
       );
       return newFormData;
@@ -140,23 +155,41 @@ export default function DialogTambahHargaProduk({
     setDisplayPrice(formatRupiah(numberValue));
   };
 
-  const handleSellPriceChange = (value: string) => {
+  const handleSellPriceNormalChange = (value: string) => {
     // Remove non-numeric characters except comma and dot
     const numericValue = value.replace(/[^\d]/g, "");
     const numberValue = parseInt(numericValue) || 0;
 
     setFormData((p) => {
-      const newFormData = { ...p, harga_jual: numberValue };
-      const newMargin = newFormData.harga_jual - newFormData.harga_beli;
-      setMargin(newMargin);
-      setMarginPercentage(
+      const newFormData = { ...p, harga_jual_normal: numberValue };
+      const newMargin = newFormData.harga_jual_normal - newFormData.harga_beli;
+      setMarginNormal(newMargin);
+      setMarginPercentageNormal(
         newFormData.harga_beli > 0
           ? (newMargin / newFormData.harga_beli) * 100
           : 0,
       );
       return newFormData;
     });
-    setDisplaySellPrice(formatRupiah(numberValue));
+    setDisplaySellPriceNormal(formatRupiah(numberValue));
+  };
+
+  const handleSellPriceGrosirChange = (value: string) => {
+    const numericValue = value.replace(/[^\d]/g, "");
+    const numberValue = parseInt(numericValue) || 0;
+
+    setFormData((p) => {
+      const newFormData = { ...p, harga_jual_grosir: numberValue };
+      const newMargin = newFormData.harga_jual_grosir - newFormData.harga_beli;
+      setMarginGrosir(newMargin);
+      setMarginPercentageGrosir(
+        newFormData.harga_beli > 0
+          ? (newMargin / newFormData.harga_beli) * 100
+          : 0,
+      );
+      return newFormData;
+    });
+    setDisplaySellPriceGrosir(formatRupiah(numberValue));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -272,26 +305,40 @@ export default function DialogTambahHargaProduk({
           </div>
 
           <div>
-            <Label>Harga Jual *</Label>
+            <Label>Harga Jual Normal *</Label>
             <Input
-              value={displaySellPrice}
-              onChange={(e) => handleSellPriceChange(e.target.value)}
+              value={displaySellPriceNormal}
+              onChange={(e) => handleSellPriceNormalChange(e.target.value)}
               placeholder="Rp 0"
               required
             />
           </div>
 
           <div>
-            <Label>Margin</Label>
-            <Input value={formatRupiah(margin)} readOnly placeholder="Rp 0" />
+            <Label>Harga Jual Grosir *</Label>
+            <Input
+              value={displaySellPriceGrosir}
+              onChange={(e) => handleSellPriceGrosirChange(e.target.value)}
+              placeholder="Rp 0"
+              required
+            />
           </div>
 
           <div>
-            <Label>Margin (%)</Label>
+            <Label>Margin Normal</Label>
             <Input
-              value={`${marginPercentage.toFixed(2)}%`}
+              value={`${formatRupiah(marginNormal)} (${marginPercentageNormal.toFixed(2)}%)`}
               readOnly
-              placeholder="0.00%"
+              placeholder="Rp 0"
+            />
+          </div>
+
+          <div>
+            <Label>Margin Grosir</Label>
+            <Input
+              value={`${formatRupiah(marginGrosir)} (${marginPercentageGrosir.toFixed(2)}%)`}
+              readOnly
+              placeholder="Rp 0"
             />
           </div>
 
