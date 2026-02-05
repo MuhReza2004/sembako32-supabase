@@ -13,6 +13,7 @@ import { getPembelianDetails } from "@/app/services/pembelian.service";
 import { PembelianDetail } from "@/app/types/pembelian";
 import { getAllSuppliers } from "@/app/services/supplier.service";
 import { Supplier } from "@/app/types/supplier";
+import { Button } from "../ui/button";
 
 interface Props {
   open: boolean;
@@ -45,6 +46,35 @@ export default function DialogDetailPembelian({
   const supplier = suppliers.find((s) => s.id === pembelian.supplier_id);
 
   const metodePembayaran = pembelian.metode_pembayaran || "Tunai";
+
+  const handleGeneratePdf = async () => {
+    const newTab = window.open("", "_blank");
+    if (!newTab) {
+      alert("Gagal membuka tab baru. Mohon izinkan pop-up untuk situs ini.");
+      return;
+    }
+    newTab.document.write("Menghasilkan PDF, mohon tunggu...");
+
+    try {
+      const response = await fetch("/api/generate-purchase-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pembelianId: pembelian.id }),
+      });
+
+      if (!response.ok) throw new Error("Gagal generate PDF");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      newTab.location.href = url;
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      if (newTab) {
+        newTab.document.body.innerHTML = `<pre>Gagal membuat PDF. Silakan periksa konsol untuk detailnya.</pre>`;
+      }
+      alert("Gagal mengekspor PDF. Silakan coba lagi.");
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -148,6 +178,16 @@ export default function DialogDetailPembelian({
                 );
               })}
             </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              variant={"primary"}
+              onClick={handleGeneratePdf}
+            >
+              Generate PDF
+            </Button>
           </div>
         </div>
       </DialogContent>

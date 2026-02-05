@@ -37,7 +37,7 @@ const getAllPembelianAdmin = async (): Promise<Pembelian[]> => {
       *,
       supplier:supplier_id(nama),
       items:pembelian_detail(
-        id, qty, harga,
+        id, qty, harga, subtotal,
         supplier_produk:supplier_produk_id(
           id,
           produk:produk_id(nama, satuan)
@@ -108,11 +108,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startDate, endDate } = await request.json();
+    const { startDate, endDate, pembelianId } = await request.json();
     const safe = (value: string | number | null | undefined) =>
       escapeHtml(String(value ?? ""));
-    const periodLabel =
-      startDate && endDate
+    const periodLabel = pembelianId
+      ? "Detail Pembelian"
+      : startDate && endDate
         ? new Date(startDate).toLocaleDateString("id-ID") +
           " - " +
           new Date(endDate).toLocaleDateString("id-ID")
@@ -130,6 +131,9 @@ export async function POST(request: NextRequest) {
     const allPurchases = await getAllPembelianAdmin();
 
     let filteredPurchases = allPurchases;
+    if (pembelianId) {
+      filteredPurchases = filteredPurchases.filter((p) => p.id === pembelianId);
+    }
     if (startDate) {
       filteredPurchases = filteredPurchases.filter(
         (p) => new Date(p.tanggal) >= new Date(startDate),
@@ -150,43 +154,16 @@ export async function POST(request: NextRequest) {
       (p) => p.status === "Pending" || p.status === "Decline",
     ).length;
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Laporan Pembelian</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h2 { color: #333; text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            .total { font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h2>Laporan Pembelian</h2>
-          <p>Periode: ${safe(periodLabel)}</p>
-<div style="margin-bottom: 20px;">
-  <div style="display: grid; grid-template-columns: 180px 10px auto;">
-    <span>Total Pembelian</span><span>:</span><span>${safe(totalPurchases)}</span>
-    <span>Total Dibayar</span><span>:</span><span>${safe(paidPurchases)}</span>
-    <span>Total Belum Dibayar</span><span>:</span><span>${safe(unpaidPurchases)}</span>
-    <span style="font-weight: bold;">Total Biaya</span><span>:</span><span style="font-weight: bold;">${safe(formatRupiah(totalCost))}</span>
-  </div>
-</div>
-
-
+    const renderListTable = () => `
           <table>
             <thead>
               <tr>
-                <th>No</th>
-                <th>Tanggal</th>
+                <th class="nowrap">No</th>
+                <th class="nowrap">Tanggal</th>
                 <th>No Dokumen</th>
                 <th>Supplier</th>
-                <th>Total</th>
-                <th>Status</th>
+                <th class="num">Total</th>
+                <th class="nowrap">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -194,39 +171,32 @@ export async function POST(request: NextRequest) {
                 .map(
                   (p, index) => `
                     <tr>
-                      <td>${index + 1}</td>
-                      <td>${safe(new Date(p.tanggal).toLocaleDateString("id-ID"))}</td>
+                      <td class="nowrap">${index + 1}</td>
+                      <td class="nowrap">${safe(new Date(p.tanggal).toLocaleDateString("id-ID"))}</td>
                       <td>
-                      <ul>
-                        <li>No NPB: ${safe(p.no_npb || "-")}</li>
-                        <li>No DO: ${safe(p.no_do || "-")}</li>
-                        <li>Invoice: ${safe(p.invoice || "-")}</li>
-                        <li>Metode: ${safe(p.metode_pembayaran || "-")}</li>
-                        ${
-                          p.metode_pembayaran === "Transfer"
-                            ? `<li>Bank: ${safe(p.nama_bank || "-")}</li>
-                        <li>Rek: ${safe(p.nomor_rekening || "-")}</li>
-                        <li>Atas Nama: ${safe(p.nama_pemilik_rekening || "-")}</li>`
-                            : ""
-                        }
-                      </ul>
+                        <ul class="doc-list">
+                          <li>No NPB: ${safe(p.no_npb || "-")}</li>
+                          <li>No DO: ${safe(p.no_do || "-")}</li>
+                          <li>Invoice: ${safe(p.invoice || "-")}</li>
+                        </ul>
                       </td>
                       <td>${safe(p.namaSupplier || "-")}</td>
-                      <td>${safe(formatRupiah(p.total))}</td>
-                      <td>${safe(p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline")}</td>
+                      <td class="num">${safe(formatRupiah(Number(p.total) || 0))}</td>
+                      <td class="nowrap">${safe(p.status === "Completed" ? "Lunas" : p.status === "Pending" ? "Pending" : "Decline")}</td>
                     </tr>
                     <tr>
                       <td></td>
                       <td colspan="5">
-                        <div style="padding: 8px 0;">
-                          <div style="font-weight: bold; margin-bottom: 6px;">Detail Pembelian</div>
-                          <table style="width: 100%; border-collapse: collapse;">
+                        <div class="detail-wrap">
+                          <div class="detail-title">Detail Pembelian</div>
+                          <table class="detail-table" style="width: 100%; border-collapse: collapse;">
                             <thead>
                               <tr>
-                                <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Produk</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Qty</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Harga</th>
-                                <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">Subtotal</th>
+                                <th>Produk</th>
+                                <th class="num">Qty</th>
+                                <th>Metode Pembayaran</th>
+                                <th class="num">Harga</th>
+                                <th class="num">Subtotal</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -234,36 +204,152 @@ export async function POST(request: NextRequest) {
                                 .map(
                                   (item) => `
                                     <tr>
-                                      <td style="border: 1px solid #ddd; padding: 6px;">
-                                        ${safe(item.namaProduk || "-")}
+                                      <td>${safe(item.namaProduk || "-")}</td>
+                                      <td class="num">${safe(item.qty ?? 0)}</td>
+                                      <td>
+                                        ${safe(p.metode_pembayaran || "-")}
+                                        ${
+                                          p.metode_pembayaran === "Transfer"
+                                            ? `<div style="margin-top: 4px; font-size: 10px; color: #555;">
+                                                <div>Bank: ${safe(p.nama_bank || "-")}</div>
+                                                <div>Rek: ${safe(p.nomor_rekening || "-")}</div>
+                                                <div>Atas Nama: ${safe(p.nama_pemilik_rekening || "-")}</div>
+                                              </div>`
+                                            : ""
+                                        }
                                       </td>
-                                      <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
-                                        ${safe(item.qty)}
-                                      </td>
-                                      <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
-                                        ${safe(formatRupiah(item.harga))}
-                                      </td>
-                                      <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">
-                                        ${safe(formatRupiah(item.subtotal))}
-                                      </td>
+                                      <td class="num">${safe(formatRupiah(Number(item.harga) || 0))}</td>
+                                      <td class="num">${safe(formatRupiah(Number(item.subtotal) || 0))}</td>
                                     </tr>
                                   `,
                                 )
                                 .join("")}
                             </tbody>
                           </table>
+                          <div class="detail-total">
+                            <span>Total Transaksi</span>
+                            <span>${safe(formatRupiah(Number(p.total) || 0))}</span>
+                          </div>
                         </div>
                       </td>
                     </tr>
+                    <tr class="spacer-row"><td colspan="6"></td></tr>
                   `,
                 )
                 .join("")}
             </tbody>
           </table>
+    `;
 
-          <div style="margin-top: 30px; text-align: right;">
-            <p class="total">Total Nilai Transaksi: ${safe(formatRupiah(totalCost))}</p>
+    const renderDetailOnly = () => `
+          ${filteredPurchases
+            .map(
+              (p, index) => `
+                <div style="margin-bottom: 14px;">
+                  <div class="detail-title">Detail Pembelian ${index + 1}</div>
+                  <div class="meta">
+                    <div>No NPB: ${safe(p.no_npb || "-")}</div>
+                    <div>No DO: ${safe(p.no_do || "-")}</div>
+                    <div>Invoice: ${safe(p.invoice || "-")}</div>
+                  </div>
+                  <table class="detail-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                      <tr>
+                        <th>Produk</th>
+                        <th class="num">Qty</th>
+                        <th>Metode Pembayaran</th>
+                        <th class="num">Harga</th>
+                        <th class="num">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${(p.items || [])
+                        .map(
+                          (item) => `
+                            <tr>
+                              <td>${safe(item.namaProduk || "-")}</td>
+                              <td class="num">${safe(item.qty ?? 0)}</td>
+                              <td>
+                                ${safe(p.metode_pembayaran || "-")}
+                                ${
+                                  p.metode_pembayaran === "Transfer"
+                                    ? `<div style="margin-top: 4px; font-size: 10px; color: #555;">
+                                        <div>Bank: ${safe(p.nama_bank || "-")}</div>
+                                        <div>Rek: ${safe(p.nomor_rekening || "-")}</div>
+                                        <div>Atas Nama: ${safe(p.nama_pemilik_rekening || "-")}</div>
+                                      </div>`
+                                    : ""
+                                }
+                              </td>
+                              <td class="num">${safe(formatRupiah(Number(item.harga) || 0))}</td>
+                              <td class="num">${safe(formatRupiah(Number(item.subtotal) || 0))}</td>
+                            </tr>
+                          `,
+                        )
+                        .join("")}
+                    </tbody>
+                  </table>
+                  <div class="detail-total">
+                    <span>Total Transaksi</span>
+                    <span>${safe(formatRupiah(Number(p.total) || 0))}</span>
+                  </div>
+                </div>
+              `,
+            )
+            .join("")}
+    `;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Laporan Pembelian</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
+            h2 { color: #333; text-align: center; margin-bottom: 8px; }
+            .meta { margin: 12px 0 16px; font-size: 12px; color: #444; }
+            .summary { margin-bottom: 16px; }
+            .summary-grid { display: grid; grid-template-columns: 180px 10px auto; gap: 6px 8px; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #e0e0e0; padding: 6px 8px; text-align: left; font-size: 12px; vertical-align: top; }
+            th { background-color: #f5f5f5; font-weight: 600; }
+            .total { font-weight: bold; }
+            .doc-list { margin: 0; padding-left: 16px; }
+            .detail-wrap { padding: 8px 0 4px; }
+            .detail-title { font-weight: 600; margin-bottom: 6px; }
+            .detail-table th, .detail-table td { font-size: 11px; padding: 5px 6px; }
+            .detail-total { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; font-weight: 600; }
+            .num { text-align: right; white-space: nowrap; }
+            .nowrap { white-space: nowrap; }
+            .spacer-row td { border: none; padding: 0; height: 6px; }
+          </style>
+        </head>
+        <body>
+          <h2>Laporan Pembelian</h2>
+          ${
+            pembelianId
+              ? `${renderDetailOnly()}`
+              : `<div class="meta">Periode: ${safe(periodLabel)}</div>
+          <div class="summary">
+            <div class="summary-grid">
+              <span>Total Pembelian</span><span>:</span><span>${safe(totalPurchases)}</span>
+              <span>Total Dibayar</span><span>:</span><span>${safe(paidPurchases)}</span>
+              <span>Total Belum Dibayar</span><span>:</span><span>${safe(unpaidPurchases)}</span>
+              <span class="total">Total Biaya</span><span>:</span><span class="total">${safe(formatRupiah(totalCost))}</span>
+            </div>
           </div>
+          ${renderListTable()}`
+          }
+
+          ${
+            pembelianId
+              ? ""
+              : `<div style="margin-top: 30px; text-align: right;">
+            <p class="total">Total Nilai Transaksi: ${safe(formatRupiah(totalCost))}</p>
+          </div>`
+          }
 
            <div style="text-align:end; margin-top: 30px; ">(Pasangkayu,...../......./......... )</div>
           <div style="margin-top: 150px;">
@@ -466,4 +552,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
