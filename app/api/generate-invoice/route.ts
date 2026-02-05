@@ -6,7 +6,7 @@ import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
-import { getPdfFontCss } from "@/lib/pdf-fonts";
+import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -759,6 +759,7 @@ async function generatePdf(
   `;
 
   await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+  await waitForPdfFonts(page);
 
   const pdfBuffer = await page.pdf({
     format: "A4",

@@ -8,7 +8,7 @@ import { Penjualan } from "@/app/types/penjualan";
 import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
-import { getPdfFontCss } from "@/lib/pdf-fonts";
+import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -351,6 +351,7 @@ export async function POST(request: NextRequest) {
       waitUntil: "domcontentloaded",
       timeout: 30000,
     });
+    await waitForPdfFonts(page);
 
     // Wait for images and styles to load
     await new Promise((resolve) => setTimeout(resolve, 2000));

@@ -1,5 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
+import type { Page } from "puppeteer-core";
 
 let cachedCss: string | null = null;
 
@@ -35,4 +36,17 @@ export const getPdfFontCss = async () => {
   `;
 
   return cachedCss;
+};
+
+export const waitForPdfFonts = async (page: Page) => {
+  try {
+    await page.evaluate(async () => {
+      const fonts = (document as unknown as { fonts?: FontFaceSet }).fonts;
+      if (fonts?.ready) {
+        await fonts.ready;
+      }
+    });
+  } catch {
+    // ignore font readiness failures
+  }
 };
