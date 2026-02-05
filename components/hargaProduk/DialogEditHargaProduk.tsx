@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -80,7 +80,7 @@ export default function DialogEditHargaProduk({
   }, [open, suppliersError, productsError, onStatusReport]);
 
   useEffect(() => {
-    if (item) {
+    if (open && item) {
       setFormData({
         supplier_id: item.supplier_id,
         produk_id: item.produk_id,
@@ -96,7 +96,23 @@ export default function DialogEditHargaProduk({
         item.harga_beli > 0 ? (newMargin / item.harga_beli) * 100 : 0,
       );
     }
-  }, [item]);
+  }, [open, item, suppliers, products]);
+
+  const supplierOptions = useMemo(() => {
+    if (!item?.supplier_id) return suppliers;
+    const exists = suppliers.some((s) => s.id === item.supplier_id);
+    if (exists) return suppliers;
+    const fallbackName = item.supplierNama || item.supplier_id;
+    return [{ id: item.supplier_id, nama: fallbackName } as Supplier, ...suppliers];
+  }, [suppliers, item]);
+
+  const productOptions = useMemo(() => {
+    if (!item?.produk_id) return products;
+    const exists = products.some((p) => p.id === item.produk_id);
+    if (exists) return products;
+    const fallbackName = item.produkNama || item.produk_id;
+    return [{ id: item.produk_id, nama: fallbackName } as Produk, ...products];
+  }, [products, item]);
 
   const handlePriceChange = (value: string) => {
     // Remove non-numeric characters except comma and dot
@@ -174,6 +190,7 @@ export default function DialogEditHargaProduk({
           <div>
             <Label>Supplier *</Label>
             <Select
+              key={`${item?.id || "edit"}-supplier`}
               value={formData.supplier_id}
               onValueChange={(val) =>
                 setFormData((p) => ({ ...p, supplier_id: val }))
@@ -183,7 +200,7 @@ export default function DialogEditHargaProduk({
                 <SelectValue placeholder="Pilih Supplier" />
               </SelectTrigger>
               <SelectContent>
-                {suppliers.map((s) => (
+                {supplierOptions.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.nama}
                   </SelectItem>
@@ -195,6 +212,7 @@ export default function DialogEditHargaProduk({
           <div>
             <Label>Produk *</Label>
             <Select
+              key={`${item?.id || "edit"}-produk`}
               value={formData.produk_id}
               onValueChange={(val) =>
                 setFormData((p) => ({ ...p, produk_id: val }))
@@ -204,7 +222,7 @@ export default function DialogEditHargaProduk({
                 <SelectValue placeholder="Pilih Produk" />
               </SelectTrigger>
               <SelectContent>
-                {products.map((p) => (
+                {productOptions.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.nama}
                   </SelectItem>

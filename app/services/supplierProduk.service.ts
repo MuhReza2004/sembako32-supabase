@@ -2,8 +2,8 @@ import { supabase } from "@/app/lib/supabase";
 import { SupplierProduk, SupplierProdukFormData } from "@/app/types/supplier";
 
 type SupplierProdukRow = SupplierProduk & {
-  suppliers?: { nama?: string } | null;
-  produk?: { nama?: string; satuan?: string } | null;
+  suppliers?: { nama?: string } | { nama?: string }[] | null;
+  produk?: { nama?: string; satuan?: string } | { nama?: string; satuan?: string }[] | null;
 };
 
 let supplierProdukCache: SupplierProduk[] | null = null;
@@ -85,18 +85,24 @@ export const getAllSupplierProduk = async (
     throw error;
   }
 
-  supplierProdukCache = (data as SupplierProdukRow[]).map((item) => ({
-    id: item.id,
-    supplier_id: item.supplier_id,
-    produk_id: item.produk_id,
-    harga_beli: item.harga_beli,
-    harga_jual: item.harga_jual,
-    stok: item.stok,
-    created_at: item.created_at, // Use as string
-    supplierNama: item.suppliers?.nama,
-    produkNama: item.produk?.nama,
-    produkSatuan: item.produk?.satuan,
-  }));
+  supplierProdukCache = (data as SupplierProdukRow[]).map((item) => {
+    const supplierRaw = Array.isArray(item.suppliers)
+      ? item.suppliers[0]
+      : item.suppliers;
+    const produkRaw = Array.isArray(item.produk) ? item.produk[0] : item.produk;
+    return {
+      id: item.id,
+      supplier_id: item.supplier_id,
+      produk_id: item.produk_id,
+      harga_beli: item.harga_beli,
+      harga_jual: item.harga_jual,
+      stok: item.stok,
+      created_at: item.created_at, // Use as string
+      supplierNama: supplierRaw?.nama,
+      produkNama: produkRaw?.nama,
+      produkSatuan: produkRaw?.satuan,
+    };
+  });
   supplierProdukCacheAt = now;
   return supplierProdukCache;
 };
@@ -135,6 +141,10 @@ export const getSupplierProdukById = async (
   }
 
   const row = data as SupplierProdukRow;
+  const supplierRaw = Array.isArray(row.suppliers)
+    ? row.suppliers[0]
+    : row.suppliers;
+  const produkRaw = Array.isArray(row.produk) ? row.produk[0] : row.produk;
   return {
     id: data.id,
     supplier_id: data.supplier_id,
@@ -143,9 +153,9 @@ export const getSupplierProdukById = async (
     harga_jual: data.harga_jual,
     stok: data.stok,
     created_at: data.created_at, // Use as string
-    supplierNama: row.suppliers?.nama,
-    produkNama: row.produk?.nama,
-    produkSatuan: row.produk?.satuan,
+    supplierNama: supplierRaw?.nama,
+    produkNama: produkRaw?.nama,
+    produkSatuan: produkRaw?.satuan,
   };
 };
 
