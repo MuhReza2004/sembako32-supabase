@@ -76,6 +76,16 @@ export const requireAuth = async (
     role = userProfile.role;
   }
 
+  if (!role) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "role_not_found" },
+        { status: 403 },
+      ),
+    };
+  }
+
   return { ok: true, userId: user.id, role };
 };
 
