@@ -4,7 +4,7 @@ import * as fs from "fs/promises";
 type LaunchOptions = {
   args: string[];
   executablePath: string;
-  headless: boolean;
+  headless: boolean | "shell";
   defaultViewport?: { width: number; height: number };
 };
 
@@ -58,13 +58,14 @@ const firstExistingPath = async (candidates: string[]) => {
 export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
   let executablePath = process.env.PUPPETEER_EXEC_PATH;
   let args: string[] = [];
-  let headless = true;
+  let headless: boolean | "shell" = true;
   let defaultViewport: LaunchOptions["defaultViewport"];
 
   if (isServerless) {
     executablePath = executablePath || (await chromium.executablePath());
     args = chromium.args;
-    headless = chromium.headless;
+    const chromiumHeadless = chromium.headless as boolean | "new" | "shell";
+    headless = chromiumHeadless === "new" ? true : chromiumHeadless;
     defaultViewport = chromium.defaultViewport;
   } else {
     if (!executablePath) {
