@@ -89,7 +89,7 @@ export default function LoginForm() {
     <Card className="w-[380px]">
       <CardHeader className="text-center">
         <Image
-          src="/Logo.svg"
+          src="/logo.svg"
           alt="Sembako 32 Logo"
           width={120}
           height={120}
