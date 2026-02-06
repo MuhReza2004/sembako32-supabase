@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
           <span> NPB</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_npb || "-")}</span>
           <span> Invoice</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_invoice || "-")}</span>
             <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
-            <span>Dikirim Ke</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
+            <span>Dikirim Kepada</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
             <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
           </div>
 

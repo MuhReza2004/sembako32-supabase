@@ -212,10 +212,20 @@ export async function POST(request: NextRequest) {
           <div style="margin-top: 16px; text-align: right;">
             <p class="total">Total: ${safe(formatRupiah(total))}</p>
           </div>
-              <div style="margin-top: 20px; text-align: end; display:flex; flex-direction:column; gap: 10px;">
-              <span>Diterima Di:........................</span>
-              <span>Pada Tgl:..../....../...........</span>
-              </div>
+<div style="
+  margin-top:20px;
+  text-align:start;
+  display:grid;
+  grid-template-columns: 120px auto;
+  row-gap:10px;
+">
+  <span>Diterima di</span>
+  <span>: ........................</span>
+
+  <span>Pada Tgl</span>
+  <span>: ..../....../............</span>
+</div>
+
 
           <div class="signature">
             <div style="text-align: center;">
