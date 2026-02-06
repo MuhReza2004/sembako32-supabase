@@ -99,9 +99,8 @@ export default function AdminDashboardPage() {
       const tables = ['penjualan', 'pembelian', 'produk', 'pelanggan', 'suppliers', 'supplier_produk'];
 
       tables.forEach(table => {
-        channel.on('postgres_changes', { event: '*', schema: 'public', table: table }, payload => {
-            console.log(`Change detected on ${table}`, payload);
-            scheduleRefresh();
+        channel.on('postgres_changes', { event: '*', schema: 'public', table: table }, () => {
+          scheduleRefresh();
         }).subscribe();
       });
 

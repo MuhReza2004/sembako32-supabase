@@ -66,22 +66,8 @@ export const debugPdfContent = async (page: Page, documentName: string) => {
       };
     });
 
-    console.log(`[PDF DEBUG] ${documentName}:`, JSON.stringify(debugInfo, null, 2));
-    
-    // Validate critical content
-    if (debugInfo.bodyTextLength < 100) {
-      console.error(`[PDF DEBUG ERROR] ${documentName}: Content too short (${debugInfo.bodyTextLength} chars)`);
-    }
-    if (debugInfo.tableCount === 0) {
-      console.error(`[PDF DEBUG ERROR] ${documentName}: No tables found in HTML`);
-    }
-    if (!debugInfo.visibleElements.table) {
-      console.error(`[PDF DEBUG ERROR] ${documentName}: Table element not found`);
-    }
-    
     return debugInfo;
   } catch (error) {
-    console.error(`[PDF DEBUG ERROR] ${documentName}:`, error);
     return null;
   }
 };
@@ -97,10 +83,8 @@ export const takeDebugScreenshot = async (
     const safeName = sanitizeFilename(filename);
     const screenshotPath = `/tmp/${safeName}-${Date.now()}.png`;
     await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`[PDF SCREENSHOT] Saved to: ${screenshotPath}`);
     return screenshotPath;
   } catch (error) {
-    console.error("[PDF SCREENSHOT ERROR]:", error);
     return null;
   }
 };

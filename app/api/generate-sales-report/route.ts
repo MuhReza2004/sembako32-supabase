@@ -9,11 +9,6 @@ import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
-import {
-  debugPdfContent,
-  shouldTakePdfScreenshot,
-  takeDebugScreenshot,
-} from "@/lib/pdf-debug";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -74,7 +69,6 @@ const getAllPenjualanAdmin = async (params: {
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching sales data for report:", error);
     throw error;
   }
 
@@ -267,10 +261,6 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    console.log(`[SALES] Processing: ${periodLabel}`);
-    console.log(`[SALES] HTML length: ${htmlContent.length} characters`);
-    console.log(`[SALES] Rows count: ${filteredSales.length}`);
-
     // Create a base64 SVG for the gradient background
     const svgGradient = `
       <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
@@ -340,11 +330,6 @@ export async function POST(request: NextRequest) {
 
     // Launch Puppeteer and generate PDF
     const launchOptions = await getPuppeteerLaunchOptions();
-    console.log(
-      "Resolved executable path:",
-      launchOptions.executablePath || "undefined",
-    );
-    console.log("Launching Puppeteer with executable:", launchOptions.executablePath);
     const browser = await puppeteer.launch({
       ...launchOptions,
       timeout: 60000,
@@ -357,19 +342,15 @@ export async function POST(request: NextRequest) {
     page.setDefaultNavigationTimeout(60000);
 
     try {
-      console.log("[SALES] Clearing page...");
       await page.goto("about:blank", {
         waitUntil: "domcontentloaded",
         timeout: 10000,
       });
 
-      console.log("[SALES] Setting HTML content...");
       await page.setContent(htmlContent, {
         waitUntil: "domcontentloaded",
         timeout: 45000,
       });
-
-      console.log("[SALES] HTML content set, validating...");
 
       const elementWaits = Promise.allSettled([
         page.waitForSelector("body", { timeout: 10000 }),
@@ -381,46 +362,19 @@ export async function POST(request: NextRequest) {
       ]);
 
       await elementWaits;
-      console.log("[SALES] Element validation complete");
     } catch (error) {
-      console.error("[SALES] Content setting failed:", error);
       throw new Error(
         `Failed to set page content: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
-    console.log("[SALES] Waiting for fonts...");
     try {
       await waitForPdfFonts(page);
-      console.log("[SALES] Font wait completed");
     } catch (fontError) {
-      console.warn("[SALES] Font wait had issues (continuing):", fontError);
+      // ignore font readiness issues
     }
 
-    console.log("[SALES] Running debug checks...");
-    const debugResult = await debugPdfContent(page, periodLabel);
-    if (debugResult && !debugResult.hasContent) {
-      console.error("[SALES] CRITICAL: Content not found in rendered page!");
-    }
-    if (debugResult && debugResult.tableCount === 0) {
-      console.error("[SALES] CRITICAL: No tables found in rendered HTML!");
-    }
-    if (shouldTakePdfScreenshot()) {
-      await takeDebugScreenshot(page, `sales-${periodLabel}`);
-    }
-
-    console.log("[SALES] Final stability check...");
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const finalCheck = await page.evaluate(() => {
-      return {
-        contentLength: document.body.textContent?.length || 0,
-        tableCount: document.querySelectorAll("table").length,
-      };
-    });
-    console.log("[SALES] Final check before PDF:", finalCheck);
-
-    console.log("[SALES] Starting PDF generation...");
 
     await page.evaluate(() => {
       document.body.offsetHeight;
@@ -444,15 +398,13 @@ export async function POST(request: NextRequest) {
         preferCSSPageSize: true,
         timeout: 60000,
       });
-      console.log("PDF generated successfully, size:", pdfBuffer.length);
     } catch (pdfError) {
-      console.error("PDF generation failed:", pdfError);
       throw pdfError;
     } finally {
       try {
         await browser.close();
       } catch {
-        console.warn("Failed to close browser:");
+        // ignore close errors
       }
     }
 
@@ -466,12 +418,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error generating PDF:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error("Error details:", errorMessage);
-    console.error("Error stack:", errorStack);
     return NextResponse.json(
       { error: "Gagal membuat laporan PDF", details: errorMessage },
       { status: 500 },

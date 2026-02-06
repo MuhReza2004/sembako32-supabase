@@ -95,9 +95,7 @@ export const waitForPdfFonts = async (page: Page) => {
       });
 
       if (fontResult?.usedFallback) {
-        console.warn(
-          "[PDF FONT] PdfFont not ready. Falling back to Verdana/Arial.",
-        );
+        // fallback applied; continue silently
       }
     } catch {
       // Font readiness check failed, continue anyway
@@ -117,7 +115,7 @@ export const waitForPdfFonts = async (page: Page) => {
       { timeout: 5000 },
     );
   } catch (error) {
-    console.warn("Font/content readiness check had issues:", error);
+    // ignore font/content readiness issues
     // Don't throw - continue with PDF generation anyway
   }
 };

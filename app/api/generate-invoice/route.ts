@@ -9,11 +9,6 @@ import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
-import {
-  debugPdfContent,
-  shouldTakePdfScreenshot,
-  takeDebugScreenshot,
-} from "@/lib/pdf-debug";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -776,22 +771,14 @@ async function generatePdf(
   </html>
   `;
 
-  console.log(`[INVOICE] Processing: ${penjualan.no_invoice}`);
-  console.log(`[INVOICE] HTML length: ${htmlContent.length} characters`);
-  console.log(`[INVOICE] Items count: ${(penjualan.items || []).length}`);
-
   try {
     // Method: Use direct page content setting with explicit waits
-    console.log("[INVOICE] Clearing page...");
     await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 10000 });
     
-    console.log("[INVOICE] Setting HTML content...");
     await page.setContent(htmlContent, {
       waitUntil: "domcontentloaded",
       timeout: 45000,
     });
-    
-    console.log("[INVOICE] HTML content set, validating...");
     
     // Explicit wait for critical elements
     const elementWaits = Promise.allSettled([
@@ -804,51 +791,19 @@ async function generatePdf(
     ]);
     
     await elementWaits;
-    console.log("[INVOICE] Element validation complete");
-
   } catch (error) {
-    console.error("[INVOICE] Content setting failed:", error);
     throw new Error(`Failed to set page content: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   // Wait for fonts and content
-  console.log("[INVOICE] Waiting for fonts...");
   try {
     await waitForPdfFonts(page);
-    console.log("[INVOICE] Font wait completed");
   } catch (fontError) {
-    console.warn("[INVOICE] Font wait had issues (continuing):", fontError);
-  }
-  
-  // Debug: Check actual rendered content BEFORE PDF generation
-  console.log("[INVOICE] Running debug checks...");
-  const debugResult = await debugPdfContent(page, penjualan.no_invoice);
-  
-  if (debugResult && !debugResult.hasContent) {
-    console.error("[INVOICE] CRITICAL: Content not found in rendered page!");
-  }
-  if (debugResult && debugResult.tableCount === 0) {
-    console.error("[INVOICE] CRITICAL: No tables found in rendered HTML!");
-  }
-  if (shouldTakePdfScreenshot()) {
-    await takeDebugScreenshot(page, `invoice-${penjualan.no_invoice}`);
+    // ignore font readiness issues
   }
 
   // Final stability wait
-  console.log("[INVOICE] Final stability check...");
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // One more content check right before PDF
-  const finalCheck = await page.evaluate(() => {
-    return {
-      contentLength: document.body.textContent?.length || 0,
-      tableCount: document.querySelectorAll("table").length,
-      hasInvoiceElement: !!document.querySelector("[class*='invoice']"),
-    };
-  });
-  console.log("[INVOICE] Final check before PDF:", finalCheck);
-
-  console.log("[INVOICE] Starting PDF generation...");
   
   // Force final reflow before PDF
   await page.evaluate(() => {
@@ -869,21 +824,14 @@ async function generatePdf(
       },
     });
 
-    console.log(`[INVOICE] PDF generated successfully: ${pdfBuffer.length} bytes`);
-
-    if (pdfBuffer.length < 5000) {
-      console.warn(`[INVOICE] WARNING: PDF size suspiciously small (${pdfBuffer.length} bytes) - content may be missing`);
-    }
-
     return Buffer.from(pdfBuffer);
   } catch (pdfError) {
-    console.error("[INVOICE] PDF generation failed:", pdfError);
     throw new Error(`PDF generation error: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`);
   } finally {
     try {
       await browser.close();
     } catch (closeError) {
-      console.warn("[INVOICE] Error closing browser:", closeError);
+      // ignore close errors
     }
   }
 }
@@ -911,7 +859,6 @@ export async function POST(request: NextRequest) {
     }
 
     const penjualan: Penjualan = await request.json();
-    console.log("Received penjualan data:", JSON.stringify(penjualan, null, 2));
 
     // Validate required fields
     if (
@@ -961,9 +908,6 @@ export async function POST(request: NextRequest) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error("[INVOICE ERROR]", errorMessage);
-    console.error("[INVOICE STACK]", errorStack);
-    
     return NextResponse.json(
       {
         error: "Failed to generate PDF",

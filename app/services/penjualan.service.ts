@@ -210,8 +210,6 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     throw detailsError;
   }
 
-  console.log("Raw penjualan data:", penjualanData);
-  console.log("Raw details data:", detailsData);
 
   // Join penjualan dengan penjualan_detail
   const mappedData = (penjualanData as PenjualanRow[]).map((item) => ({
@@ -262,7 +260,6 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
         })) || [],
   }));
 
-  console.log("Mapped penjualan data:", mappedData);
   return mappedData;
 };
 

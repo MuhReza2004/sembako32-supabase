@@ -43,16 +43,6 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
   useEffect(() => {
-    if (penjualan) {
-      console.log("DialogDetailPenjualan received penjualan:", penjualan);
-      console.log("Penjualan items:", penjualan.items);
-      if (penjualan.items && penjualan.items.length > 0) {
-        console.log("First item:", penjualan.items[0]);
-      }
-    }
-  }, [penjualan]);
-
-  useEffect(() => {
     const fetchPelanggan = async () => {
       if (penjualan?.pelanggan_id) {
         try {

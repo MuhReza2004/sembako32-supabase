@@ -62,7 +62,6 @@ export async function testPdfGeneration() {
   };
 
   try {
-    console.log("[TEST] Sending PDF generation request...");
     const response = await fetch("/api/generate-invoice", {
       method: "POST",
       headers: {
@@ -71,20 +70,12 @@ export async function testPdfGeneration() {
       body: JSON.stringify(testData),
     });
 
-    console.log("[TEST] Response status:", response.status);
-    console.log("[TEST] Response headers:", {
-      contentType: response.headers.get("content-type"),
-      contentLength: response.headers.get("content-length"),
-    });
-
     if (!response.ok) {
       const error = await response.json();
-      console.error("[TEST] Error response:", error);
       return;
     }
 
     const blob = await response.blob();
-    console.log("[TEST] PDF blob size:", blob.size, "bytes");
 
     // Create download link
     const url = URL.createObjectURL(blob);
@@ -92,9 +83,7 @@ export async function testPdfGeneration() {
     a.href = url;
     a.download = "test-invoice.pdf";
     a.click();
-    console.log("[TEST] PDF downloaded");
   } catch (error) {
-    console.error("[TEST] Error:", error);
   }
 }
 

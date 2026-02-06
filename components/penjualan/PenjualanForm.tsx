@@ -183,12 +183,8 @@ export function PenjualanForm({
   };
 
   const doSubmit = async (data: PenjualanFormData) => {
-    console.log("Form submission started with data:", data);
-
     try {
       const finalData = buildFinalData(data);
-
-      console.log("Final data to submit:", finalData);
 
       if (editingPenjualan?.id) {
         await updatePenjualan(editingPenjualan.id, finalData);
