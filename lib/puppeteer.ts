@@ -2,6 +2,15 @@ import chromium from "@sparticuz/chromium";
 import * as fs from "fs/promises";
 import * as path from "path";
 
+const loadChromiumFont = async (fontPath: string) => {
+  const chromiumAny = chromium as unknown as {
+    font?: (path: string) => Promise<void>;
+  };
+  if (typeof chromiumAny.font === "function") {
+    await chromiumAny.font(fontPath);
+  }
+};
+
 type LaunchOptions = {
   args: string[];
   executablePath: string;
@@ -19,8 +28,8 @@ const loadLocalChromiumFonts = async () => {
   if (localFontsReady) return;
   const fontDir = path.join(process.cwd(), "public", "fonts");
   try {
-    await chromium.font(path.join(fontDir, "verdana.ttf"));
-    await chromium.font(path.join(fontDir, "verdanab.ttf"));
+    await loadChromiumFont(path.join(fontDir, "verdana.ttf"));
+    await loadChromiumFont(path.join(fontDir, "verdanab.ttf"));
   } catch {
     // ignore font loading issues
   }
@@ -92,10 +101,10 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
     }
     if (!fontsReady) {
       try {
-        await chromium.font(
+        await loadChromiumFont(
           "https://raw.githubusercontent.com/google/fonts/main/apache/opensans/OpenSans-Regular.ttf",
         );
-        await chromium.font(
+        await loadChromiumFont(
           "https://raw.githubusercontent.com/google/fonts/main/apache/opensans/OpenSans-Bold.ttf",
         );
       } catch {
