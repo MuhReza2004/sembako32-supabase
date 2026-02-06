@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { Penjualan } from "@/app/types/penjualan";
 import { requireAuth } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
@@ -135,6 +137,15 @@ async function generatePdf(
   await page.setDefaultTimeout(60000);
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const logoSrc = await (async () => {
+    try {
+      const logoPath = path.join(process.cwd(), "public", "logo.svg");
+      const logoBuffer = await fs.readFile(logoPath);
+      return `data:image/svg+xml;base64,${logoBuffer.toString("base64")}`;
+    } catch {
+      return `${baseUrl}/logo.svg`;
+    }
+  })();
   await page.setExtraHTTPHeaders({
     Accept:
       "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -581,7 +592,7 @@ async function generatePdf(
         <div class="company-section">
           <div class="company-header">
             <div class="logo-container">
-              <img src="${baseUrl}/logo.svg" alt="Logo" onerror="this.style.display='none'" />
+              <img src="${logoSrc}" alt="Logo" onerror="this.style.display='none'" />
             </div>
             <h2>RPK SEMBAKO 32</h2>
           </div>
