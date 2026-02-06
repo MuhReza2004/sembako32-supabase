@@ -783,7 +783,7 @@ async function generatePdf(
       page.waitForSelector("body", { timeout: 10000 }),
       page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
       page.waitForFunction(
-        () => document.body?.textContent?.length || 0 > 100,
+        () => (document.body?.textContent?.length || 0) > 100,
         { timeout: 10000 }
       ),
     ]);

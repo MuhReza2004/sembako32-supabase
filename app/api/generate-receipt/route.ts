@@ -9,6 +9,7 @@ import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
+import { debugPdfContent } from "@/lib/pdf-debug";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -228,6 +229,12 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
+    const receiptId =
+      penjualan.no_tanda_terima || penjualan.no_invoice || "unknown";
+    console.log(`[RECEIPT] Processing: ${receiptId}`);
+    console.log(`[RECEIPT] HTML length: ${htmlContent.length} characters`);
+    console.log(`[RECEIPT] Items count: ${(penjualan.items || []).length}`);
+
     const launchOptions = await getPuppeteerLaunchOptions();
     const browser = await puppeteer.launch({
       ...launchOptions,
@@ -238,12 +245,72 @@ export async function POST(request: NextRequest) {
     page.setDefaultTimeout(60000);
     page.setDefaultNavigationTimeout(60000);
 
-    await page.setContent(htmlContent, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
+    try {
+      console.log("[RECEIPT] Clearing page...");
+      await page.goto("about:blank", {
+        waitUntil: "domcontentloaded",
+        timeout: 10000,
+      });
+
+      console.log("[RECEIPT] Setting HTML content...");
+      await page.setContent(htmlContent, {
+        waitUntil: "domcontentloaded",
+        timeout: 45000,
+      });
+
+      console.log("[RECEIPT] HTML content set, validating...");
+
+      const elementWaits = Promise.allSettled([
+        page.waitForSelector("body", { timeout: 10000 }),
+        page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
+        page.waitForFunction(
+          () => (document.body?.textContent?.length || 0) > 100,
+          { timeout: 10000 },
+        ),
+      ]);
+
+      await elementWaits;
+      console.log("[RECEIPT] Element validation complete");
+    } catch (error) {
+      console.error("[RECEIPT] Content setting failed:", error);
+      throw new Error(
+        `Failed to set page content: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    console.log("[RECEIPT] Waiting for fonts...");
+    try {
+      await waitForPdfFonts(page);
+      console.log("[RECEIPT] Font wait completed");
+    } catch (fontError) {
+      console.warn("[RECEIPT] Font wait had issues (continuing):", fontError);
+    }
+
+    console.log("[RECEIPT] Running debug checks...");
+    const debugResult = await debugPdfContent(page, receiptId);
+    if (debugResult && !debugResult.hasContent) {
+      console.error("[RECEIPT] CRITICAL: Content not found in rendered page!");
+    }
+    if (debugResult && debugResult.tableCount === 0) {
+      console.error("[RECEIPT] CRITICAL: No tables found in rendered HTML!");
+    }
+
+    console.log("[RECEIPT] Final stability check...");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const finalCheck = await page.evaluate(() => {
+      return {
+        contentLength: document.body.textContent?.length || 0,
+        tableCount: document.querySelectorAll("table").length,
+      };
     });
-    await waitForPdfFonts(page);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log("[RECEIPT] Final check before PDF:", finalCheck);
+
+    console.log("[RECEIPT] Starting PDF generation...");
+
+    await page.evaluate(() => {
+      document.body.offsetHeight;
+    });
 
     let pdfBuffer: Uint8Array;
     try {

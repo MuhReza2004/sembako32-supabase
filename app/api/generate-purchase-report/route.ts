@@ -9,6 +9,7 @@ import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
+import { debugPdfContent } from "@/lib/pdf-debug";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -406,6 +407,13 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
+    const reportLabel = pembelianId
+      ? `Pembelian ${pembelianId}`
+      : periodLabel;
+    console.log(`[PURCHASE] Processing: ${reportLabel}`);
+    console.log(`[PURCHASE] HTML length: ${htmlContent.length} characters`);
+    console.log(`[PURCHASE] Rows count: ${filteredPurchases.length}`);
+
     // Create a base64 SVG for the gradient background
     const svgGradient = `
       <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
@@ -493,15 +501,73 @@ export async function POST(request: NextRequest) {
     page.setDefaultTimeout(60000);
     page.setDefaultNavigationTimeout(60000);
 
-    console.log("Setting content...");
-    await page.setContent(htmlContent, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-    await waitForPdfFonts(page);
+    console.log("[PURCHASE] Setting content...");
+    try {
+      console.log("[PURCHASE] Clearing page...");
+      await page.goto("about:blank", {
+        waitUntil: "domcontentloaded",
+        timeout: 10000,
+      });
 
-    // Wait for images and styles to load
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("[PURCHASE] Setting HTML content...");
+      await page.setContent(htmlContent, {
+        waitUntil: "domcontentloaded",
+        timeout: 45000,
+      });
+
+      console.log("[PURCHASE] HTML content set, validating...");
+
+      const elementWaits = Promise.allSettled([
+        page.waitForSelector("body", { timeout: 10000 }),
+        page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
+        page.waitForFunction(
+          () => (document.body?.textContent?.length || 0) > 100,
+          { timeout: 10000 },
+        ),
+      ]);
+
+      await elementWaits;
+      console.log("[PURCHASE] Element validation complete");
+    } catch (error) {
+      console.error("[PURCHASE] Content setting failed:", error);
+      throw new Error(
+        `Failed to set page content: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    console.log("[PURCHASE] Waiting for fonts...");
+    try {
+      await waitForPdfFonts(page);
+      console.log("[PURCHASE] Font wait completed");
+    } catch (fontError) {
+      console.warn("[PURCHASE] Font wait had issues (continuing):", fontError);
+    }
+
+    console.log("[PURCHASE] Running debug checks...");
+    const debugResult = await debugPdfContent(page, reportLabel);
+    if (debugResult && !debugResult.hasContent) {
+      console.error("[PURCHASE] CRITICAL: Content not found in rendered page!");
+    }
+    if (debugResult && debugResult.tableCount === 0) {
+      console.error("[PURCHASE] CRITICAL: No tables found in rendered HTML!");
+    }
+
+    console.log("[PURCHASE] Final stability check...");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const finalCheck = await page.evaluate(() => {
+      return {
+        contentLength: document.body.textContent?.length || 0,
+        tableCount: document.querySelectorAll("table").length,
+      };
+    });
+    console.log("[PURCHASE] Final check before PDF:", finalCheck);
+
+    console.log("[PURCHASE] Starting PDF generation...");
+
+    await page.evaluate(() => {
+      document.body.offsetHeight;
+    });
 
     console.log("Generating PDF...");
     let pdfBuffer: Uint8Array;

@@ -8,6 +8,7 @@ import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
+import { debugPdfContent } from "@/lib/pdf-debug";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -224,6 +225,12 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
+    console.log(`[DELIVERY] Processing: ${deliveryOrder.no_do}`);
+    console.log(`[DELIVERY] HTML length: ${htmlContent.length} characters`);
+    console.log(
+      `[DELIVERY] Items count: ${(deliveryOrder.penjualan.items || []).length}`,
+    );
+
     const launchOptions = await getPuppeteerLaunchOptions();
     const browser = await puppeteer.launch({
       ...launchOptions,
@@ -234,12 +241,72 @@ export async function POST(request: NextRequest) {
     page.setDefaultTimeout(60000);
     page.setDefaultNavigationTimeout(60000);
 
-    await page.setContent(htmlContent, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
+    try {
+      console.log("[DELIVERY] Clearing page...");
+      await page.goto("about:blank", {
+        waitUntil: "domcontentloaded",
+        timeout: 10000,
+      });
+
+      console.log("[DELIVERY] Setting HTML content...");
+      await page.setContent(htmlContent, {
+        waitUntil: "domcontentloaded",
+        timeout: 45000,
+      });
+
+      console.log("[DELIVERY] HTML content set, validating...");
+
+      const elementWaits = Promise.allSettled([
+        page.waitForSelector("body", { timeout: 10000 }),
+        page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
+        page.waitForFunction(
+          () => (document.body?.textContent?.length || 0) > 100,
+          { timeout: 10000 },
+        ),
+      ]);
+
+      await elementWaits;
+      console.log("[DELIVERY] Element validation complete");
+    } catch (error) {
+      console.error("[DELIVERY] Content setting failed:", error);
+      throw new Error(
+        `Failed to set page content: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    console.log("[DELIVERY] Waiting for fonts...");
+    try {
+      await waitForPdfFonts(page);
+      console.log("[DELIVERY] Font wait completed");
+    } catch (fontError) {
+      console.warn("[DELIVERY] Font wait had issues (continuing):", fontError);
+    }
+
+    console.log("[DELIVERY] Running debug checks...");
+    const debugResult = await debugPdfContent(page, deliveryOrder.no_do);
+    if (debugResult && !debugResult.hasContent) {
+      console.error("[DELIVERY] CRITICAL: Content not found in rendered page!");
+    }
+    if (debugResult && debugResult.tableCount === 0) {
+      console.error("[DELIVERY] CRITICAL: No tables found in rendered HTML!");
+    }
+
+    console.log("[DELIVERY] Final stability check...");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const finalCheck = await page.evaluate(() => {
+      return {
+        contentLength: document.body.textContent?.length || 0,
+        tableCount: document.querySelectorAll("table").length,
+      };
     });
-    await waitForPdfFonts(page);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log("[DELIVERY] Final check before PDF:", finalCheck);
+
+    console.log("[DELIVERY] Starting PDF generation...");
+
+    await page.evaluate(() => {
+      document.body.offsetHeight;
+    });
 
     let pdfBuffer: Uint8Array;
     try {
