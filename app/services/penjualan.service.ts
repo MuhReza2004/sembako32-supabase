@@ -1135,8 +1135,9 @@ export const generateTandaTerimaNumber = async (): Promise<string> => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
 
   const { count, error } = await supabase
-    .from("delivery_orders")
+    .from("penjualan")
     .select("*", { count: "exact", head: true })
+    .not("no_tanda_terima", "is", null)
     .gte(
       "created_at",
       new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),

@@ -172,22 +172,42 @@ export async function POST(request: NextRequest) {
             ${fontCss}
             body { font-family: 'PdfFont', Arial, sans-serif; margin: 20px; color: #111827; }
             h2 { color: #111827; text-align: center; margin: 0; }
-            .meta { margin-top: 40px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
+            .meta-grid { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+            .meta-col { display: grid; grid-template-columns: 130px 10px auto; row-gap: 6px; }
+            .meta-col.compact { display: flex; flex-direction: column; gap: 4px; }
+            .meta-col.compact .meta-row { display: grid; grid-template-columns: 130px 15px auto; }
+            .meta-col.compact .meta-row span { line-height: 1; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
             th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
             th { background-color: #f9fafb; }
             .total { font-weight: bold; }
+            .signature { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+            .signature .line { border-top: 1px solid #333; width: 160px; margin: 0 auto; }
           </style>
         </head>
         <body>
           <h2 style="text-decoration: underline;">DELIVERY ORDER</h2>
           <h4 style="text-align: center;">NO: ${safe(deliveryOrder.no_do)}</h4>
-          <div class="meta">
-          <span> NPB</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_npb || "-")}</span>
-          <span> Invoice</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_invoice || "-")}</span>
-            <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
-            <span>Dikirim Kepada</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
-            <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
+          <div class="meta-grid">
+            <div class="meta-col">
+              <span>NPB</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_npb || "-")}</span>
+              <span>Invoice</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_invoice || "-")}</span>
+              <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
+              <span>Dikirim Kepada</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
+              <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
+            </div>
+            <div class="meta-col compact">
+              <div class="meta-row">
+                <span>Driver</span><span>:</span><span>...............</span>
+              </div>
+              <div class="meta-row">
+                <span>Tanggal Kirim</span><span>:</span><span>...............</span>
+              </div>
+
+              <div class="meta-row">
+                <span>Nomor Plat</span><span>:</span><span>...............</span>
+              </div>
+            </div>
           </div>
 
           <table>
@@ -219,6 +239,21 @@ export async function POST(request: NextRequest) {
 
           <div style="margin-top: 16px; text-align: right;">
             <p class="total">Total: ${safe(formatRupiah(total))}</p>
+          </div>
+
+          <div class="signature">
+            <div style="text-align: center;">
+              <div style="margin-bottom: 60px;">Disetujui</div>
+              <div class="line"></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="margin-bottom: 60px;">Driver</div>
+              <div class="line"></div>
+            </div>
+            <div style="text-align: center;">
+              <div style="margin-bottom: 60px;">Penerima</div>
+              <div class="line"></div>
+            </div>
           </div>
         </body>
       </html>

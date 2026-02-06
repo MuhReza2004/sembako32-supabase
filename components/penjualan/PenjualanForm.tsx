@@ -121,20 +121,19 @@ export function PenjualanForm({
     const generateNumbers = async () => {
       if (!editingPenjualan) {
         try {
-          const [invoiceNum, npbNum] = await Promise.all([
+          const [invoiceNum, npbNum, ttNum] = await Promise.all([
             generateInvoiceNumber(),
             generateNPBNumber(),
+            generateTandaTerimaNumber(),
           ]);
           setValue("no_invoice", invoiceNum);
           setValue("no_npb", npbNum);
+          setValue("no_tanda_terima", ttNum);
           if (watchMetodePengambilan === "Diantar") {
             const doNum = await generateDONumber();
-            const ttNum = await generateTandaTerimaNumber();
             setValue("no_do", doNum);
-            setValue("no_tanda_terima", ttNum);
           } else {
             setValue("no_do", "");
-            setValue("no_tanda_terima", "");
           }
         } catch (error: unknown) {
           console.error("Error generating document numbers:", error);
