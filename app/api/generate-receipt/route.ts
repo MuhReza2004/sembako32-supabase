@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
           </div>
 
           <table>
+          <caption style="text-align: start; margin: 16px 0;">Dengan ini menyatakan bahwa barang telah diterima dengan baik dan sesuai. </caption>
             <thead>
               <tr>
                 <th>No</th>
