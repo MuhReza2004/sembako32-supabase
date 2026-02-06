@@ -11,6 +11,13 @@ const loadChromiumFont = async (fontPath: string) => {
   }
 };
 
+const getChromiumRuntime = () =>
+  chromium as unknown as {
+    args?: string[];
+    defaultViewport?: { width: number; height: number };
+    headless?: boolean | "new" | "shell";
+  };
+
 type LaunchOptions = {
   args: string[];
   executablePath: string;
@@ -123,10 +130,11 @@ export const getPuppeteerLaunchOptions = async (): Promise<LaunchOptions> => {
       executablePath = await chromium.executablePath(binPath);
     }
     ensureChromiumLibs();
-    args = chromium.args;
-    const chromiumHeadless = chromium.headless as boolean | "new" | "shell";
-    headless = chromiumHeadless === "new" ? true : chromiumHeadless;
-    defaultViewport = chromium.defaultViewport;
+    const chromiumRuntime = getChromiumRuntime();
+    args = chromiumRuntime.args || [];
+    const chromiumHeadless = chromiumRuntime.headless;
+    headless = chromiumHeadless === "new" ? true : chromiumHeadless ?? true;
+    defaultViewport = chromiumRuntime.defaultViewport;
   } else {
     if (!executablePath) {
       executablePath = await firstExistingPath(getLocalCandidates());
