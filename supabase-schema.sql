@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Users table (extends Supabase auth.users)
 CREATE TABLE users (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  email TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL CHECK (role IN ('admin', 'staff')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -30,7 +30,7 @@ CREATE TABLE produk (
 CREATE TABLE pelanggan (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   id_pelanggan TEXT NOT NULL UNIQUE, -- PLG-xxxxx
-  kode_pelanggan TEXT NOT NULL,
+  kode_pelanggan TEXT NOT NULL UNIQUE,
   nama_pelanggan TEXT NOT NULL,
   nama_toko TEXT NOT NULL,
   nib TEXT,
@@ -95,9 +95,9 @@ CREATE TABLE pembelian (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   supplier_id UUID REFERENCES suppliers(id) ON DELETE CASCADE,
   tanggal DATE NOT NULL,
-  no_do TEXT,
-  no_npb TEXT,
-  invoice TEXT,
+  no_do TEXT UNIQUE,
+  no_npb TEXT UNIQUE,
+  invoice TEXT UNIQUE,
   metode_pembayaran TEXT NOT NULL CHECK (metode_pembayaran IN ('Tunai', 'Transfer')),
   nama_bank TEXT,
   nama_pemilik_rekening TEXT,
@@ -127,9 +127,9 @@ CREATE TABLE penjualan (
   created_by UUID REFERENCES auth.users(id),
   catatan TEXT,
   no_invoice TEXT NOT NULL UNIQUE,
-  no_npb TEXT NOT NULL,
-  no_do TEXT,
-  no_tanda_terima TEXT,
+  no_npb TEXT NOT NULL UNIQUE,
+  no_do TEXT UNIQUE,
+  no_tanda_terima TEXT UNIQUE,
   metode_pengambilan TEXT NOT NULL CHECK (metode_pengambilan IN ('Ambil Langsung', 'Diantar')),
   total DECIMAL(14,2) NOT NULL,
   total_dibayar DECIMAL(14,2) DEFAULT 0,
@@ -152,7 +152,7 @@ CREATE TABLE delivery_orders (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   penjualan_id UUID REFERENCES penjualan(id) ON DELETE CASCADE,
   no_do TEXT NOT NULL UNIQUE,
-  no_tanda_terima TEXT,
+  no_tanda_terima TEXT UNIQUE,
   status TEXT NOT NULL CHECK (status IN ('Draft', 'Dikirim', 'Diterima', 'Batal')) DEFAULT 'Draft',
   tanggal_kirim DATE,
   tanggal_terima DATE,
@@ -210,7 +210,8 @@ CREATE INDEX idx_penjualan_detail_supplier_produk_id ON penjualan_detail(supplie
 CREATE INDEX idx_pembelian_detail_supplier_produk_id ON pembelian_detail(supplier_produk_id);
 
 -- Inventory report view (aggregated)
-CREATE OR REPLACE VIEW inventory_report AS
+CREATE OR REPLACE VIEW inventory_report
+WITH (security_invoker = true) AS
 SELECT
   p.id,
   p.kode,
@@ -247,7 +248,8 @@ LEFT JOIN (
 ) pj_sum ON pj_sum.produk_id = p.id;
 
 -- Produk stock summary view
-CREATE OR REPLACE VIEW produk_stock_summary AS
+CREATE OR REPLACE VIEW produk_stock_summary
+WITH (security_invoker = true) AS
 SELECT
   p.id,
   p.nama,
@@ -354,6 +356,8 @@ GRANT EXECUTE ON FUNCTION public.sum_pembelian_total(TIMESTAMPTZ, TIMESTAMPTZ) T
 GRANT EXECUTE ON FUNCTION public.piutang_summary(TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.increase_stock(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.decrease_stock(UUID, INTEGER) TO authenticated;
+GRANT SELECT ON inventory_report TO authenticated;
+GRANT SELECT ON produk_stock_summary TO authenticated;
 
 -- Row Level Security (RLS) Policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -389,6 +393,26 @@ SET search_path = public
 AS $$
   SELECT public.current_user_role() = 'admin';
 $$;
+
+-- Auto-create user profile on signup (default role: staff)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.users (id, email, role)
+  VALUES (NEW.id, NEW.email, 'staff')
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- USERS
 CREATE POLICY "Users can read own profile" ON users
