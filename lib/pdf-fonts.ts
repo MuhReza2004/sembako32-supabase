@@ -61,15 +61,44 @@ export const waitForPdfFonts = async (page: Page) => {
       { timeout: 10000 },
     );
 
-    // Try to wait for fonts, but don't fail if it doesn't work
+    // Try to wait for fonts, then force a safe fallback if PdfFont isn't ready.
     try {
-      await page.waitForFunction(
-        () =>
-          (document as unknown as { fonts?: FontFaceSet }).fonts?.check?.(
-            "12px PdfFont",
-          ),
-        { timeout: 5000 },
-      );
+      const fontResult = await page.evaluate(async () => {
+        const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+        if (!fonts) {
+          return { fontsReady: false, usedFallback: false, status: "unsupported" };
+        }
+
+        const waitWithTimeout = async (promise: Promise<unknown>, ms: number) =>
+          Promise.race([
+            promise,
+            new Promise((resolve) => setTimeout(resolve, ms)),
+          ]);
+
+        try {
+          await waitWithTimeout(fonts.load("12px PdfFont"), 5000);
+          await waitWithTimeout(fonts.ready, 5000);
+        } catch {
+          // ignore font load errors
+        }
+
+        const fontsReady = fonts.check("12px PdfFont");
+        let usedFallback = false;
+
+        if (!fontsReady && document.body) {
+          // Force a reliable system font so text is still rendered in PDF
+          document.body.style.fontFamily = "Verdana, Arial, sans-serif";
+          usedFallback = true;
+        }
+
+        return { fontsReady, usedFallback, status: fonts.status };
+      });
+
+      if (fontResult?.usedFallback) {
+        console.warn(
+          "[PDF FONT] PdfFont not ready. Falling back to Verdana/Arial.",
+        );
+      }
     } catch {
       // Font readiness check failed, continue anyway
     }

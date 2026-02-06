@@ -23,6 +23,11 @@ export const debugPdfContent = async (page: Page, documentName: string) => {
       
       // Check if fonts are loaded
       const styles = window.getComputedStyle(document.body);
+      const fonts = (document as unknown as { fonts?: FontFaceSet }).fonts;
+      const pdfFontReady =
+        fonts?.check?.("12px PdfFont") ?? null;
+      const fontsStatus = fonts?.status ?? "unsupported";
+      const inlineBodyFont = document.body?.style?.fontFamily || "";
       const bodyHtml = document.body.innerHTML.substring(0, 500);
       
       return {
@@ -34,6 +39,9 @@ export const debugPdfContent = async (page: Page, documentName: string) => {
         paragraphCount: paragraphs.length,
         divCount: divs.length,
         fontFamily: styles.fontFamily,
+        inlineBodyFont,
+        pdfFontReady,
+        fontsStatus,
         fontSize: styles.fontSize,
         color: styles.color,
         hasContent: bodyText.trim().length > 50,
