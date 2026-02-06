@@ -79,8 +79,9 @@ export async function POST(request: NextRequest) {
             : `no_tanda_terima.eq.${deliveryOrder.no_tanda_terima}`,
         )
         .single();
-      const createdBy = (owned as { penjualan?: { created_by?: string } } | null)
-        ?.penjualan?.created_by;
+      const createdBy = (
+        owned as { penjualan?: { created_by?: string } } | null
+      )?.penjualan?.created_by;
       if (!createdBy || createdBy !== userId) {
         return NextResponse.json({ error: "forbidden" }, { status: 403 });
       }
@@ -189,7 +190,7 @@ export async function POST(request: NextRequest) {
           <h2 style="text-decoration: underline;">TANDA TERIMA BARANG</h2>
           <h4 style="text-align: center;">NO: ${safe(deliveryOrder.no_tanda_terima)}</h4>
           <div class="meta">
-            <span>Referensi No. DO</span><span>:</span><span>${safe(deliveryOrder.no_do)}</span>
+            <span>Referensi DO</span><span>:</span><span>${safe(deliveryOrder.no_do)}</span>
             <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
             <span>Penerima</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
             <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
@@ -329,4 +330,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

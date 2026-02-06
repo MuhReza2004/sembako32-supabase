@@ -160,7 +160,8 @@ export async function POST(request: NextRequest) {
             ${fontCss}
             body { font-family: 'PdfFont', Arial, sans-serif; margin: 20px; color: #111827; }
             h2 { color: #111827; text-align: center; margin: 0; }
-            .meta { margin-top: 10px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
+            .receipt-number { text-align: center; margin-top: 6px; font-weight: 600; font-size: 14px; }
+            .meta { margin-top: 16px; display: grid; grid-template-columns: 160px 10px auto; row-gap: 6px; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
             th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
             th { background-color: #f9fafb; }
@@ -171,11 +172,11 @@ export async function POST(request: NextRequest) {
         </head>
         <body>
           <h2>TANDA TERIMA BARANG</h2>
+          <div class="receipt-number"> NO ${safe(penjualan.no_tanda_terima || "-")}</div>
           <div class="meta">
-            <span>No. Tanda Terima</span><span>:</span><span>${safe(penjualan.no_tanda_terima || "-")}</span>
-            <span>No. Invoice</span><span>:</span><span>${safe(penjualan.no_invoice || "-")}</span>
-            <span>No. NPB</span><span>:</span><span>${safe(penjualan.no_npb || "-")}</span>
-            <span>No. DO</span><span>:</span><span>${safe(penjualan.no_do || "-")}</span>
+            <span>Invoice</span><span>:</span><span>${safe(penjualan.no_invoice || "-")}</span>
+            <span>NPB</span><span>:</span><span>${safe(penjualan.no_npb || "-")}</span>
+            <span>DO</span><span>:</span><span>${safe(penjualan.no_do || "-")}</span>
             <span>Tanggal</span><span>:</span><span>${safe(new Date(penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
             <span>Pelanggan</span><span>:</span><span>${safe(penjualan.nama_pelanggan || penjualan.namaPelanggan || "-")}</span>
             <span>Nama Toko</span><span>:</span><span>${safe(penjualan.nama_toko || "-")}</span>
@@ -211,17 +212,19 @@ export async function POST(request: NextRequest) {
           <div style="margin-top: 16px; text-align: right;">
             <p class="total">Total: ${safe(formatRupiah(total))}</p>
           </div>
+              <div style="margin-top: 20px; text-align: end; display:flex; flex-direction:column; gap: 10px;">
+              <span>Diterima Di:........................</span>
+              <span>Pada Tgl:..../....../...........</span>
+              </div>
 
           <div class="signature">
             <div style="text-align: center;">
               <div style="margin-bottom: 60px;">Diterima Oleh</div>
               <div class="line"></div>
-              <div style="font-size: 11px; margin-top: 6px;">Tanggal: ${new Date().toLocaleDateString("id-ID")}</div>
             </div>
             <div style="text-align: center;">
               <div style="margin-bottom: 60px;">Diserahkan Oleh</div>
               <div class="line"></div>
-              <div style="font-size: 11px; margin-top: 6px;">Tanggal: ${new Date().toLocaleDateString("id-ID")}</div>
             </div>
           </div>
         </body>
@@ -321,4 +324,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

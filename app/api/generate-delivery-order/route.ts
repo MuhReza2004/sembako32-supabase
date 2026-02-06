@@ -183,8 +183,8 @@ export async function POST(request: NextRequest) {
           <h2 style="text-decoration: underline;">DELIVERY ORDER</h2>
           <h4 style="text-align: center;">NO: ${safe(deliveryOrder.no_do)}</h4>
           <div class="meta">
-          <span>No. NPB</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_npb || "-")}</span>
-          <span>No. Invoice</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_invoice || "-")}</span>
+          <span> NPB</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_npb || "-")}</span>
+          <span> Invoice</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_invoice || "-")}</span>
             <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
             <span>Dikirim Ke</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
             <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
