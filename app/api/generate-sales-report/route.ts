@@ -9,7 +9,11 @@ import { requireAdmin } from "@/app/lib/api-guard";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { escapeHtml } from "@/helper/escapeHtml";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
-import { debugPdfContent } from "@/lib/pdf-debug";
+import {
+  debugPdfContent,
+  shouldTakePdfScreenshot,
+  takeDebugScreenshot,
+} from "@/lib/pdf-debug";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 
 export const runtime = "nodejs";
@@ -400,6 +404,9 @@ export async function POST(request: NextRequest) {
     }
     if (debugResult && debugResult.tableCount === 0) {
       console.error("[SALES] CRITICAL: No tables found in rendered HTML!");
+    }
+    if (shouldTakePdfScreenshot()) {
+      await takeDebugScreenshot(page, `sales-${periodLabel}`);
     }
 
     console.log("[SALES] Final stability check...");

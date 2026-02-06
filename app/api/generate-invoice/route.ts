@@ -7,7 +7,11 @@ import { escapeHtml } from "@/helper/escapeHtml";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
 import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
-import { debugPdfContent } from "@/lib/pdf-debug";
+import {
+  debugPdfContent,
+  shouldTakePdfScreenshot,
+  takeDebugScreenshot,
+} from "@/lib/pdf-debug";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -814,6 +818,9 @@ async function generatePdf(
   }
   if (debugResult && debugResult.tableCount === 0) {
     console.error("[INVOICE] CRITICAL: No tables found in rendered HTML!");
+  }
+  if (shouldTakePdfScreenshot()) {
+    await takeDebugScreenshot(page, `invoice-${penjualan.no_invoice}`);
   }
 
   // Final stability wait

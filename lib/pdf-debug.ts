@@ -1,5 +1,13 @@
 import type { Page } from "puppeteer-core";
 
+const sanitizeFilename = (value: string) => {
+  const safe = value.replace(/[^a-zA-Z0-9-_]+/g, "_").slice(0, 80);
+  return safe || "pdf-debug";
+};
+
+export const shouldTakePdfScreenshot = () =>
+  process.env.PDF_DEBUG_SCREENSHOT === "1";
+
 /**
  * Debug PDF rendering issues in serverless environment
  * This helps identify why content is not appearing in generated PDFs
@@ -86,7 +94,8 @@ export const takeDebugScreenshot = async (
   filename: string,
 ) => {
   try {
-    const screenshotPath = `/tmp/${filename}-${Date.now()}.png`;
+    const safeName = sanitizeFilename(filename);
+    const screenshotPath = `/tmp/${safeName}-${Date.now()}.png`;
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`[PDF SCREENSHOT] Saved to: ${screenshotPath}`);
     return screenshotPath;
