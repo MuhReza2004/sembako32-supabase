@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  const metaRole =
+    user.app_metadata?.role ?? user.user_metadata?.role ?? null;
+
   const { data: userProfile, error: profileError } = await supabaseAdmin
     .from("users")
     .select("role")
@@ -43,6 +46,10 @@ export async function POST(request: NextRequest) {
       { ok: false, error: "role_not_found" },
       { status: 400 },
     );
+  }
+
+  if (metaRole && metaRole === userProfile.role) {
+    return NextResponse.json({ ok: true, role: userProfile.role });
   }
 
   const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(

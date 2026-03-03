@@ -35,12 +35,19 @@ export default function LoginForm() {
       // Ensure session is persisted in storage/cookies
       await supabase.auth.setSession(res.session);
 
-      // Sync role into JWT metadata for faster middleware checks
-      let role: string | null = null;
-      const syncRes = await fetch("/api/auth/sync-role", { method: "POST" });
-      if (syncRes.ok) {
-        const data = await syncRes.json();
-        role = data?.role ?? null;
+      const metaRole =
+        res.user.app_metadata?.role ?? res.user.user_metadata?.role ?? null;
+
+      // Sync role into JWT metadata for faster middleware checks (only if missing)
+      let role: string | null = metaRole;
+      let needsRefresh = false;
+      if (!role) {
+        const syncRes = await fetch("/api/auth/sync-role", { method: "POST" });
+        if (syncRes.ok) {
+          const data = await syncRes.json();
+          role = data?.role ?? null;
+          needsRefresh = !!role;
+        }
       }
 
       if (!role) {
@@ -52,15 +59,17 @@ export default function LoginForm() {
         role = user.role;
       }
 
-      // Refresh session to include updated metadata
-      await supabase.auth.refreshSession();
-      router.refresh(); // Update session state for middleware
+      if (needsRefresh) {
+        // Refresh session to include updated metadata
+        await supabase.auth.refreshSession();
+        router.refresh(); // Update session state for middleware
+      }
 
       // Redirect berdasarkan role
       if (role === "admin") {
-        router.push("/dashboard/admin");
+        router.push("/dashboard/admin?login=success");
       } else {
-        router.push("/dashboard/staff");
+        router.push("/dashboard/staff?login=success");
       }
     } catch (err: unknown) {
       console.error("LOGIN ERROR:", err);
