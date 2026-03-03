@@ -11,9 +11,18 @@ import {
   X,
 } from "lucide-react";
 
-export default function Topbar() {
+type TopbarProps = {
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+};
+
+export default function Topbar({
+  onToggleSidebar,
+  isSidebarOpen = false,
+}: TopbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
+  const usesSidebarToggle = typeof onToggleSidebar === "function";
 
   const navigationItems = [
     {
@@ -100,7 +109,7 @@ export default function Topbar() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary-foreground/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-        <div className="relative border-b border-foreground/20 px-6 py-6">
+        <div className="relative border-b border-foreground/20 px-4 py-4 md:px-6 md:py-6">
           {/* Center Logo */}
           <div className="flex justify-center mb-6">
             <div className="text-center floating">
@@ -110,7 +119,7 @@ export default function Topbar() {
 
                 <div className="relative">
                   <h1
-                    className="text-5xl md:text-6xl font-black tracking-tight mb-1 "
+                    className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight mb-1 "
                     style={{
                       background:
                         "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--background)) 50%, hsl(var(--primary)) 100%)",
@@ -127,7 +136,7 @@ export default function Topbar() {
 
               <div className="mt-2 inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-effect">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                <p className="text-sm md:text-lg font-bold text-foreground tracking-wide">
+                <p className="text-xs sm:text-sm md:text-lg font-bold text-foreground tracking-wide">
                   Mitra BULOG
                 </p>
               </div>
@@ -176,20 +185,30 @@ export default function Topbar() {
               })}
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="bg-background/10 backdrop-blur-sm border border-foreground/20 text-foreground hover:bg-background/20 transition-all duration-300 hover:scale-110"
-              >
-                {isMenuOpen ? (
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                usesSidebarToggle
+                  ? onToggleSidebar?.()
+                  : setIsMenuOpen(!isMenuOpen)
+              }
+              className="bg-background/10 backdrop-blur-sm border border-foreground/20 text-foreground hover:bg-background/20 transition-all duration-300 hover:scale-110"
+            >
+              {usesSidebarToggle ? (
+                isSidebarOpen ? (
                   <X className="w-5 h-5" />
                 ) : (
                   <Menu className="w-5 h-5" />
-                )}
-              </Button>
+                )
+              ) : isMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </Button>
             </div>
 
             {/* Logout Button */}
@@ -199,7 +218,7 @@ export default function Topbar() {
           </div>
 
           {/* Mobile Navigation Menu */}
-          {isMenuOpen && (
+          {!usesSidebarToggle && isMenuOpen && (
             <div className="md:hidden mt-4 fade-in-down">
               <div className="glass-effect rounded-2xl p-4 space-y-2">
                 {navigationItems.map((item, index) => {

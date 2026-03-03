@@ -71,7 +71,7 @@ export default function Sidebar() {
   // Jika loading dan belum timeout, tampilkan loading state
   if (loading && !timeoutReached) {
     return (
-      <aside className="w-64 bg-gradient-to-b from-muted to-background border-r border-border">
+      <aside className="w-full h-full bg-gradient-to-b from-muted to-background border-r border-border">
         <div className="p-6">
           <div className="h-8 bg-muted-foreground rounded-md animate-pulse"></div>
         </div>
@@ -152,7 +152,7 @@ export default function Sidebar() {
         }
       `}</style>
 
-      <aside className="w-64 sidebar-gradient border-r border-border flex flex-col">
+      <aside className="w-full h-full sidebar-gradient border-r border-border flex flex-col">
         <div className="relative overflow-hidden border-b border-white/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 glow-pulse" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-foreground/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2 glow-pulse" />
