@@ -3,5 +3,11 @@
     "app/api/**": {
       "includeFiles": "{node_modules/@sparticuz/chromium/**,public/fonts/**}"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/keepalive",
+      "schedule": "0 1 * * *"
+    }
+  ]
 }
