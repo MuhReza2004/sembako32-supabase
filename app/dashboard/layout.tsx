@@ -4,6 +4,7 @@ import ConfirmProvider from "@/components/ui/ConfirmProvider";
 import StatusProvider from "@/components/ui/StatusProvider";
 import LoginSuccessListener from "@/components/auth/LoginSuccessListener";
 import { Suspense } from "react";
+import SessionExpiryWatcher from "@/components/auth/SessionExpiryWatcher";
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
           <Suspense fallback={null}>
             <LoginSuccessListener />
           </Suspense>
+          <SessionExpiryWatcher />
           <DashboardShell>{children}</DashboardShell>
         </StatusProvider>
       </ConfirmProvider>
