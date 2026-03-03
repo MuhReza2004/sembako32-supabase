@@ -3,6 +3,7 @@ import { ErrorBoundary } from "@/components/dashboard/ErrorBoundary";
 import ConfirmProvider from "@/components/ui/ConfirmProvider";
 import StatusProvider from "@/components/ui/StatusProvider";
 import LoginSuccessListener from "@/components/auth/LoginSuccessListener";
+import { Suspense } from "react";
 
 export default function DashboardLayout({
   children,
@@ -13,7 +14,9 @@ export default function DashboardLayout({
     <ErrorBoundary>
       <ConfirmProvider>
         <StatusProvider>
-          <LoginSuccessListener />
+          <Suspense fallback={null}>
+            <LoginSuccessListener />
+          </Suspense>
           <DashboardShell>{children}</DashboardShell>
         </StatusProvider>
       </ConfirmProvider>
