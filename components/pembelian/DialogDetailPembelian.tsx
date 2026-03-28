@@ -29,13 +29,13 @@ export default function DialogDetailPembelian({
   pembelian,
 }: Props) {
   const [details, setDetails] = useState<PembelianDetail[]>([]);
-  const {
-    data: suppliers,
-    error: suppliersError,
-  } = useCachedList<Supplier>(getAllSuppliers, {
-    enabled: open,
-    forceOnEnable: true,
-  });
+  const { data: suppliers, error: suppliersError } = useCachedList<Supplier>(
+    getAllSuppliers,
+    {
+      enabled: open,
+      forceOnEnable: true,
+    },
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -97,7 +97,7 @@ export default function DialogDetailPembelian({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Detail Pembelian</DialogTitle>
         </DialogHeader>
