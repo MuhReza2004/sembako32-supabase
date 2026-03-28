@@ -93,7 +93,7 @@ export default function PenjualanTabel({
                     "-"}
                 </TableCell>
                 <TableCell>
-                  {penjualan.createdByEmail || penjualan.created_by || "-"}
+                  {penjualan.createdByRole || penjualan.created_by || "-"}
                 </TableCell>
                 <TableCell className="text-center">
                   {formatRupiah(penjualan.total_akhir ?? penjualan.total)}

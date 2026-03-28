@@ -281,7 +281,8 @@ export default function DialogTambahHargaProduk({
                   <div
                     key={p.id}
                     className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => {
+                    onMouseDown={(e) => {
+                      e.preventDefault();
                       setFormData((prev) => ({ ...prev, produk_id: p.id }));
                       setSearchQuery(p.nama);
                       setShowDropdown(false);
