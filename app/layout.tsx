@@ -21,6 +21,7 @@ export default function RootLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
         <QueryProvider>{children}</QueryProvider>
+        <Analytics />
       </body>
     </html>
   );
