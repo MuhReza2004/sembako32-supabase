@@ -204,8 +204,6 @@ export async function POST(request: NextRequest) {
                   <th>No</th>
                   <th>Produk</th>
                   <th>Qty</th>
-                  <th>Harga</th>
-                  <th>Subtotal</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,8 +214,6 @@ export async function POST(request: NextRequest) {
                         <td>${index + 1}</td>
                         <td>${safe(item.supplier_produk?.produk?.nama || "Produk")}</td>
                         <td>${safe(item.qty)}</td>
-                        <td>${safe(formatRupiah(item.harga || 0))}</td>
-                        <td>${safe(formatRupiah(item.subtotal || 0))}</td>
                       </tr>
                     `,
                   )

@@ -602,7 +602,7 @@ async function generatePdf(
           </div>
             <div class="company-item">
             <span class="label">Email</span>
-            <span class="value">tigaduaanekapangan@gmail.com</span>
+            <span class="value">sembako32@gmail.com</span>
           </div>
             </div>
         </div>
@@ -773,26 +773,31 @@ async function generatePdf(
 
   try {
     // Method: Use direct page content setting with explicit waits
-    await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 10000 });
-    
+    await page.goto("about:blank", {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+
     await page.setContent(htmlContent, {
       waitUntil: "domcontentloaded",
       timeout: 45000,
     });
-    
+
     // Explicit wait for critical elements
     const elementWaits = Promise.allSettled([
       page.waitForSelector("body", { timeout: 10000 }),
       page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
       page.waitForFunction(
         () => (document.body?.textContent?.length || 0) > 100,
-        { timeout: 10000 }
+        { timeout: 10000 },
       ),
     ]);
-    
+
     await elementWaits;
   } catch (error) {
-    throw new Error(`Failed to set page content: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to set page content: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 
   // Wait for fonts and content
@@ -803,8 +808,8 @@ async function generatePdf(
   }
 
   // Final stability wait
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   // Force final reflow before PDF
   await page.evaluate(() => {
     document.body.offsetHeight;
@@ -826,7 +831,9 @@ async function generatePdf(
 
     return Buffer.from(pdfBuffer);
   } catch (pdfError) {
-    throw new Error(`PDF generation error: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`);
+    throw new Error(
+      `PDF generation error: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`,
+    );
   } finally {
     try {
       await browser.close();
@@ -918,4 +925,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

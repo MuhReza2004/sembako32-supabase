@@ -189,8 +189,6 @@ export async function POST(request: NextRequest) {
                 <th>No</th>
                 <th>Produk</th>
                 <th>Qty</th>
-                <th>Harga</th>
-                <th>Subtotal</th>
               </tr>
             </thead>
             <tbody>
@@ -201,8 +199,6 @@ export async function POST(request: NextRequest) {
                       <td>${index + 1}</td>
                       <td>${safe(item.namaProduk || "Produk")}</td>
                       <td>${safe(item.qty)}</td>
-                      <td>${safe(formatRupiah(item.harga || 0))}</td>
-                      <td>${safe(formatRupiah(item.subtotal || 0))}</td>
                     </tr>
                   `,
                 )
@@ -210,9 +206,7 @@ export async function POST(request: NextRequest) {
             </tbody>
           </table>
 
-          <div style="margin-top: 16px; text-align: right;">
-            <p class="total">Total: ${safe(formatRupiah(total))}</p>
-          </div>
+
 <div style="
   margin-top:20px;
   text-align:start;
