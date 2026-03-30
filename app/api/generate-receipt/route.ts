@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
                 <th>No</th>
                 <th>Produk</th>
                 <th>Qty</th>
+                <th>Satuan</th>
               </tr>
             </thead>
             <tbody>
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
                       <td>${index + 1}</td>
                       <td>${safe(item.namaProduk || "Produk")}</td>
                       <td>${safe(item.qty)}</td>
+                      <td>${safe(item.satuan || "Unit")}</td>
                     </tr>
                   `,
                 )

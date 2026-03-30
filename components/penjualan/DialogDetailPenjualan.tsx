@@ -87,6 +87,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
         body: JSON.stringify({
           ...penjualan,
           nama_toko: pelanggan?.nama_toko,
+          no_telp: pelanggan?.no_telp,
         }),
       });
 
@@ -136,8 +137,12 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
               qty: item.qty,
               harga: item.hargaJual || item.harga || 0,
               subtotal: item.subtotal || 0,
+              satuan: item.satuan || undefined,
               supplier_produk: {
-                produk: { nama: item.namaProduk || "Produk" },
+                produk: {
+                  nama: item.namaProduk || "Produk",
+                  satuan: item.satuan || undefined,
+                },
               },
             })),
           },

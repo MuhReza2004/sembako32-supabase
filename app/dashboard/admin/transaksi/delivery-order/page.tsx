@@ -187,6 +187,20 @@ export default function DeliveryOrderPage() {
           const itemsRaw = Array.isArray(penjualanRaw?.items)
             ? penjualanRaw?.items
             : penjualanRaw?.items || [];
+          const normalizedItems = itemsRaw.map((item) => {
+            const supplierRaw = Array.isArray(item.supplier_produk)
+              ? item.supplier_produk[0]
+              : item.supplier_produk;
+            const produkRaw = Array.isArray(supplierRaw?.produk)
+              ? supplierRaw?.produk[0]
+              : supplierRaw?.produk;
+            return {
+              ...item,
+              supplier_produk: supplierRaw
+                ? { ...supplierRaw, produk: produkRaw }
+                : supplierRaw,
+            };
+          });
 
           return {
             id: row.id,
@@ -202,7 +216,7 @@ export default function DeliveryOrderPage() {
               no_npb: penjualanRaw?.no_npb || "",
               tanggal: penjualanRaw?.tanggal || row.created_at,
               pelanggan: pelangganRaw || null,
-              items: itemsRaw,
+              items: normalizedItems,
             },
           };
         },
@@ -284,6 +298,7 @@ export default function DeliveryOrderPage() {
 
   const handlePrintDO = async (row: DeliveryOrderRow) => {
     try {
+      console.log("DO payload:", row);
       const token = await getAccessToken();
       const response = await fetch("/api/generate-delivery-order", {
         method: "POST",
@@ -610,6 +625,7 @@ export default function DeliveryOrderPage() {
                     <TableRow>
                       <TableHead>Produk</TableHead>
                       <TableHead>Qty</TableHead>
+                      <TableHead>Satuan</TableHead>
                       <TableHead>Harga</TableHead>
                       <TableHead>Subtotal</TableHead>
                     </TableRow>
@@ -622,6 +638,9 @@ export default function DeliveryOrderPage() {
                             {item.supplier_produk?.produk?.nama || "Produk"}
                           </TableCell>
                           <TableCell>{item.qty}</TableCell>
+                          <TableCell>
+                            {item.supplier_produk?.produk?.satuan || "-"}
+                          </TableCell>
                           <TableCell>{formatRupiah(item.harga)}</TableCell>
                           <TableCell>{formatRupiah(item.subtotal)}</TableCell>
                         </TableRow>
@@ -629,7 +648,7 @@ export default function DeliveryOrderPage() {
                     )}
                     {(selectedRow.penjualan?.items || []).length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-sm">
+                        <TableCell colSpan={5} className="text-center text-sm">
                           Tidak ada item
                         </TableCell>
                       </TableRow>

@@ -103,7 +103,7 @@ function numberToWords(num: number): string {
 }
 
 async function generatePdf(
-  penjualan: Penjualan & { nama_toko?: string },
+  penjualan: Penjualan & { nama_toko?: string; no_telp?: string },
 ): Promise<Buffer> {
   const safe = (value: string | number | null | undefined) =>
     escapeHtml(String(value ?? ""));
@@ -362,14 +362,16 @@ async function generatePdf(
         margin: 5px 0;
         font-size: 11px;
         color: #333;
+        align-items: baseline;
       }
 
       .label {
-        width: 70px;
+        width: 95px;
         position: relative;
         text-align: left;
         font-weight: 600;
         color: #555;
+        white-space: nowrap;
       }
       
       .label::after {
@@ -665,8 +667,18 @@ async function generatePdf(
           </div>
           <div class="customer-item">
             <span class="label">Pengiriman</span>
-            <span class="value">${safe(penjualan.metode_pengambilan)}</span>
+            <span class="value">${safe(penjualan.metode_pengambilan || "-")}</span>
           </div>
+          ${
+            penjualan.no_telp
+              ? `
+          <div class="customer-item">
+            <span class="label">No. Telp</span>
+            <span class="value">${safe(penjualan.no_telp)}</span>
+          </div>
+          `
+              : ""
+          }
         </div>
 
         <div class="amount-highlight">
@@ -865,7 +877,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const penjualan: Penjualan = await request.json();
+    const penjualan: Penjualan & { nama_toko?: string; no_telp?: string } =
+      await request.json();
 
     // Validate required fields
     if (

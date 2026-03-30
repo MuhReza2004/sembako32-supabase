@@ -15,11 +15,13 @@ export const maxDuration = 60;
 
 type DOItem = {
   qty: number;
+  satuan?: string;
   harga?: number;
   subtotal?: number;
   supplier_produk?: {
     produk?: {
       nama?: string;
+      satuan?: string;
     };
   };
 };
@@ -216,6 +218,7 @@ export async function POST(request: NextRequest) {
                 <th>No</th>
                 <th>Produk</th>
                 <th>Qty</th>
+                <th>Satuan</th>
               </tr>
             </thead>
             <tbody>
@@ -226,6 +229,7 @@ export async function POST(request: NextRequest) {
                       <td>${index + 1}</td>
                       <td>${safe(item.supplier_produk?.produk?.nama || "Produk")}</td>
                       <td>${safe(item.qty)}</td>
+                      <td>${safe(item.satuan || item.supplier_produk?.produk?.satuan || "-")}</td>
                     </tr>
                   `,
                 )
