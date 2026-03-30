@@ -161,15 +161,21 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     "Sisa Utang",
     "Status",
   ];
+  const tableX = 14;
+  const colWidths = [40, 26, 70, 34, 32, 32, 36]; // total 270mm
+  const colX = colWidths.reduce<number[]>((acc, w, i) => {
+    if (i === 0) return [tableX];
+    return [...acc, acc[i - 1] + colWidths[i - 1]];
+  }, []);
 
   // Header styling
   pdf.setFontSize(10);
   pdf.setFillColor(16, 40, 83); // Blue header
-  pdf.rect(14, yPosition - 3, 270, 10, "F");
+  pdf.rect(tableX, yPosition - 3, 270, 10, "F");
 
   pdf.setTextColor(255, 255, 255);
   headers.forEach((header, index) => {
-    pdf.text(header, 16 + index * 38, yPosition + 3);
+    pdf.text(header, colX[index] + 2, yPosition + 3);
   });
 
   pdf.setTextColor(0, 0, 0);
@@ -182,12 +188,6 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     const totalDibayar = item.total_dibayar ?? item.totalDibayar ?? 0;
     const sisaUtang = total - totalDibayar;
 
-    // Alternate row colors
-    if (index % 2 === 0) {
-      pdf.setFillColor(254, 249, 231);
-      pdf.rect(14, yPosition - 3, 270, 8, "F");
-    }
-
     const rowData = [
       item.no_invoice ?? item.noInvoice ?? item.nomorInvoice ?? "-",
       safeTanggal(item.tanggal),
@@ -198,11 +198,32 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
       item.status || "-",
     ];
 
+    const nameText = toText(rowData[2]);
+    const nameLines = pdf.splitTextToSize(nameText, colWidths[2] - 4) as string[];
+    const lineHeight = 4.2;
+    const rowHeight = Math.max(8, nameLines.length * lineHeight + 1);
+
+    if (yPosition + rowHeight > 170) {
+      pdf.addPage();
+      yPosition = 20;
+    }
+
+    // Alternate row colors
+    if (index % 2 === 0) {
+      pdf.setFillColor(254, 249, 231);
+      pdf.rect(tableX, yPosition - 3, 270, rowHeight, "F");
+    }
+
     rowData.forEach((data, colIndex) => {
-      pdf.text(toText(data), 16 + colIndex * 38, yPosition + 3);
+      const x = colX[colIndex] + 2;
+      if (colIndex === 2) {
+        pdf.text(nameLines, x, yPosition + 3);
+        return;
+      }
+      pdf.text(toText(data), x, yPosition + 3);
     });
 
-    yPosition += 8;
+    yPosition += rowHeight;
 
     // Add payment history for this item if it exists
     if (item.riwayatPembayaran && item.riwayatPembayaran.length > 0) {
