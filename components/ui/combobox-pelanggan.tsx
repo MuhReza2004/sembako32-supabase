@@ -61,11 +61,13 @@ export function ComboboxPelanggan({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-12 border-2"
+          className="w-full justify-between h-12 border-2 gap-2"
         >
-          {selectedPelanggan
-            ? `${selectedPelanggan.nama_pelanggan} (${selectedPelanggan.kode_pelanggan})`
-            : "Pilih Pelanggan"}
+          <span className="flex-1 min-w-0 truncate text-left">
+            {selectedPelanggan
+              ? `${selectedPelanggan.nama_pelanggan} (${selectedPelanggan.kode_pelanggan})`
+              : "Pilih Pelanggan"}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -82,9 +84,9 @@ export function ComboboxPelanggan({
               {filteredPelanggan.map((p) => (
                 <CommandItem
                   key={p.id}
-                  value={p.id || ""}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue);
+                  value={`${p.nama_pelanggan} ${p.kode_pelanggan} ${p.nama_toko || ""}`}
+                  onSelect={() => {
+                    onChange(p.id === value ? "" : p.id);
                     setOpen(false);
                   }}
                 >
