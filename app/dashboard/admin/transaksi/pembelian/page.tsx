@@ -40,6 +40,7 @@ export default function PembelianPage() {
 
     const from = page * perPage;
     const to = from + perPage - 1;
+    const term = debouncedSearch.trim();
 
     let queryBuilder = supabase
       .from("pembelian")
@@ -59,16 +60,30 @@ export default function PembelianPage() {
         status,
         created_at,
         updated_at,
-        suppliers (nama)
+        suppliers!inner (nama)
       `,
         { count: "planned" },
       )
       .order("tanggal", { ascending: false });
 
-    if (debouncedSearch) {
-      queryBuilder = queryBuilder.or(
-        `invoice.ilike.%${debouncedSearch}%,no_do.ilike.%${debouncedSearch}%,suppliers.nama.ilike.%${debouncedSearch}%`,
-      );
+    if (term) {
+      const orParts: string[] = [
+        `invoice.ilike.%${term}%`,
+        `no_do.ilike.%${term}%`,
+        `status.ilike.%${term}%`,
+      ];
+      const { data: supplierRows } = await supabase
+        .from("suppliers")
+        .select("id")
+        .ilike("nama", `%${term}%`);
+      const supplierIds =
+        (supplierRows || [])
+          .map((row) => row?.id as string | undefined)
+          .filter((id): id is string => !!id) || [];
+      if (supplierIds.length > 0) {
+        orParts.push(`supplier_id.in.(${supplierIds.join(",")})`);
+      }
+      queryBuilder = queryBuilder.or(orParts.join(","));
     }
     if (startDate) {
       queryBuilder = queryBuilder.gte("tanggal", startDate);

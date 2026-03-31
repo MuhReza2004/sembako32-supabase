@@ -179,8 +179,8 @@ export default function PenjualanPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="w-1/3">
+      <div className="flex items-center gap-4 ">
+        <div className="w-1/3 mt-4">
           <Label htmlFor="search">Cari (Invoice / Pelanggan)</Label>
           <Input
             id="search"

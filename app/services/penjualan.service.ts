@@ -210,7 +210,6 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
     throw detailsError;
   }
 
-
   // Join penjualan dengan penjualan_detail
   const mappedData = (penjualanData as PenjualanRow[]).map((item) => ({
     id: item.id,
@@ -256,7 +255,10 @@ export const getAllPenjualan = async (): Promise<Penjualan[]> => {
           namaProduk:
             detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
           satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
+          hargaJual:
+            detail.harga ||
+            detail.supplier_produk?.harga_jual_normal ||
+            detail.supplier_produk?.harga_jual,
         })) || [],
   }));
 
@@ -273,6 +275,7 @@ export const getPenjualanPage = async (params: {
   const { page, perPage, searchTerm, startDate, endDate } = params;
   const from = page * perPage;
   const to = from + perPage - 1;
+  const term = searchTerm?.trim() ?? "";
 
   let query = supabase
     .from("penjualan")
@@ -307,13 +310,23 @@ export const getPenjualanPage = async (params: {
   if (endDate) {
     query = query.lte("tanggal", endDate);
   }
-  if (searchTerm) {
-    const term = searchTerm.trim();
-    if (term) {
-      query = query.or(
-        `no_invoice.ilike.%${term}%,pelanggan.nama_pelanggan.ilike.%${term}%`,
-      );
+  if (term) {
+    const orParts: string[] = [
+      `no_invoice.ilike.%${term}%`,
+      `status.ilike.%${term}%`,
+    ];
+    const { data: pelangganRows } = await supabase
+      .from("pelanggan")
+      .select("id")
+      .ilike("nama_pelanggan", `%${term}%`);
+    const pelangganIds =
+      (pelangganRows || [])
+        .map((row) => row?.id as string | undefined)
+        .filter((id): id is string => !!id) || [];
+    if (pelangganIds.length > 0) {
+      orParts.push(`pelanggan_id.in.(${pelangganIds.join(",")})`);
     }
+    query = query.or(orParts.join(","));
   }
 
   const { data, error, count } = await query.range(from, to);
@@ -324,7 +337,9 @@ export const getPenjualanPage = async (params: {
 
   const rows = (data as PenjualanRow[]) || [];
   const createdByIds = Array.from(
-    new Set(rows.map((item) => item.created_by).filter((id): id is string => !!id)),
+    new Set(
+      rows.map((item) => item.created_by).filter((id): id is string => !!id),
+    ),
   );
 
   let usersMap = new Map<string, { email?: string; role?: string }>();
@@ -380,7 +395,9 @@ export const getPenjualanPage = async (params: {
   return { data: mappedData, count: count || 0 };
 };
 
-export const getPenjualanById = async (id: string): Promise<Penjualan | null> => {
+export const getPenjualanById = async (
+  id: string,
+): Promise<Penjualan | null> => {
   const { data, error } = await supabase
     .from("penjualan")
     .select(
@@ -477,7 +494,10 @@ export const getPenjualanById = async (id: string): Promise<Penjualan | null> =>
       namaProduk:
         detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
       satuan: detail.supplier_produk?.produk?.satuan || "",
-      hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
+      hargaJual:
+        detail.harga ||
+        detail.supplier_produk?.harga_jual_normal ||
+        detail.supplier_produk?.harga_jual,
     })),
   };
 };
@@ -533,9 +553,10 @@ export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
     throw penjualanError;
   }
 
-  const penjualanIds = (penjualanData as PenjualanRow[] | null)
-    ?.map((item) => item.id)
-    .filter((id): id is string => !!id) ?? [];
+  const penjualanIds =
+    (penjualanData as PenjualanRow[] | null)
+      ?.map((item) => item.id)
+      .filter((id): id is string => !!id) ?? [];
 
   let detailsData: unknown[] = [];
   if (penjualanIds.length > 0) {
@@ -614,7 +635,10 @@ export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
           namaProduk:
             detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
           satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
+          hargaJual:
+            detail.harga ||
+            detail.supplier_produk?.harga_jual_normal ||
+            detail.supplier_produk?.harga_jual,
         })) || [],
   }));
 
@@ -639,6 +663,7 @@ export const getPenjualanPageForCurrentUser = async (params: {
   const { page, perPage, searchTerm, startDate, endDate } = params;
   const from = page * perPage;
   const to = from + perPage - 1;
+  const term = searchTerm?.trim() ?? "";
 
   let query = supabase
     .from("penjualan")
@@ -684,13 +709,23 @@ export const getPenjualanPageForCurrentUser = async (params: {
   if (endDate) {
     query = query.lte("tanggal", endDate);
   }
-  if (searchTerm) {
-    const term = searchTerm.trim();
-    if (term) {
-      query = query.or(
-        `no_invoice.ilike.%${term}%,pelanggan.nama_pelanggan.ilike.%${term}%`,
-      );
+  if (term) {
+    const orParts: string[] = [
+      `no_invoice.ilike.%${term}%`,
+      `status.ilike.%${term}%`,
+    ];
+    const { data: pelangganRows } = await supabase
+      .from("pelanggan")
+      .select("id")
+      .ilike("nama_pelanggan", `%${term}%`);
+    const pelangganIds =
+      (pelangganRows || [])
+        .map((row) => row?.id as string | undefined)
+        .filter((id): id is string => !!id) || [];
+    if (pelangganIds.length > 0) {
+      orParts.push(`pelanggan_id.in.(${pelangganIds.join(",")})`);
     }
+    query = query.or(orParts.join(","));
   }
 
   const { data, error, count } = await query.range(from, to);
@@ -781,7 +816,10 @@ export const getPenjualanPageForCurrentUser = async (params: {
           namaProduk:
             detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
           satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual: detail.harga || detail.supplier_produk?.harga_jual_normal || detail.supplier_produk?.harga_jual,
+          hargaJual:
+            detail.harga ||
+            detail.supplier_produk?.harga_jual_normal ||
+            detail.supplier_produk?.harga_jual,
         })) || [],
   }));
 
@@ -951,9 +989,11 @@ export const updatePenjualan = async (
   if (data.items) {
     // Restore old stock
     const currentDetails =
-      (currentPenjualan as {
-        penjualan_detail?: { supplier_produk_id: string; qty: number }[];
-      }).penjualan_detail || [];
+      (
+        currentPenjualan as {
+          penjualan_detail?: { supplier_produk_id: string; qty: number }[];
+        }
+      ).penjualan_detail || [];
     for (const item of currentDetails) {
       await increaseStock(item.supplier_produk_id, Number(item.qty));
     }
@@ -967,12 +1007,12 @@ export const updatePenjualan = async (
       const { error: detailError } = await supabase
         .from("penjualan_detail")
         .insert({
-        penjualan_id: id,
-        supplier_produk_id: item.supplier_produk_id,
-        qty: item.qty,
-        harga: item.harga,
-        subtotal: item.subtotal,
-      });
+          penjualan_id: id,
+          supplier_produk_id: item.supplier_produk_id,
+          qty: item.qty,
+          harga: item.harga,
+          subtotal: item.subtotal,
+        });
       if (detailError) {
         await increaseStock(item.supplier_produk_id, Number(item.qty));
         throw detailError;
@@ -1155,8 +1195,3 @@ export const generateTandaTerimaNumber = async (): Promise<string> => {
   const nextNumber = (count || 0) + 1;
   return `${String(nextNumber).padStart(4, "0")}/S32/${month}/${year}`;
 };
-
-
-
-
-

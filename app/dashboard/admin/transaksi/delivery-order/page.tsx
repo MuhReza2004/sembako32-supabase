@@ -24,6 +24,7 @@ import {
 import { formatRupiah, formatTanggal } from "@/helper/format";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Dialog,
   DialogContent,
@@ -102,6 +103,7 @@ export default function DeliveryOrderPage() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DeliveryOrderRow[]>([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<DOStatus | "all">("all");
   const [page, setPage] = useState(0);
   const [perPage] = useState(10);
@@ -117,6 +119,7 @@ export default function DeliveryOrderPage() {
     setLoading(true);
     const from = page * perPage;
     const to = from + perPage - 1;
+    const term = debouncedSearch.trim();
     let query = supabase
       .from("delivery_orders")
       .select(
@@ -128,7 +131,7 @@ export default function DeliveryOrderPage() {
         tanggal_kirim,
         tanggal_terima,
         created_at,
-        penjualan:penjualan_id (
+        penjualan:penjualan_id!inner (
           id,
           no_invoice,
           no_npb,
@@ -155,6 +158,36 @@ export default function DeliveryOrderPage() {
       )
       .order("created_at", { ascending: false })
       .range(from, to);
+
+    if (term) {
+      const { data: pelangganRows } = await supabase
+        .from("pelanggan")
+        .select("id")
+        .ilike("nama_pelanggan", `%${term}%`);
+      const pelangganIds =
+        (pelangganRows || [])
+          .map((row) => row?.id as string | undefined)
+          .filter((id): id is string => !!id) || [];
+
+      const penjualanOrParts: string[] = [`no_invoice.ilike.%${term}%`];
+      if (pelangganIds.length > 0) {
+        penjualanOrParts.push(`pelanggan_id.in.(${pelangganIds.join(",")})`);
+      }
+      const { data: penjualanRows } = await supabase
+        .from("penjualan")
+        .select("id")
+        .or(penjualanOrParts.join(","));
+      const penjualanIds =
+        (penjualanRows || [])
+          .map((row) => row?.id as string | undefined)
+          .filter((id): id is string => !!id) || [];
+
+      const doOrParts: string[] = [`no_do.ilike.%${term}%`];
+      if (penjualanIds.length > 0) {
+        doOrParts.push(`penjualan_id.in.(${penjualanIds.join(",")})`);
+      }
+      query = query.or(doOrParts.join(","));
+    }
 
     if (statusFilter !== "all") {
       query = query.eq("status", statusFilter);
@@ -234,23 +267,16 @@ export default function DeliveryOrderPage() {
     singleDate,
     startDate,
     endDate,
+    debouncedSearch,
   ]);
 
   useEffect(() => {
     fetchDO();
   }, [fetchDO]);
 
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
-      return (
-        r.no_do?.toLowerCase().includes(q) ||
-        r.penjualan?.no_invoice?.toLowerCase().includes(q) ||
-        r.penjualan?.pelanggan?.nama_pelanggan?.toLowerCase().includes(q)
-      );
-    });
-  }, [rows, search]);
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, statusFilter, dateMode, singleDate, startDate, endDate]);
 
   const updateStatus = async (row: DeliveryOrderRow, status: DOStatus) => {
     const payload: { status: DOStatus; tanggal_kirim?: string; tanggal_terima?: string } = {
@@ -464,12 +490,12 @@ export default function DeliveryOrderPage() {
                 <TableHead>Invoice</TableHead>
                 <TableHead>Pelanggan</TableHead>
                 <TableHead>Tanggal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRows.map((row) => (
+              <TableHead>Status</TableHead>
+              <TableHead>Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+              {rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.no_do}</TableCell>
                   <TableCell>{row.penjualan?.no_invoice || "-"}</TableCell>
@@ -536,7 +562,7 @@ export default function DeliveryOrderPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredRows.length === 0 && (
+              {rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-sm">
                     Tidak ada data Delivery Order
