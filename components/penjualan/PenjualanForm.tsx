@@ -160,7 +160,8 @@ export function PenjualanForm({
   const watchPelangganId = useWatch({ control, name: "pelanggan_id" });
 
   const subTotal = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
-  const totalSetelahDiskon = subTotal - (watchDiskon || 0);
+  const appliedDiskon = Math.min(watchDiskon || 0, subTotal);
+  const totalSetelahDiskon = subTotal - appliedDiskon;
   const totalPajak = watchPajakEnabled ? totalSetelahDiskon * 0.11 : 0;
   const total = totalSetelahDiskon + totalPajak;
 
@@ -171,6 +172,7 @@ export function PenjualanForm({
 
   const buildFinalData = (data: PenjualanFormData) => ({
     ...data,
+    diskon: appliedDiskon,
     total: subTotal,
     pajak: totalPajak,
     total_akhir: total,

@@ -65,10 +65,9 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const subTotal =
     penjualan.items?.reduce((sum, item) => sum + item.subtotal, 0) || 0;
 
-  const diskonAmount =
-    penjualan.diskon && penjualan.diskon > 0
-      ? (subTotal * penjualan.diskon) / 100
-      : 0;
+  const diskonAmount = penjualan.diskon && penjualan.diskon > 0
+    ? penjualan.diskon
+    : 0;
 
   const totalSetelahDiskon = subTotal - diskonAmount;
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
@@ -358,7 +357,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
                 <div className="text-right">{formatRupiah(subTotal)}</div>
                 {penjualan.diskon && penjualan.diskon > 0 && (
                   <>
-                    <div>Diskon ({penjualan.diskon}%):</div>
+                    <div>Diskon:</div>
                     <div className="text-right text-red-600">
                       -{formatRupiah(diskonAmount)}
                     </div>

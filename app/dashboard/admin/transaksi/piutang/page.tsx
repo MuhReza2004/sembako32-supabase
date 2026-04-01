@@ -45,7 +45,12 @@ export default function PiutangPage() {
   };
 
   type PenjualanRow = Penjualan & {
-    pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+    pelanggan?: {
+      nama_pelanggan?: string;
+      alamat?: string;
+      nama_toko?: string;
+      no_telp?: string;
+    } | null;
     riwayat_pembayaran?: RiwayatPembayaran[];
     penjualan_detail?: PenjualanDetailRow[];
   };
@@ -66,7 +71,9 @@ export default function PiutangPage() {
         pelanggan (
           id,
           nama_pelanggan,
-          alamat
+          alamat,
+          nama_toko,
+          no_telp
         ),
         riwayat_pembayaran (
           id,
@@ -92,9 +99,7 @@ export default function PiutangPage() {
       .order("tanggal", { ascending: false })
       .range(from, to);
 
-    if (statusFilter !== "all") {
-      query = query.eq("status", statusFilter);
-    }
+    // NOTE: status will be derived from pembayaran below, so we don't filter at DB level.
 
     if (term) {
       const orParts: string[] = [`no_invoice.ilike.%${term}%`];
@@ -127,26 +132,33 @@ export default function PiutangPage() {
       });
       console.error("Error fetching piutang:", error);
       setPiutang([]);
-    } else {
-      const mappedData: Penjualan[] = (data as PenjualanRow[]).map((item) => ({
-        ...item,
-        status:
-          (item.total_akhir ?? item.total ?? 0) -
-            (item.total_dibayar ?? 0) <=
-          0
-            ? "Lunas"
-            : "Belum Lunas",
-        namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
-        riwayatPembayaran: item.riwayat_pembayaran || [],
-        items:
-          item.penjualan_detail?.map((detail) => ({
-            ...detail,
-            namaProduk:
-              detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-            satuan: detail.supplier_produk?.produk?.satuan || "",
-          })) || [],
-      }));
-      setPiutang(mappedData);
+      } else {
+        const mappedData: Penjualan[] = (data as PenjualanRow[]).map((item) => {
+          const totalAkhir = item.total_akhir ?? item.total ?? 0;
+          const totalDibayar = item.total_dibayar ?? 0;
+          const derivedStatus = totalAkhir - totalDibayar <= 0 ? "Lunas" : "Belum Lunas";
+          return {
+          ...item,
+          status: derivedStatus,
+          namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
+          alamatPelanggan: item.pelanggan?.alamat || "",
+          nama_toko: item.pelanggan?.nama_toko || "",
+          no_telp: item.pelanggan?.no_telp || "",
+          riwayatPembayaran: item.riwayat_pembayaran || [],
+          items:
+            item.penjualan_detail?.map((detail) => ({
+              ...detail,
+              namaProduk:
+                detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
+              satuan: detail.supplier_produk?.produk?.satuan || "",
+            })) || [],
+          };
+        });
+        const filteredData =
+          statusFilter === "all"
+            ? mappedData
+            : mappedData.filter((item) => item.status === statusFilter);
+        setPiutang(filteredData);
       setTotalCount(count || 0);
     }
     setLoading(false);

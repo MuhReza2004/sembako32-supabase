@@ -121,13 +121,14 @@ async function generatePdf(
     (sum, item) => sum + item.subtotal,
     0,
   );
-  const diskonAmount = penjualan.diskon
-    ? (subTotal * penjualan.diskon) / 100
-    : 0;
-  const totalSetelahDiskon = subTotal - diskonAmount;
+  const diskonAmount =
+    penjualan.diskon && penjualan.diskon > 0 ? penjualan.diskon : 0;
+  const appliedDiskon = Math.min(diskonAmount, subTotal);
+  const totalSetelahDiskon = subTotal - appliedDiskon;
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
   const totalAkhir = penjualan.total_akhir ?? totalSetelahDiskon + pajakAmount;
   const displayTotalAkhir = penjualan.status === "Lunas" ? 0 : totalAkhir;
+  const totalDibayar = penjualan.total_dibayar ?? 0;
 
   const launchOptions = await getPuppeteerLaunchOptions();
   const browser = await puppeteer.launch({
@@ -803,8 +804,8 @@ async function generatePdf(
                 penjualan.diskon && penjualan.diskon > 0
                   ? `
                 <tr>
-                  <td>Diskon (${penjualan.diskon}%)</td>
-                  <td class="text-right">- Rp ${safe(diskonAmount.toLocaleString("id-ID"))}</td>
+                  <td>Diskon</td>
+                  <td class="text-right">- Rp ${safe(appliedDiskon.toLocaleString("id-ID"))}</td>
                 </tr>
                 `
                   : ""
@@ -820,6 +821,14 @@ async function generatePdf(
                   : ""
               }
               <tr>
+                <td>Total Tagihan</td>
+                <td class="text-right">Rp ${safe(totalAkhir.toLocaleString("id-ID"))}</td>
+              </tr>
+              <tr>
+                <td>Total Dibayar</td>
+                <td class="text-right">Rp ${safe(totalDibayar.toLocaleString("id-ID"))}</td>
+              </tr>
+              <tr>
                 <td><strong>TOTAL</strong></td>
                 <td class="text-right"><strong>Rp ${safe(amountValue.toLocaleString("id-ID"))}</strong></td>
               </tr>
@@ -830,10 +839,7 @@ async function generatePdf(
 
       <!-- SIGNATURE -->
       <div class="signature-section">
-        <div class="signature-box">
-          <p>Hormat Kami,</p>
-          <div class="signature-line">RPK Sembako 32</div>
-        </div>
+
         <div class="signature-box">
           <p>Diterima Oleh,</p>
           <div class="signature-line">( ${safe(penjualan.namaPelanggan)} )</div>
