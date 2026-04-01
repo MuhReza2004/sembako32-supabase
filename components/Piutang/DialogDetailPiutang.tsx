@@ -18,7 +18,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatRupiah, formatTanggal } from "@/helper/format";
 import { exportPiutangDetailToPDF } from "@/helper/pdfExport";
-import { FileText } from "lucide-react";
+import { FileText, Printer, Loader2 } from "lucide-react";
+import { getAccessToken } from "@/app/lib/auth-client";
+import { useState } from "react";
 
 interface DialogDetailPiutangProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ export default function DialogDetailPiutang({
   piutang,
 }: DialogDetailPiutangProps) {
   if (!piutang) return null;
+  const [isPrintingLunas, setIsPrintingLunas] = useState(false);
 
   const totalDibayar = piutang.total_dibayar ?? 0;
   const sisaUtang = piutang.total - totalDibayar;
@@ -42,6 +45,40 @@ export default function DialogDetailPiutang({
     exportPiutangDetailToPDF(piutang);
   };
 
+  const handlePrintLunas = async () => {
+    setIsPrintingLunas(true);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/generate-invoice", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          ...piutang,
+          namaPelanggan,
+          watermarkText: "LUNAS",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate PDF: ${errorText}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Error generating paid invoice:", error);
+      alert("Terjadi kesalahan saat membuat invoice LUNAS.");
+    } finally {
+      setIsPrintingLunas(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -50,15 +87,33 @@ export default function DialogDetailPiutang({
             <DialogTitle className="text-2xl font-bold text-gray-800">
               Detail Piutang - {invoiceNumber}
             </DialogTitle>
-            <Button
-              onClick={handleExportPDF}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              Export PDF
-            </Button>
+            <div className="flex items-center gap-2">
+              {piutang.status === "Lunas" && (
+                <Button
+                  onClick={handlePrintLunas}
+                  variant="default"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  disabled={isPrintingLunas}
+                >
+                  {isPrintingLunas ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Printer className="w-4 h-4" />
+                  )}
+                  Cetak Lunas
+                </Button>
+              )}
+              <Button
+                onClick={handleExportPDF}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Export PDF
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 

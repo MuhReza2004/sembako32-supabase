@@ -103,7 +103,11 @@ function numberToWords(num: number): string {
 }
 
 async function generatePdf(
-  penjualan: Penjualan & { nama_toko?: string; no_telp?: string },
+  penjualan: Penjualan & {
+    nama_toko?: string;
+    no_telp?: string;
+    watermarkText?: string;
+  },
 ): Promise<Buffer> {
   const safe = (value: string | number | null | undefined) =>
     escapeHtml(String(value ?? ""));
@@ -169,6 +173,7 @@ async function generatePdf(
     `;
   }
 
+  const watermarkText = penjualan.watermarkText?.trim();
   const htmlContent = `
   <!DOCTYPE html>
   <html>
@@ -189,10 +194,27 @@ async function generatePdf(
         color: #333;
         font-size: 11px;
         line-height: 1.5;
+        position: relative;
       }
 
       .container {
         max-width: 100%;
+        position: relative;
+        z-index: 1;
+      }
+      .watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-20deg);
+        font-size: 120px;
+        font-weight: 800;
+        letter-spacing: 8px;
+        color: rgba(200, 0, 0, 0.12);
+        text-transform: uppercase;
+        z-index: 0;
+        pointer-events: none;
+        white-space: nowrap;
       }
 
       /* Header Section */
@@ -582,6 +604,7 @@ async function generatePdf(
   </head>
 
   <body>
+    ${watermarkText ? `<div class="watermark">${safe(watermarkText)}</div>` : ""}
     <div class="container">
       
       <!-- HEADER -->

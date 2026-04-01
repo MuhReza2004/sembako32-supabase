@@ -130,6 +130,12 @@ export default function PiutangPage() {
     } else {
       const mappedData: Penjualan[] = (data as PenjualanRow[]).map((item) => ({
         ...item,
+        status:
+          (item.total_akhir ?? item.total ?? 0) -
+            (item.total_dibayar ?? 0) <=
+          0
+            ? "Lunas"
+            : "Belum Lunas",
         namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
         riwayatPembayaran: item.riwayat_pembayaran || [],
         items:
