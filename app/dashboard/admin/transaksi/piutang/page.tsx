@@ -35,6 +35,8 @@ export default function PiutangPage() {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "Belum Lunas" | "Lunas"
   >("Belum Lunas");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const { showStatus } = useStatus();
 
@@ -109,6 +111,12 @@ export default function PiutangPage() {
       }
       query = query.or(orParts.join(","));
     }
+    if (startDate) {
+      query = query.gte("tanggal", startDate);
+    }
+    if (endDate) {
+      query = query.lte("tanggal", endDate);
+    }
 
     const { data, error, count } = await query;
 
@@ -136,7 +144,15 @@ export default function PiutangPage() {
       setTotalCount(count || 0);
     }
     setLoading(false);
-  }, [page, perPage, showStatus, debouncedSearch, statusFilter]);
+  }, [
+    page,
+    perPage,
+    showStatus,
+    debouncedSearch,
+    statusFilter,
+    startDate,
+    endDate,
+  ]);
 
   const { schedule: scheduleRefresh } = useBatchedRefresh(fetchPiutang);
 
@@ -175,7 +191,7 @@ export default function PiutangPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, startDate, endDate]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);
@@ -229,6 +245,24 @@ export default function PiutangPage() {
                   <SelectItem value="all">Semua</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="min-w-[200px]">
+              <Label htmlFor="startDate">Tanggal Mulai</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="min-w-[200px]">
+              <Label htmlFor="endDate">Tanggal Akhir</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </div>
           </div>
           {loading && <p>Memuat data...</p>}
