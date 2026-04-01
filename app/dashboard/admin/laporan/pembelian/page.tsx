@@ -39,6 +39,10 @@ export default function PembelianReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "Completed" | "Pending" | "Decline"
+  >("all");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [summary, setSummary] = useState({
@@ -53,6 +57,7 @@ export default function PembelianReportPage() {
       setIsLoading(true);
       setError(null);
       try {
+        const term = searchTerm.trim();
         const summaryQuery = () => {
           let q = supabase
             .from("pembelian")
@@ -63,6 +68,14 @@ export default function PembelianReportPage() {
           }
           if (endDate) {
             q = q.lte("tanggal", endDate);
+          }
+          if (statusFilter !== "all") {
+            q = q.eq("status", statusFilter);
+          }
+          if (term) {
+            q = q.or(
+              `invoice.ilike.%${term}%,supplier.nama.ilike.%${term}%`,
+            );
           }
           return q;
         };
@@ -83,6 +96,14 @@ export default function PembelianReportPage() {
         }
         if (endDate) {
           query = query.lte("tanggal", endDate);
+        }
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter);
+        }
+        if (term) {
+          query = query.or(
+            `invoice.ilike.%${term}%,supplier.nama.ilike.%${term}%`,
+          );
         }
 
         const from = pageIndex * PAGE_SIZE;
@@ -149,13 +170,13 @@ export default function PembelianReportPage() {
         setIsLoading(false);
       }
     },
-    [startDate, endDate],
+    [startDate, endDate, searchTerm, statusFilter],
   );
 
   useEffect(() => {
     setPage(0);
     fetchPembelian(0);
-  }, [startDate, endDate, fetchPembelian]);
+  }, [startDate, endDate, searchTerm, statusFilter, fetchPembelian]);
 
   const fetchNext = () => {
     if (hasMore) {
@@ -305,6 +326,39 @@ export default function PembelianReportPage() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <Label htmlFor="search">Cari</Label>
+              <Input
+                id="search"
+                placeholder="Cari invoice / supplier"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as
+                      | "all"
+                      | "Completed"
+                      | "Pending"
+                      | "Decline",
+                  )
+                }
+              >
+                <option value="all">Semua</option>
+                <option value="Completed">Completed</option>
+                <option value="Pending">Pending</option>
+                <option value="Decline">Decline</option>
+              </select>
             </div>
           </div>
         </CardContent>

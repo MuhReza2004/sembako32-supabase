@@ -34,6 +34,10 @@ export default function PenjualanReportPage() {
   );
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "Lunas" | "Belum Lunas" | "Batal"
+  >("all");
   const [page, setPage] = useState(0); // Page index, starts from 0
   const [hasMore, setHasMore] = useState(true);
   const [summary, setSummary] = useState({
@@ -52,6 +56,7 @@ export default function PenjualanReportPage() {
       setError(null);
 
       try {
+        const term = searchTerm.trim();
         const summaryQuery = () => {
           let q = supabase
             .from("penjualan")
@@ -62,6 +67,14 @@ export default function PenjualanReportPage() {
           }
           if (endDate) {
             q = q.lte("tanggal", endDate);
+          }
+          if (statusFilter !== "all") {
+            q = q.eq("status", statusFilter);
+          }
+          if (term) {
+            q = q.or(
+              `no_invoice.ilike.%${term}%,pelanggan.nama_pelanggan.ilike.%${term}%`,
+            );
           }
           return q;
         };
@@ -82,6 +95,14 @@ export default function PenjualanReportPage() {
         }
         if (endDate) {
           query = query.lte("tanggal", endDate);
+        }
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter);
+        }
+        if (term) {
+          query = query.or(
+            `no_invoice.ilike.%${term}%,pelanggan.nama_pelanggan.ilike.%${term}%`,
+          );
         }
 
         const from = pageIndex * PAGE_SIZE;
@@ -159,13 +180,13 @@ export default function PenjualanReportPage() {
         setIsLoading(false);
       }
     },
-    [startDate, endDate],
+    [startDate, endDate, searchTerm, statusFilter],
   );
 
   useEffect(() => {
     setPage(0); // Reset page when filters change
     fetchPenjualan(0, false);
-  }, [startDate, endDate, fetchPenjualan]);
+  }, [startDate, endDate, searchTerm, statusFilter, fetchPenjualan]);
 
   const fetchNext = () => {
     if (hasMore) {
@@ -273,6 +294,34 @@ export default function PenjualanReportPage() {
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
       />
+      <div className="flex flex-wrap gap-4">
+        <div className="min-w-[240px]">
+          <label className="text-sm text-muted-foreground">Cari</label>
+          <input
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder="Cari invoice / pelanggan"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="min-w-[200px]">
+          <label className="text-sm text-muted-foreground">Status</label>
+          <select
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(
+                e.target.value as "all" | "Lunas" | "Belum Lunas" | "Batal",
+              )
+            }
+          >
+            <option value="all">Semua</option>
+            <option value="Lunas">Lunas</option>
+            <option value="Belum Lunas">Belum Lunas</option>
+            <option value="Batal">Batal</option>
+          </select>
+        </div>
+      </div>
 
       <PenjualanTable
         data={data}
