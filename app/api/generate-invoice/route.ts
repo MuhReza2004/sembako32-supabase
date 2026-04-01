@@ -842,7 +842,7 @@ async function generatePdf(
 
         <div class="signature-box">
           <p>Diterima Oleh,</p>
-          <div class="signature-line">( ${safe(penjualan.namaPelanggan)} )</div>
+          <div class="signature-line">Sembako 32</div>
         </div>
       </div>
       </div>

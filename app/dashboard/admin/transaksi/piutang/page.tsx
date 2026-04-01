@@ -96,8 +96,11 @@ export default function PiutangPage() {
       `,
         { count: "planned" },
       )
-      .order("tanggal", { ascending: false })
-      .range(from, to);
+      .order("tanggal", { ascending: false });
+
+    if (statusFilter === "all") {
+      query = query.range(from, to);
+    }
 
     // NOTE: status will be derived from pembayaran below, so we don't filter at DB level.
 
@@ -159,7 +162,9 @@ export default function PiutangPage() {
             ? mappedData
             : mappedData.filter((item) => item.status === statusFilter);
         setPiutang(filteredData);
-      setTotalCount(count || 0);
+        setTotalCount(
+          statusFilter === "all" ? count || 0 : filteredData.length,
+        );
     }
     setLoading(false);
   }, [
