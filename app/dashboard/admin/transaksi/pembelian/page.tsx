@@ -27,6 +27,9 @@ export default function PembelianPage() {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "Pending" | "Completed" | "Decline"
+  >("all");
 
   const { showStatus } = useStatus();
 
@@ -91,6 +94,9 @@ export default function PembelianPage() {
     if (endDate) {
       queryBuilder = queryBuilder.lte("tanggal", endDate);
     }
+    if (statusFilter !== "all") {
+      queryBuilder = queryBuilder.eq("status", statusFilter);
+    }
 
     const { data, error, count } = await queryBuilder.range(from, to);
 
@@ -112,7 +118,15 @@ export default function PembelianPage() {
       setTotalCount(count || 0);
     }
     setIsLoading(false);
-  }, [page, perPage, debouncedSearch, startDate, endDate, showStatus]);
+  }, [
+    page,
+    perPage,
+    debouncedSearch,
+    startDate,
+    endDate,
+    showStatus,
+    statusFilter,
+  ]);
 
   const { schedule: scheduleRefresh } = useBatchedRefresh(fetchPembelian);
 
@@ -140,7 +154,7 @@ export default function PembelianPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, startDate, endDate]);
+  }, [debouncedSearch, startDate, endDate, statusFilter]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);
@@ -211,6 +225,30 @@ export default function PembelianPage() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
+            </div>
+            <div>
+              <Label htmlFor="status" className="mb-1 block">
+                Status
+              </Label>
+              <select
+                id="status"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as
+                      | "all"
+                      | "Pending"
+                      | "Completed"
+                      | "Decline",
+                  )
+                }
+              >
+                <option value="all">Semua</option>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+                <option value="Decline">Decline</option>
+              </select>
             </div>
           </div>
         </CardContent>
