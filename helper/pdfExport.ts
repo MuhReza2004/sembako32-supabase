@@ -158,7 +158,7 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     "Nama Pelanggan",
     "Total Tagihan",
     "Total Dibayar",
-    "Sisa Utang",
+    "Sisa Piutang",
     "Status",
   ];
   const tableX = 14;
@@ -199,7 +199,10 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
     ];
 
     const nameText = toText(rowData[2]);
-    const nameLines = pdf.splitTextToSize(nameText, colWidths[2] - 4) as string[];
+    const nameLines = pdf.splitTextToSize(
+      nameText,
+      colWidths[2] - 4,
+    ) as string[];
     const lineHeight = 4.2;
     const rowHeight = Math.max(8, nameLines.length * lineHeight + 1);
 

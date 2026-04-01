@@ -124,6 +124,7 @@ async function generatePdf(
   const totalSetelahDiskon = subTotal - diskonAmount;
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
   const totalAkhir = penjualan.total_akhir ?? totalSetelahDiskon + pajakAmount;
+  const displayTotalAkhir = penjualan.status === "Lunas" ? 0 : totalAkhir;
 
   const launchOptions = await getPuppeteerLaunchOptions();
   const browser = await puppeteer.launch({
@@ -206,11 +207,11 @@ async function generatePdf(
         position: fixed;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%) rotate(-20deg);
-        font-size: 120px;
+        transform: translate(-50%, -50%);
+        font-size: 110px;
         font-weight: 800;
         letter-spacing: 8px;
-        color: rgba(200, 0, 0, 0.12);
+        color: rgba(255, 204, 0, 0.28);
         text-transform: uppercase;
         z-index: 0;
         pointer-events: none;
@@ -706,7 +707,7 @@ async function generatePdf(
 
         <div class="amount-highlight">
           <p>Total Yang Harus Dibayar</p>
-          <div class="amount">Rp ${safe(totalAkhir.toLocaleString("id-ID"))}</div>
+          <div class="amount">Rp ${safe(displayTotalAkhir.toLocaleString("id-ID"))}</div>
         </div>
       </div>
 
@@ -742,7 +743,7 @@ async function generatePdf(
 
       <!-- TERBILANG -->
       <div class="terbilang-section">
-        <p><strong>Terbilang:</strong> <em>${safe(numberToWords(Math.floor(totalAkhir)))}</em></p>
+        <p><strong>Terbilang:</strong> <em>${safe(numberToWords(Math.floor(displayTotalAkhir)))}</em></p>
       </div>
 
       <!-- SUMMARY AND FOOTER -->
@@ -782,7 +783,7 @@ async function generatePdf(
               }
               <tr>
                 <td><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>Rp ${safe(totalAkhir.toLocaleString("id-ID"))}</strong></td>
+                <td class="text-right"><strong>Rp ${safe(displayTotalAkhir.toLocaleString("id-ID"))}</strong></td>
               </tr>
             </table>
           </div>
