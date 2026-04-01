@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Penjualan, PenjualanDetail, RiwayatPembayaran } from "@/app/types/penjualan";
+import {
+  Penjualan,
+  PenjualanDetail,
+  RiwayatPembayaran,
+} from "@/app/types/penjualan";
 import { supabase } from "@/app/lib/supabase"; // Import Supabase client
 import PiutangTable from "../../../../../components/Piutang/PiutangTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStatus } from "@/components/ui/StatusProvider";
 import { useBatchedRefresh } from "@/hooks/useBatchedRefresh";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function PiutangPage() {
   const [piutang, setPiutang] = useState<Penjualan[]>([]);
@@ -16,6 +30,11 @@ export default function PiutangPage() {
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
   const perPage = 10;
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "Belum Lunas" | "Lunas"
+  >("Belum Lunas");
 
   const { showStatus } = useStatus();
 
@@ -35,8 +54,9 @@ export default function PiutangPage() {
 
     const from = page * perPage;
     const to = from + perPage - 1;
+    const term = debouncedSearch.trim();
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("penjualan")
       .select(
         `
@@ -67,9 +87,30 @@ export default function PiutangPage() {
       `,
         { count: "planned" },
       )
-      .eq("status", "Belum Lunas")
       .order("tanggal", { ascending: false })
       .range(from, to);
+
+    if (statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+
+    if (term) {
+      const orParts: string[] = [`no_invoice.ilike.%${term}%`];
+      const { data: pelangganRows } = await supabase
+        .from("pelanggan")
+        .select("id")
+        .ilike("nama_pelanggan", `%${term}%`);
+      const pelangganIds =
+        (pelangganRows || [])
+          .map((row) => row?.id as string | undefined)
+          .filter((id): id is string => !!id) || [];
+      if (pelangganIds.length > 0) {
+        orParts.push(`pelanggan_id.in.(${pelangganIds.join(",")})`);
+      }
+      query = query.or(orParts.join(","));
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
       showStatus({
@@ -95,7 +136,7 @@ export default function PiutangPage() {
       setTotalCount(count || 0);
     }
     setLoading(false);
-  }, [page, perPage, showStatus]);
+  }, [page, perPage, showStatus, debouncedSearch, statusFilter]);
 
   const { schedule: scheduleRefresh } = useBatchedRefresh(fetchPiutang);
 
@@ -114,10 +155,12 @@ export default function PiutangPage() {
           table: "penjualan",
         },
         (payload: { new?: { status?: string }; old?: { status?: string } }) => {
-          if (
-            payload.new?.status === "Belum Lunas" ||
-            payload.old?.status === "Belum Lunas"
-          ) {
+          const statuses = [payload.new?.status, payload.old?.status];
+          if (statusFilter === "all") {
+            scheduleRefresh();
+            return;
+          }
+          if (statuses.includes(statusFilter)) {
             scheduleRefresh();
           }
         },
@@ -128,7 +171,11 @@ export default function PiutangPage() {
       clearTimeout(timer);
       supabase.removeChannel(channel);
     };
-  }, [fetchPiutang, scheduleRefresh]);
+  }, [fetchPiutang, scheduleRefresh, statusFilter]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, statusFilter]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);
@@ -155,6 +202,35 @@ export default function PiutangPage() {
           <CardTitle>Piutang Usaha</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-wrap gap-4 mb-4">
+            <div className="min-w-[220px]">
+              <Label htmlFor="search">Cari (Invoice / Pelanggan)</Label>
+              <Input
+                id="search"
+                placeholder="Ketik untuk mencari..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="min-w-[200px]">
+              <Label>Status</Label>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) =>
+                  setStatusFilter(v as "all" | "Belum Lunas" | "Lunas")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Belum Lunas">Belum Lunas</SelectItem>
+                  <SelectItem value="Lunas">Lunas</SelectItem>
+                  <SelectItem value="all">Semua</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           {loading && <p>Memuat data...</p>}
           {/* {error && <p className="text-red-500">{error}</p>} // No longer needed */}
           {!loading && (
