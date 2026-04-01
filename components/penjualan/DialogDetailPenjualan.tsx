@@ -88,6 +88,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           ...penjualan,
           nama_toko: pelanggan?.nama_toko,
           no_telp: pelanggan?.no_telp,
+          watermarkText: penjualan.status === "Lunas" ? "LUNAS" : undefined,
         }),
       });
 
