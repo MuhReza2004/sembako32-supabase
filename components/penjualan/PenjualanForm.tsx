@@ -159,6 +159,7 @@ export function PenjualanForm({
   });
   const watchPelangganId = useWatch({ control, name: "pelanggan_id" });
 
+  const totalQty = watchItems.reduce((sum, i) => sum + (i.qty || 0), 0);
   const subTotal = watchItems.reduce((sum, i) => sum + i.subtotal, 0);
   const appliedDiskon = Math.min(watchDiskon || 0, subTotal);
   const totalSetelahDiskon = subTotal - appliedDiskon;
@@ -340,7 +341,26 @@ export function PenjualanForm({
                 <AddItemForm
                   supplierProduks={supplierProduks}
                   products={products}
-                  onAddItem={(item) => append(item)}
+                  onAddItem={(item) => {
+                    const existingIndex = fields.findIndex(
+                      (f) =>
+                        f.supplier_produk_id === item.supplier_produk_id &&
+                        f.harga_tipe === item.harga_tipe,
+                    );
+                    if (existingIndex >= 0) {
+                      const existing = fields[existingIndex];
+                      const newQty = (existing.qty || 0) + item.qty;
+                      const newSubtotal = (existing.harga || 0) * newQty;
+                      setValue(`items.${existingIndex}.qty`, newQty, {
+                        shouldDirty: true,
+                      });
+                      setValue(`items.${existingIndex}.subtotal`, newSubtotal, {
+                        shouldDirty: true,
+                      });
+                      return;
+                    }
+                    append(item);
+                  }}
                   onStatusReport={showStatus} // Pass showStatus down
                 />
               </CardContent>
@@ -483,12 +503,16 @@ export function PenjualanForm({
                 )}
                 <Separator />
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span>Subtotal</span>
-                    <span className="font-semibold">
-                      {formatRupiah(subTotal)}
-                    </span>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">
+                    {formatRupiah(subTotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                  <span>Total Qty</span>
+                  <span>{totalQty}</span>
+                </div>
                   <div className="flex justify-between items-center">
                     <Label>Diskon (Rp)</Label>
                     <Controller
@@ -593,10 +617,10 @@ export function PenjualanForm({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produk</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Harga</TableHead>
-                    <TableHead>Subtotal</TableHead>
+                  <TableHead>Produk</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Harga</TableHead>
+                  <TableHead>Subtotal</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
