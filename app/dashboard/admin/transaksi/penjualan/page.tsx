@@ -36,6 +36,9 @@ export default function PenjualanPage() {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "Belum Lunas" | "Lunas" | "Batal"
+  >("all");
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
   const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
@@ -54,6 +57,7 @@ export default function PenjualanPage() {
         searchTerm: debouncedSearch,
         startDate,
         endDate,
+        status: statusFilter === "all" ? undefined : statusFilter,
       });
       setData(result.data);
       setTotalCount(result.count);
@@ -68,7 +72,15 @@ export default function PenjualanPage() {
       setData([]);
     }
     setIsLoading(false);
-  }, [page, perPage, startDate, endDate, debouncedSearch, showStatus]);
+  }, [
+    page,
+    perPage,
+    startDate,
+    endDate,
+    debouncedSearch,
+    showStatus,
+    statusFilter,
+  ]);
 
   const { schedule: scheduleRefresh } = useBatchedRefresh(fetchData);
 
@@ -97,7 +109,7 @@ export default function PenjualanPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, startDate, endDate]);
+  }, [searchTerm, startDate, endDate, statusFilter]);
 
   const fetchNext = () => {
     setPage((prevPage) => prevPage + 1);
@@ -206,6 +218,24 @@ export default function PenjualanPage() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
+        </div>
+        <div className="w-1/4">
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(
+                e.target.value as "all" | "Belum Lunas" | "Lunas" | "Batal",
+              )
+            }
+          >
+            <option value="all">Semua</option>
+            <option value="Belum Lunas">Belum Lunas</option>
+            <option value="Lunas">Lunas</option>
+            <option value="Batal">Batal</option>
+          </select>
         </div>
       </div>
 

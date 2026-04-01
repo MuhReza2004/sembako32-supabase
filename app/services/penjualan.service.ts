@@ -271,8 +271,9 @@ export const getPenjualanPage = async (params: {
   searchTerm?: string;
   startDate?: string;
   endDate?: string;
+  status?: string;
 }): Promise<{ data: Penjualan[]; count: number }> => {
-  const { page, perPage, searchTerm, startDate, endDate } = params;
+  const { page, perPage, searchTerm, startDate, endDate, status } = params;
   const from = page * perPage;
   const to = from + perPage - 1;
   const term = searchTerm?.trim() ?? "";
@@ -309,6 +310,9 @@ export const getPenjualanPage = async (params: {
   }
   if (endDate) {
     query = query.lte("tanggal", endDate);
+  }
+  if (status) {
+    query = query.eq("status", status);
   }
   if (term) {
     const orParts: string[] = [
@@ -651,6 +655,7 @@ export const getPenjualanPageForCurrentUser = async (params: {
   searchTerm?: string;
   startDate?: string;
   endDate?: string;
+  status?: string;
 }): Promise<{ data: Penjualan[]; count: number }> => {
   const {
     data: { user },
@@ -660,7 +665,7 @@ export const getPenjualanPageForCurrentUser = async (params: {
     throw new Error("User tidak terautentikasi.");
   }
 
-  const { page, perPage, searchTerm, startDate, endDate } = params;
+  const { page, perPage, searchTerm, startDate, endDate, status } = params;
   const from = page * perPage;
   const to = from + perPage - 1;
   const term = searchTerm?.trim() ?? "";
@@ -708,6 +713,9 @@ export const getPenjualanPageForCurrentUser = async (params: {
   }
   if (endDate) {
     query = query.lte("tanggal", endDate);
+  }
+  if (status) {
+    query = query.eq("status", status);
   }
   if (term) {
     const orParts: string[] = [
