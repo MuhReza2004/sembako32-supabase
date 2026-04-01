@@ -289,7 +289,7 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 
   pdf.text(`Total Tagihan: ${formatRupiah(totalTagihan)}`, 19, yPosition + 8);
   pdf.text(`Total Dibayar: ${formatRupiah(totalDibayar)}`, 109, yPosition + 8);
-  pdf.text(`Sisa Utang: ${formatRupiah(totalSisa)}`, 199, yPosition + 8);
+  pdf.text(`Sisa Piutang: ${formatRupiah(totalSisa)}`, 199, yPosition + 8);
 
   // Footer
   pdf.setFontSize(8);
@@ -394,7 +394,7 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
   }
   pdf.rect(134, yPosition, 55, 15, "F");
   pdf.setFontSize(9);
-  pdf.text("Sisa Utang", 136, yPosition + 6);
+  pdf.text("Sisa Piutang", 136, yPosition + 6);
   pdf.setFontSize(10);
   pdf.text(formatRupiah(sisaUtang), 136, yPosition + 12);
 
