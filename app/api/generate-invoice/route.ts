@@ -551,7 +551,7 @@ async function generatePdf(
       }
 
       .summary-table {
-        width: 200px;
+        width: 250px;
       }
 
       .summary-table table {
@@ -794,12 +794,8 @@ async function generatePdf(
         </div>
 
         <div class="summary-container">
-          <div class="summary-table">
+          <div class="s4ummary-table">
             <table>
-              <tr>
-                <td>Subtotal</td>
-                <td class="text-right">Rp ${safe(subTotal.toLocaleString("id-ID"))}</td>
-              </tr>
               ${
                 penjualan.diskon && penjualan.diskon > 0
                   ? `
@@ -820,14 +816,6 @@ async function generatePdf(
               `
                   : ""
               }
-              <tr>
-                <td>Total Tagihan</td>
-                <td class="text-right">Rp ${safe(totalAkhir.toLocaleString("id-ID"))}</td>
-              </tr>
-              <tr>
-                <td>Total Dibayar</td>
-                <td class="text-right">Rp ${safe(totalDibayar.toLocaleString("id-ID"))}</td>
-              </tr>
               <tr>
                 <td><strong>TOTAL</strong></td>
                 <td class="text-right"><strong>Rp ${safe(amountValue.toLocaleString("id-ID"))}</strong></td>
