@@ -60,6 +60,9 @@ export default function DialogDetailPiutang({
           ...piutang,
           namaPelanggan,
           watermarkText: "LUNAS",
+          invoiceTitle: "INVOICE PEMBAYARAN PIUTANG",
+          amountLabel: "Total yang Dibayar",
+          amountValue: piutang.total_dibayar ?? 0,
         }),
       });
 

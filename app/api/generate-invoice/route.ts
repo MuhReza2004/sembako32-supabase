@@ -107,6 +107,9 @@ async function generatePdf(
     nama_toko?: string;
     no_telp?: string;
     watermarkText?: string;
+    invoiceTitle?: string;
+    amountLabel?: string;
+    amountValue?: number;
   },
 ): Promise<Buffer> {
   const safe = (value: string | number | null | undefined) =>
@@ -175,12 +178,18 @@ async function generatePdf(
   }
 
   const watermarkText = penjualan.watermarkText?.trim();
+  const invoiceTitle = penjualan.invoiceTitle?.trim();
+  const amountLabel = penjualan.amountLabel?.trim();
+  const amountValue =
+    typeof penjualan.amountValue === "number"
+      ? penjualan.amountValue
+      : displayTotalAkhir;
   const htmlContent = `
   <!DOCTYPE html>
   <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Invoice ${safe(penjualan.no_invoice)}</title>
+    <title>${safe(invoiceTitle || `Invoice ${penjualan.no_invoice}`)}</title>
     <style>
       ${await getPdfFontCss()}
       * {
@@ -208,7 +217,7 @@ async function generatePdf(
         top: 55%;
         left: 50%;
         transform: translate(-50%, -50%);
-        font-size: 110px;
+        font-size: 100px;
         font-weight: 800;
         letter-spacing: 8px;
         color: rgba(255, 204, 0, 0.28);
@@ -216,6 +225,30 @@ async function generatePdf(
         z-index: 0;
         pointer-events: none;
         white-space: nowrap;
+      }
+      .table-watermark {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 90px;
+        font-weight: 800;
+        letter-spacing: 6px;
+        color: rgba(255, 204, 0, 1);
+        text-transform: uppercase;
+        z-index: 0;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      .table-wrapper {
+        position: relative;
+      }
+      .table-wrapper table,
+      .table-wrapper .terbilang-section,
+      .table-wrapper .summary-footer-container,
+      .table-wrapper .signature-section {
+        position: relative;
+        z-index: 1;
       }
 
       /* Header Section */
@@ -332,6 +365,10 @@ async function generatePdf(
         color: #102853;
         margin-bottom: 12px;
         letter-spacing: 3px;
+      }
+      .invoice-section h1.custom-title {
+        font-size: 18px;
+        letter-spacing: 1px;
       }
 
       .invoice-meta {
@@ -605,7 +642,6 @@ async function generatePdf(
   </head>
 
   <body>
-    ${watermarkText ? `<div class="watermark">${safe(watermarkText)}</div>` : ""}
     <div class="container">
       
       <!-- HEADER -->
@@ -634,7 +670,7 @@ async function generatePdf(
         </div>
 
         <div class="invoice-section">
-          <h1>INVOICE</h1>
+        <h1 class="${invoiceTitle ? "custom-title" : ""}">${safe(invoiceTitle || "INVOICE")}</h1>
           <div class="invoice-meta">
         <div class="invoice-item">
           <span class="label">No Invoice</span>
@@ -706,13 +742,15 @@ async function generatePdf(
         </div>
 
         <div class="amount-highlight">
-          <p>Total Yang Harus Dibayar</p>
-          <div class="amount">Rp ${safe(displayTotalAkhir.toLocaleString("id-ID"))}</div>
+          <p>${safe(amountLabel || "Total Yang Harus Dibayar")}</p>
+          <div class="amount">Rp ${safe(amountValue.toLocaleString("id-ID"))}</div>
         </div>
       </div>
 
       <!-- TABLE -->
-      <table>
+      <div class="table-wrapper">
+        ${watermarkText ? `<div class="table-watermark">${safe(watermarkText)}</div>` : ""}
+        <table>
         <thead>
           <tr>
             <th class="text-center" style="width: 40px;">No</th>
@@ -743,7 +781,7 @@ async function generatePdf(
 
       <!-- TERBILANG -->
       <div class="terbilang-section">
-        <p><strong>Terbilang:</strong> <em>${safe(numberToWords(Math.floor(displayTotalAkhir)))}</em></p>
+        <p><strong>Terbilang:</strong> <em>${safe(numberToWords(Math.floor(amountValue)))}</em></p>
       </div>
 
       <!-- SUMMARY AND FOOTER -->
@@ -783,7 +821,7 @@ async function generatePdf(
               }
               <tr>
                 <td><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>Rp ${safe(displayTotalAkhir.toLocaleString("id-ID"))}</strong></td>
+                <td class="text-right"><strong>Rp ${safe(amountValue.toLocaleString("id-ID"))}</strong></td>
               </tr>
             </table>
           </div>
@@ -800,6 +838,7 @@ async function generatePdf(
           <p>Diterima Oleh,</p>
           <div class="signature-line">( ${safe(penjualan.namaPelanggan)} )</div>
         </div>
+      </div>
       </div>
 
     </div>
