@@ -42,6 +42,12 @@ export default function PenjualanPage() {
   const [page, setPage] = useState(0); // Supabase range is 0-indexed
   const [perPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0); // To determine if there are more pages
+  const [statusCounts, setStatusCounts] = useState({
+    lunas: 0,
+    belumLunas: 0,
+    batal: 0,
+    total: 0,
+  });
 
   const confirm = useConfirm();
   const { showStatus } = useStatus();
@@ -51,6 +57,57 @@ export default function PenjualanPage() {
     // setError(null); // No longer needed
 
     try {
+      const term = debouncedSearch.trim();
+
+      let pelangganIds: string[] = [];
+      if (term) {
+        const { data: pelangganRows } = await supabase
+          .from("pelanggan")
+          .select("id")
+          .ilike("nama_pelanggan", `%${term}%`);
+        pelangganIds =
+          (pelangganRows || [])
+            .map((row) => row?.id as string | undefined)
+            .filter((id): id is string => !!id) || [];
+      }
+
+      const buildCountQuery = (status: "Lunas" | "Belum Lunas" | "Batal") => {
+        let q = supabase
+          .from("penjualan")
+          .select("id", { count: "exact", head: true })
+          .eq("status", status);
+
+        if (startDate) q = q.gte("tanggal", startDate);
+        if (endDate) q = q.lte("tanggal", endDate);
+        if (term) {
+          const orParts: string[] = [
+            `no_invoice.ilike.%${term}%`,
+            `status.ilike.%${term}%`,
+          ];
+          if (pelangganIds.length > 0) {
+            orParts.push(`pelanggan_id.in.(${pelangganIds.join(",")})`);
+          }
+          q = q.or(orParts.join(","));
+        }
+        return q;
+      };
+
+      const [lunasRes, belumRes, batalRes] = await Promise.all([
+        buildCountQuery("Lunas"),
+        buildCountQuery("Belum Lunas"),
+        buildCountQuery("Batal"),
+      ]);
+
+      const lunas = lunasRes.count || 0;
+      const belumLunas = belumRes.count || 0;
+      const batal = batalRes.count || 0;
+      setStatusCounts({
+        lunas,
+        belumLunas,
+        batal,
+        total: lunas + belumLunas + batal,
+      });
+
       const result = await getPenjualanPage({
         page,
         perPage,
@@ -189,6 +246,31 @@ export default function PenjualanPage() {
           <Plus className="w-4 h-4 mr-2" />
           Buat Penjualan
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-sm text-muted-foreground">Total Transaksi</div>
+          <div className="text-2xl font-semibold">{statusCounts.total}</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-sm text-muted-foreground">Lunas</div>
+          <div className="text-2xl font-semibold text-green-700">
+            {statusCounts.lunas}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-sm text-muted-foreground">Belum Lunas</div>
+          <div className="text-2xl font-semibold text-yellow-700">
+            {statusCounts.belumLunas}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-sm text-muted-foreground">Batal</div>
+          <div className="text-2xl font-semibold text-red-700">
+            {statusCounts.batal}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-4 ">

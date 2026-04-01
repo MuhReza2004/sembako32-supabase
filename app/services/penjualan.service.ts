@@ -278,9 +278,9 @@ export const getPenjualanPage = async (params: {
   const to = from + perPage - 1;
   const term = searchTerm?.trim() ?? "";
 
-  let query = supabase
-    .from("penjualan")
-    .select(
+    let query = supabase
+      .from("penjualan")
+      .select(
       `
       id,
       tanggal,
@@ -300,9 +300,9 @@ export const getPenjualanPage = async (params: {
         nama_pelanggan,
         alamat
       )
-    `,
-      { count: "planned" },
-    )
+      `,
+        { count: "exact" },
+      )
     .order("created_at", { ascending: false });
 
   if (startDate) {
@@ -670,9 +670,9 @@ export const getPenjualanPageForCurrentUser = async (params: {
   const to = from + perPage - 1;
   const term = searchTerm?.trim() ?? "";
 
-  let query = supabase
-    .from("penjualan")
-    .select(
+    let query = supabase
+      .from("penjualan")
+      .select(
       `
         id,
         tanggal,
@@ -702,9 +702,9 @@ export const getPenjualanPageForCurrentUser = async (params: {
           nama_pelanggan,
           alamat
         )
-      `,
-      { count: "planned" },
-    )
+        `,
+        { count: "exact" },
+      )
     .eq("created_by", user.id)
     .order("created_at", { ascending: false });
 

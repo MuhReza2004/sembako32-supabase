@@ -41,12 +41,32 @@ export default function PembelianReportPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [summary, setSummary] = useState({
+    totalPurchases: 0,
+    totalCost: 0,
+    paidPurchases: 0,
+    unpaidPurchases: 0,
+  });
 
   const fetchPembelian = useCallback(
     async (pageIndex: number) => {
       setIsLoading(true);
       setError(null);
       try {
+        const summaryQuery = () => {
+          let q = supabase
+            .from("pembelian")
+            .select("total, status", { count: "exact" })
+            .order("tanggal", { ascending: false });
+          if (startDate) {
+            q = q.gte("tanggal", startDate);
+          }
+          if (endDate) {
+            q = q.lte("tanggal", endDate);
+          }
+          return q;
+        };
+
         let query = supabase
           .from("pembelian")
           .select(
@@ -69,7 +89,12 @@ export default function PembelianReportPage() {
         const to = from + PAGE_SIZE - 1;
         query = query.range(from, to);
 
-        const { data: pembelianData, error: pembelianError } = await query;
+        const [summaryRes, pageRes] = await Promise.all([
+          summaryQuery(),
+          query,
+        ]);
+
+        const { data: pembelianData, error: pembelianError } = pageRes;
 
         if (pembelianError) {
           throw pembelianError;
@@ -95,6 +120,26 @@ export default function PembelianReportPage() {
 
         setData(formattedData);
         setHasMore(pembelianData.length === PAGE_SIZE);
+
+        const summaryRows =
+          (summaryRes.data as Pick<Pembelian, "total" | "status">[]) || [];
+        const totalCost = summaryRows.reduce(
+          (sum, purchase) => sum + purchase.total,
+          0,
+        );
+        const paidPurchases = summaryRows.filter(
+          (purchase) => purchase.status === "Completed",
+        ).length;
+        const unpaidPurchases = summaryRows.filter(
+          (purchase) =>
+            purchase.status === "Pending" || purchase.status === "Decline",
+        ).length;
+        setSummary({
+          totalPurchases: summaryRows.length,
+          totalCost,
+          paidPurchases,
+          unpaidPurchases,
+        });
       } catch (err: unknown) {
         const errorMessage =
           err instanceof Error ? err.message : "An unknown error occurred";
@@ -165,15 +210,7 @@ export default function PembelianReportPage() {
     }
   };
 
-  const totalPurchases = data.length;
-  const totalCost = data.reduce((sum, purchase) => sum + purchase.total, 0);
-  const paidPurchases = data.filter(
-    (purchase) => purchase.status === "Completed",
-  ).length;
-  const unpaidPurchases = data.filter(
-    (purchase) =>
-      purchase.status === "Pending" || purchase.status === "Decline",
-  ).length;
+  const { totalPurchases, totalCost, paidPurchases, unpaidPurchases } = summary;
 
   if (isLoading && page === 0 && data.length === 0) {
     return <div className="p-8 text-center text-gray-500">Memuat data...</div>;

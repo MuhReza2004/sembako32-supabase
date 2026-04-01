@@ -36,6 +36,15 @@ export default function PenjualanReportPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(0); // Page index, starts from 0
   const [hasMore, setHasMore] = useState(true);
+  const [summary, setSummary] = useState({
+    totalSales: 0,
+    totalRevenue: 0,
+    totalPajak: 0,
+    penjualanBersih: 0,
+    paidSales: 0,
+    unpaidSales: 0,
+    canceledSales: 0,
+  });
 
   const fetchPenjualan = useCallback(
     async (pageIndex: number, shouldAppend = false) => {
@@ -43,6 +52,20 @@ export default function PenjualanReportPage() {
       setError(null);
 
       try {
+        const summaryQuery = () => {
+          let q = supabase
+            .from("penjualan")
+            .select("total, total_akhir, pajak, status", { count: "exact" })
+            .order("tanggal", { ascending: false });
+          if (startDate) {
+            q = q.gte("tanggal", startDate);
+          }
+          if (endDate) {
+            q = q.lte("tanggal", endDate);
+          }
+          return q;
+        };
+
         let query = supabase
           .from("penjualan")
           .select(
@@ -65,7 +88,12 @@ export default function PenjualanReportPage() {
         const to = from + PAGE_SIZE - 1;
         query = query.range(from, to);
 
-        const { data: penjualanData, error: penjualanError } = await query;
+        const [summaryRes, pageRes] = await Promise.all([
+          summaryQuery(),
+          query,
+        ]);
+
+        const { data: penjualanData, error: penjualanError } = pageRes;
 
         if (penjualanError) {
           throw penjualanError;
@@ -89,6 +117,39 @@ export default function PenjualanReportPage() {
           shouldAppend ? [...prevData, ...formattedData] : formattedData,
         );
         setHasMore(penjualanData.length === PAGE_SIZE);
+
+        const summaryRows =
+          (summaryRes.data as Pick<
+            Penjualan,
+            "total" | "total_akhir" | "pajak" | "status"
+          >[]) || [];
+        const activeSales = summaryRows.filter((sale) => sale.status !== "Batal");
+        const totalRevenue = activeSales.reduce(
+          (sum, sale) => sum + (sale.total_akhir ?? sale.total ?? 0),
+          0,
+        );
+        const totalPajak = activeSales.reduce(
+          (sum, sale) => sum + (sale.pajak || 0),
+          0,
+        );
+        const paidSales = summaryRows.filter(
+          (sale) => sale.status === "Lunas",
+        ).length;
+        const unpaidSales = summaryRows.filter(
+          (sale) => sale.status === "Belum Lunas",
+        ).length;
+        const canceledSales = summaryRows.filter(
+          (sale) => sale.status === "Batal",
+        ).length;
+        setSummary({
+          totalSales: summaryRows.length,
+          totalRevenue,
+          totalPajak,
+          penjualanBersih: totalRevenue - totalPajak,
+          paidSales,
+          unpaidSales,
+          canceledSales,
+        });
       } catch (err: unknown) {
         const errorMessage =
           err instanceof Error ? err.message : "An unknown error occurred";
@@ -166,19 +227,15 @@ export default function PenjualanReportPage() {
     }
   };
 
-  const totalSales = data.length;
-  const activeSales = data.filter((sale) => sale.status !== "Batal");
-  const totalRevenue = activeSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalPajak = activeSales.reduce(
-    (sum, sale) => sum + (sale.pajak || 0),
-    0,
-  );
-  const penjualanBersih = totalRevenue - totalPajak;
-  const paidSales = data.filter((sale) => sale.status === "Lunas").length;
-  const unpaidSales = data.filter(
-    (sale) => sale.status === "Belum Lunas",
-  ).length;
-  const canceledSales = data.filter((sale) => sale.status === "Batal").length;
+  const {
+    totalSales,
+    totalRevenue,
+    totalPajak,
+    penjualanBersih,
+    paidSales,
+    unpaidSales,
+    canceledSales,
+  } = summary;
 
   if (isLoading && page === 0 && data.length === 0) {
     return (
