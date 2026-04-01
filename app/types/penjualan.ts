@@ -48,6 +48,8 @@ export interface Penjualan {
   nomorInvoice?: string; // alias for noInvoice
   namaPelanggan?: string;
   alamatPelanggan?: string;
+  nama_toko?: string;
+  no_telp?: string;
   metode_pembayaran?: string;
   nomor_rekening?: string;
   nama_bank?: string;
