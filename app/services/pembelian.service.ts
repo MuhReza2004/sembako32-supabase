@@ -40,6 +40,18 @@ const increaseStock = async (supplierProdukId: string, qty: number) => {
   return data as number;
 };
 
+const decreaseStock = async (supplierProdukId: string, qty: number) => {
+  const { data, error } = await supabase.rpc("decrease_stock", {
+    p_supplier_produk_id: supplierProdukId,
+    p_qty: qty,
+  });
+  if (error) {
+    console.error("Error decreasing stock:", error);
+    throw error;
+  }
+  return data as number;
+};
+
 export const createPembelian = async (data: {
   supplier_id: string;
   tanggal: string;
@@ -242,6 +254,40 @@ export const updatePembelianStatus = async (
   pembelianId: string,
   status: "Pending" | "Completed" | "Decline",
 ) => {
+  const { data: current, error: currentError } = await supabase
+    .from("pembelian")
+    .select("id, status")
+    .eq("id", pembelianId)
+    .single();
+  if (currentError) {
+    const errorMessage =
+      currentError?.message || "Gagal mengambil status pembelian";
+    console.error("Error fetching pembelian status:", errorMessage);
+    throw new Error(errorMessage);
+  }
+
+  const currentStatus = current?.status as
+    | "Pending"
+    | "Completed"
+    | "Decline"
+    | undefined;
+
+  if (status === "Decline" && currentStatus === "Completed") {
+    const { data: details, error: detailError } = await supabase
+      .from("pembelian_detail")
+      .select("supplier_produk_id, qty")
+      .eq("pembelian_id", pembelianId);
+    if (detailError) {
+      const errorMessage =
+        detailError?.message || "Gagal mengambil detail pembelian";
+      console.error("Error fetching pembelian details:", errorMessage);
+      throw new Error(errorMessage);
+    }
+    for (const detail of details || []) {
+      await decreaseStock(detail.supplier_produk_id, Number(detail.qty));
+    }
+  }
+
   const { error } = await supabase
     .from("pembelian")
     .update({

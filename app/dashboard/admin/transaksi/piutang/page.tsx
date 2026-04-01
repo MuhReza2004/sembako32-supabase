@@ -98,6 +98,9 @@ export default function PiutangPage() {
       )
       .order("tanggal", { ascending: false });
 
+    // Exclude canceled transactions from piutang list
+    query = query.neq("status", "Batal");
+
     if (statusFilter === "all") {
       query = query.range(from, to);
     }

@@ -160,7 +160,7 @@ export function PembelianTabel({
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={p.status !== "Pending"}
+                        disabled={p.status === "Decline"}
                         onClick={() => {
                           setSelectedPembelian(p);
                           setEditOpen(true);
