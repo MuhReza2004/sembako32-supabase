@@ -41,6 +41,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
   const [isLoadingDO, setIsLoadingDO] = useState(false);
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+  const [isLoadingAll, setIsLoadingAll] = useState(false);
 
   useEffect(() => {
     const fetchPelanggan = async () => {
@@ -206,6 +207,40 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
       alert("Terjadi kesalahan saat membuat Tanda Terima PDF.");
     } finally {
       setIsLoadingReceipt(false);
+    }
+  };
+
+  const handleExportAll = async () => {
+    setIsLoadingAll(true);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/generate-documents", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          ...penjualan,
+          nama_toko: pelanggan?.nama_toko || penjualan.nama_toko || "",
+          no_telp: pelanggan?.no_telp || penjualan.no_telp || "",
+          alamatPelanggan: pelanggan?.alamat || penjualan.alamatPelanggan,
+          nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
+          watermarkText: penjualan.status === "Lunas" ? "LUNAS" : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate PDF: ${errorText}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } finally {
+      setIsLoadingAll(false);
     }
   };
 
@@ -392,57 +427,21 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           </Button>
           <div className="flex flex-wrap gap-2">
             <Button
-              onClick={handlePrintInvoice}
-              disabled={isLoadingInvoice}
+              onClick={handleExportAll}
+              disabled={
+                isLoadingAll || isLoadingInvoice || isLoadingDO || isLoadingReceipt
+              }
               className="flex items-center gap-2"
             >
-              {isLoadingInvoice ? (
+              {isLoadingAll ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Membuat Invoice...
+                  Mengunduh Dokumen...
                 </>
               ) : (
                 <>
                   <Printer size={16} />
-                  Cetak Invoice
-                </>
-              )}
-            </Button>
-            {penjualan.no_do && (
-              <Button
-                variant="outline"
-                onClick={handlePrintDeliveryOrder}
-                disabled={isLoadingDO}
-                className="flex items-center gap-2"
-              >
-                {isLoadingDO ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Membuat DO...
-                  </>
-                ) : (
-                  <>
-                    <Truck size={16} />
-                    Cetak DO
-                  </>
-                )}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={handlePrintReceipt}
-              disabled={isLoadingReceipt}
-              className="flex items-center gap-2"
-            >
-              {isLoadingReceipt ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Membuat Tanda Terima...
-                </>
-              ) : (
-                <>
-                  <Printer size={16} />
-                  Cetak Tanda Terima
+                  Export Dokumen
                 </>
               )}
             </Button>
