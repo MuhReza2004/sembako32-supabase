@@ -281,12 +281,8 @@ BEGIN
   current_year := EXTRACT(YEAR FROM NOW());
   current_month := EXTRACT(MONTH FROM NOW());
   
-  -- Get next number for this month/year
-  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_invoice, '/', 5) AS INTEGER)), 0) + 1
-  INTO next_num
-  FROM penjualan
-  WHERE EXTRACT(YEAR FROM tanggal) = current_year
-    AND EXTRACT(MONTH FROM tanggal) = current_month;
+  -- Use sequence for atomic numbering
+  next_num := nextval('invoice_seq');
   
   invoice_number := 'INV/S32/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
   
@@ -312,13 +308,8 @@ BEGIN
   current_month := EXTRACT(MONTH FROM NOW());
   current_day := EXTRACT(DAY FROM NOW());
   
-  -- Get next number for this day
-  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_npb, '/', 5) AS INTEGER)), 0) + 1
-  INTO next_num
-  FROM penjualan
-  WHERE EXTRACT(YEAR FROM tanggal) = current_year
-    AND EXTRACT(MONTH FROM tanggal) = current_month
-    AND EXTRACT(DAY FROM tanggal) = current_day;
+  -- Use sequence for atomic numbering
+  next_num := nextval('npb_seq');
   
   npb_number := 'NPB/G001/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(current_day::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
   
@@ -342,12 +333,8 @@ BEGIN
   current_year := EXTRACT(YEAR FROM NOW());
   current_month := EXTRACT(MONTH FROM NOW());
   
-  -- Get next number for this month/year
-  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_do, '/', 4) AS INTEGER)), 0) + 1
-  INTO next_num
-  FROM penjualan
-  WHERE EXTRACT(YEAR FROM tanggal) = current_year
-    AND EXTRACT(MONTH FROM tanggal) = current_month;
+  -- Use sequence for atomic numbering
+  next_num := nextval('do_seq');
   
   do_number := 'DO/S32/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
   
@@ -355,7 +342,7 @@ BEGIN
 END;
 $$;
 
--- Function to generate atomic tanda terima number
+-- Function to generate atomic Tanda Terima number
 CREATE OR REPLACE FUNCTION public.generate_tanda_terima_number()
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -366,23 +353,25 @@ DECLARE
   current_year INTEGER;
   current_month INTEGER;
   next_num INTEGER;
-  tt_number TEXT;
+  tanda_terima_number TEXT;
 BEGIN
   current_year := EXTRACT(YEAR FROM NOW());
   current_month := EXTRACT(MONTH FROM NOW());
   
-  -- Get next number for this month/year
-  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_tanda_terima, '/', 1) AS INTEGER)), 0) + 1
-  INTO next_num
-  FROM penjualan
-  WHERE EXTRACT(YEAR FROM tanggal) = current_year
-    AND EXTRACT(MONTH FROM tanggal) = current_month;
+  -- Use sequence for atomic numbering
+  next_num := nextval('tanda_terima_seq');
   
-  tt_number := LPAD(next_num::TEXT, 4, '0') || '/S32/' || LPAD(current_month::TEXT, 2, '0') || '/' || current_year;
+  tanda_terima_number := 'TT/S32/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
   
-  RETURN tt_number;
+  RETURN tanda_terima_number;
 END;
 $$;
+
+-- Set sequences to current max values
+SELECT setval('invoice_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_invoice, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_invoice IS NOT NULL AND no_invoice != ''), 0) + 1);
+SELECT setval('npb_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_npb, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_npb IS NOT NULL AND no_npb != ''), 0) + 1);
+SELECT setval('do_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_do, '/', 4), '') AS INTEGER)) FROM penjualan WHERE no_do IS NOT NULL AND no_do != ''), 0) + 1);
+SELECT setval('tanda_terima_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_tanda_terima, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_tanda_terima IS NOT NULL AND no_tanda_terima != ''), 0) + 1);
 
 -- Stock adjustment helpers (atomic)
 CREATE OR REPLACE FUNCTION public.decrease_stock(
@@ -481,6 +470,10 @@ GRANT EXECUTE ON FUNCTION public.sum_pembelian_total(TIMESTAMPTZ, TIMESTAMPTZ) T
 GRANT EXECUTE ON FUNCTION public.piutang_summary(TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.increase_stock(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.decrease_stock(UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_invoice_number() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_npb_number() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_do_number() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_tanda_terima_number() TO authenticated;
 GRANT SELECT ON inventory_report TO authenticated;
 GRANT SELECT ON produk_stock_summary TO authenticated;
 

@@ -74,10 +74,7 @@ export const requireAuth = async (
   if (userError || !user) {
     return {
       ok: false,
-      response: NextResponse.json(
-        { error: "unauthorized" },
-        { status: 401 },
-      ),
+      response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
     };
   }
 
@@ -111,10 +108,7 @@ export const requireAuth = async (
   if (!role) {
     return {
       ok: false,
-      response: NextResponse.json(
-        { error: "role_not_found" },
-        { status: 403 },
-      ),
+      response: NextResponse.json({ error: "role_not_found" }, { status: 403 }),
     };
   }
 

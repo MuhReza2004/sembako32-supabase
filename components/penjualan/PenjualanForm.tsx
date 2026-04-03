@@ -294,7 +294,9 @@ export function PenjualanForm({
                     <div className="flex gap-2">
                       <Input
                         id="no_invoice"
-                        {...register("no_invoice", { required: "No. Invoice wajib diisi" })}
+                        {...register("no_invoice", {
+                          required: "No. Invoice wajib diisi",
+                        })}
                         placeholder="INV/S32/2026/04/0001"
                         readOnly
                       />
@@ -322,7 +324,9 @@ export function PenjualanForm({
                     <div className="flex gap-2">
                       <Input
                         id="no_npb"
-                        {...register("no_npb", { required: "No. NPB wajib diisi" })}
+                        {...register("no_npb", {
+                          required: "No. NPB wajib diisi",
+                        })}
                         placeholder="NPB/G001/2026/04/03/0001"
                         readOnly
                       />
@@ -352,7 +356,12 @@ export function PenjualanForm({
                         <div className="flex gap-2">
                           <Input
                             id="no_do"
-                            {...register("no_do", { required: watchMetodePengambilan === "Diantar" ? "No. DO wajib diisi" : false })}
+                            {...register("no_do", {
+                              required:
+                                watchMetodePengambilan === "Diantar"
+                                  ? "No. DO wajib diisi"
+                                  : false,
+                            })}
                             placeholder="DO/S32/2026/04/0001"
                             readOnly
                           />
@@ -376,11 +385,18 @@ export function PenjualanForm({
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="no_tanda_terima">No. Tanda Terima</Label>
+                        <Label htmlFor="no_tanda_terima">
+                          No. Tanda Terima
+                        </Label>
                         <div className="flex gap-2">
                           <Input
                             id="no_tanda_terima"
-                            {...register("no_tanda_terima", { required: watchMetodePengambilan === "Diantar" ? "No. Tanda Terima wajib diisi" : false })}
+                            {...register("no_tanda_terima", {
+                              required:
+                                watchMetodePengambilan === "Diantar"
+                                  ? "No. Tanda Terima wajib diisi"
+                                  : false,
+                            })}
                             placeholder="0001/S32/04/2026"
                             readOnly
                           />
@@ -625,16 +641,16 @@ export function PenjualanForm({
                 )}
                 <Separator />
                 <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>Subtotal</span>
-                  <span className="font-semibold">
-                    {formatRupiah(subTotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                  <span>Total Qty</span>
-                  <span>{totalQty}</span>
-                </div>
+                  <div className="flex justify-between items-center">
+                    <span>Subtotal</span>
+                    <span className="font-semibold">
+                      {formatRupiah(subTotal)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-muted-foreground">
+                    <span>Total Qty</span>
+                    <span>{totalQty}</span>
+                  </div>
                   <div className="flex justify-between items-center">
                     <Label>Diskon (Rp)</Label>
                     <Controller
@@ -739,10 +755,10 @@ export function PenjualanForm({
               <Table>
                 <TableHeader>
                   <TableRow>
-                  <TableHead>Produk</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Harga</TableHead>
-                  <TableHead>Subtotal</TableHead>
+                    <TableHead>Produk</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Harga</TableHead>
+                    <TableHead>Subtotal</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

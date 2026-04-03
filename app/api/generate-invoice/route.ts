@@ -827,11 +827,17 @@ async function generatePdf(
 
       <!-- SIGNATURE -->
       <div class="signature-section">
+        <div class="signature-box">
+          <p>Hormat Kami,</p>
+          <div class="signature-line">Sembako 32</div>
+        </div>
 
         <div class="signature-box">
           <p>Diterima Oleh,</p>
-          <div class="signature-line">Sembako 32</div>
+          <div class="signature-line">${safe(penjualan.namaPelanggan || "Customer")}</div>
         </div>
+
+        
       </div>
       </div>
 

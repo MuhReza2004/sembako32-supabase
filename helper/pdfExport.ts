@@ -482,6 +482,14 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
     yPosition += 25;
   }
 
+  // Signature section
+  yPosition += 20;
+  pdf.setFontSize(11);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text("Hormat Kami,", 140, yPosition);
+  pdf.setFontSize(10);
+  pdf.text("Sembako 32", 140, yPosition + 40);
+
   // Footer
   pdf.setFontSize(8);
   pdf.setTextColor(128, 128, 128);

@@ -127,7 +127,7 @@ export const createPenjualan = async (data: PenjualanFormData) => {
     }
 
     // Check if it's a unique violation
-    if (penjualanError.code === '23505') {
+    if (penjualanError.code === "23505") {
       attempts++;
       if (attempts >= maxAttempts) {
         console.error(
@@ -135,10 +135,12 @@ export const createPenjualan = async (data: PenjualanFormData) => {
           JSON.stringify(penjualanData, null, 2),
         );
         console.error("Supabase Error details:", penjualanError);
-        throw new Error("Failed to create penjualan due to duplicate numbers after retries.");
+        throw new Error(
+          "Failed to create penjualan due to duplicate numbers after retries.",
+        );
       }
       // Wait a bit before retry
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } else {
       // Other error, don't retry
       console.error(
@@ -1165,7 +1167,7 @@ const increaseStock = async (supplierProdukId: string, qty: number) => {
 
 // --- existing generateInvoiceNumber function ---
 export const generateInvoiceNumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc('generate_invoice_number');
+  const { data, error } = await supabase.rpc("generate_invoice_number");
   if (error) {
     console.error("Error generating invoice number:", error);
     return `INV/ERR/${Date.now()}`;
@@ -1175,7 +1177,7 @@ export const generateInvoiceNumber = async (): Promise<string> => {
 
 // --- NEW generateNPBNumber function ---
 export const generateNPBNumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc('generate_npb_number');
+  const { data, error } = await supabase.rpc("generate_npb_number");
   if (error) {
     console.error("Error generating NPB number:", error);
     return `NPB/ERR/${Date.now()}`;
@@ -1185,7 +1187,7 @@ export const generateNPBNumber = async (): Promise<string> => {
 
 // --- NEW generateDONumber function ---
 export const generateDONumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc('generate_do_number');
+  const { data, error } = await supabase.rpc("generate_do_number");
   if (error) {
     console.error("Error generating DO number:", error);
     return `DO/ERR/${Date.now()}`;
@@ -1195,7 +1197,7 @@ export const generateDONumber = async (): Promise<string> => {
 
 // --- NEW generate Tanda Terima number function ---
 export const generateTandaTerimaNumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc('generate_tanda_terima_number');
+  const { data, error } = await supabase.rpc("generate_tanda_terima_number");
   if (error) {
     console.error("Error generating Tanda Terima number:", error);
     return `ERR/${Date.now()}`;
