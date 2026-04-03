@@ -15,7 +15,12 @@ type PenjualanDetailRow = PenjualanDetail & {
 };
 
 type PenjualanRow = Penjualan & {
-  pelanggan?: { nama_pelanggan?: string; alamat?: string } | null;
+  pelanggan?: {
+    nama_pelanggan?: string;
+    alamat?: string;
+    nama_toko?: string;
+    no_telp?: string;
+  } | null;
 };
 
 const DECIMAL_14_2_MAX = 999999999999.99;
@@ -278,9 +283,9 @@ export const getPenjualanPage = async (params: {
   const to = from + perPage - 1;
   const term = searchTerm?.trim() ?? "";
 
-    let query = supabase
-      .from("penjualan")
-      .select(
+  let query = supabase
+    .from("penjualan")
+    .select(
       `
       id,
       tanggal,
@@ -298,11 +303,13 @@ export const getPenjualanPage = async (params: {
       pelanggan (
         id,
         nama_pelanggan,
-        alamat
+        alamat,
+        nama_toko,
+        no_telp
       )
       `,
-        { count: "exact" },
-      )
+      { count: "exact" },
+    )
     .order("created_at", { ascending: false });
 
   if (startDate) {
@@ -394,6 +401,8 @@ export const getPenjualanPage = async (params: {
     createdByRole: usersMap.get(item.created_by || "")?.role,
     namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
     alamatPelanggan: item.pelanggan?.alamat || "",
+    nama_toko: item.pelanggan?.nama_toko || "",
+    no_telp: item.pelanggan?.no_telp || "",
   }));
 
   return { data: mappedData, count: count || 0 };
@@ -410,7 +419,9 @@ export const getPenjualanById = async (
       pelanggan (
         id,
         nama_pelanggan,
-        alamat
+        alamat,
+        nama_toko,
+        no_telp
       ),
       items:penjualan_detail (
         id,
@@ -487,6 +498,8 @@ export const getPenjualanById = async (
     createdByRole,
     namaPelanggan: data.pelanggan?.nama_pelanggan || "Unknown",
     alamatPelanggan: data.pelanggan?.alamat || "",
+    nama_toko: data.pelanggan?.nama_toko || "",
+    no_telp: data.pelanggan?.no_telp || "",
     items: itemRows.map((detail) => ({
       id: detail.id,
       penjualan_id: detail.penjualan_id,
@@ -545,7 +558,9 @@ export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
         pelanggan (
           id,
           nama_pelanggan,
-          alamat
+          alamat,
+          nama_toko,
+          no_telp
         )
       `,
     )
@@ -625,6 +640,8 @@ export const getPenjualanForCurrentUser = async (): Promise<Penjualan[]> => {
     createdByEmail: user.email || "Anda",
     namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
     alamatPelanggan: item.pelanggan?.alamat || "",
+    nama_toko: item.pelanggan?.nama_toko || "",
+    no_telp: item.pelanggan?.no_telp || "",
     items:
       (detailsData as PenjualanDetailRow[])
         .filter((detail) => detail.penjualan_id === item.id)
@@ -670,9 +687,9 @@ export const getPenjualanPageForCurrentUser = async (params: {
   const to = from + perPage - 1;
   const term = searchTerm?.trim() ?? "";
 
-    let query = supabase
-      .from("penjualan")
-      .select(
+  let query = supabase
+    .from("penjualan")
+    .select(
       `
         id,
         tanggal,
@@ -700,11 +717,13 @@ export const getPenjualanPageForCurrentUser = async (params: {
         pelanggan (
           id,
           nama_pelanggan,
-          alamat
+          alamat,
+          nama_toko,
+          no_telp
         )
         `,
-        { count: "exact" },
-      )
+      { count: "exact" },
+    )
     .eq("created_by", user.id)
     .order("created_at", { ascending: false });
 
@@ -810,6 +829,8 @@ export const getPenjualanPageForCurrentUser = async (params: {
     createdByEmail: user.email || "Anda",
     namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
     alamatPelanggan: item.pelanggan?.alamat || "",
+    nama_toko: item.pelanggan?.nama_toko || "",
+    no_telp: item.pelanggan?.no_telp || "",
     items:
       (detailsData as PenjualanDetailRow[])
         .filter((detail) => detail.penjualan_id === item.id)
