@@ -271,10 +271,6 @@ export function PenjualanForm({
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <input type="hidden" {...register("no_invoice")} />
-        <input type="hidden" {...register("no_npb")} />
-        <input type="hidden" {...register("no_do")} />
-        <input type="hidden" {...register("no_tanda_terima")} />
         {/* {error && ( // No longer needed
         <Card className="border-red-300 bg-red-50 p-4 mb-6">
           <div className="flex items-center gap-3">
@@ -289,7 +285,133 @@ export function PenjualanForm({
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>1. Informasi Pelanggan & Pengiriman</CardTitle>
+                <CardTitle>1. Nomor Dokumen</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="no_invoice">No. Invoice</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="no_invoice"
+                        {...register("no_invoice", { required: "No. Invoice wajib diisi" })}
+                        placeholder="INV/S32/2026/04/0001"
+                        readOnly
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const num = await generateInvoiceNumber();
+                            setValue("no_invoice", num);
+                          } catch (error) {
+                            showStatus({
+                              message: "Gagal generate nomor invoice",
+                              success: false,
+                            });
+                          }
+                        }}
+                      >
+                        Generate
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="no_npb">No. NPB</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="no_npb"
+                        {...register("no_npb", { required: "No. NPB wajib diisi" })}
+                        placeholder="NPB/G001/2026/04/03/0001"
+                        readOnly
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const num = await generateNPBNumber();
+                            setValue("no_npb", num);
+                          } catch (error) {
+                            showStatus({
+                              message: "Gagal generate nomor NPB",
+                              success: false,
+                            });
+                          }
+                        }}
+                      >
+                        Generate
+                      </Button>
+                    </div>
+                  </div>
+                  {watchMetodePengambilan === "Diantar" && (
+                    <>
+                      <div>
+                        <Label htmlFor="no_do">No. DO</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="no_do"
+                            {...register("no_do", { required: watchMetodePengambilan === "Diantar" ? "No. DO wajib diisi" : false })}
+                            placeholder="DO/S32/2026/04/0001"
+                            readOnly
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const num = await generateDONumber();
+                                setValue("no_do", num);
+                              } catch (error) {
+                                showStatus({
+                                  message: "Gagal generate nomor DO",
+                                  success: false,
+                                });
+                              }
+                            }}
+                          >
+                            Generate
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="no_tanda_terima">No. Tanda Terima</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="no_tanda_terima"
+                            {...register("no_tanda_terima", { required: watchMetodePengambilan === "Diantar" ? "No. Tanda Terima wajib diisi" : false })}
+                            placeholder="0001/S32/04/2026"
+                            readOnly
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const num = await generateTandaTerimaNumber();
+                                setValue("no_tanda_terima", num);
+                              } catch (error) {
+                                showStatus({
+                                  message: "Gagal generate nomor Tanda Terima",
+                                  success: false,
+                                });
+                              }
+                            }}
+                          >
+                            Generate
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>2. Informasi Pelanggan & Pengiriman</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -335,7 +457,7 @@ export function PenjualanForm({
 
             <Card>
               <CardHeader>
-                <CardTitle>2. Tambah Produk</CardTitle>
+                <CardTitle>3. Tambah Produk</CardTitle>
               </CardHeader>
               <CardContent>
                 <AddItemForm
@@ -422,7 +544,7 @@ export function PenjualanForm({
           <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>3. Pembayaran & Total</CardTitle>
+                <CardTitle>4. Pembayaran & Total</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>

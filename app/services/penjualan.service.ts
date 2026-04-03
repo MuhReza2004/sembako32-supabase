@@ -60,48 +60,94 @@ export const createPenjualan = async (data: PenjualanFormData) => {
     throw new Error("User tidak terautentikasi.");
   }
 
-  // 1. Create the sale record
+  // 1. Create the sale record with retry logic
   const tanggalJatuhTempo = data.tanggal_jatuh_tempo || null;
-  const noDo = data.no_do || null;
-  const noTandaTerima = data.no_tanda_terima || null;
+  let noDo = data.no_do || null;
+  let noTandaTerima = data.no_tanda_terima || null;
+  let noInvoice = data.no_invoice;
+  let noNpb = data.no_npb;
 
-  const penjualanData = {
-    tanggal: data.tanggal,
-    pelanggan_id: data.pelanggan_id,
-    catatan: data.catatan,
-    no_invoice: data.no_invoice,
-    no_npb: data.no_npb,
-    no_do: noDo,
-    no_tanda_terima: noTandaTerima,
-    metode_pengambilan: data.metode_pengambilan,
-    total: Number(data.total),
-    total_dibayar: Number(data.total_dibayar || 0),
-    status: data.status,
-    metode_pembayaran: data.metode_pembayaran,
-    nomor_rekening: data.nomor_rekening,
-    nama_bank: data.nama_bank,
-    nama_pemilik_rekening: data.nama_pemilik_rekening,
-    tanggal_jatuh_tempo: tanggalJatuhTempo,
-    diskon: Number(data.diskon || 0),
-    pajak_enabled: data.pajak_enabled || false,
-    pajak: Number(data.pajak || 0),
-    total_akhir: Number(data.total_akhir || 0),
-    created_by: user.id,
-  };
+  let penjualan: any = null;
+  let penjualanError: any = null;
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  const { data: penjualan, error: penjualanError } = await supabase
-    .from("penjualan")
-    .insert(penjualanData)
-    .select("id")
-    .single();
+  while (attempts < maxAttempts) {
+    // Regenerate numbers if not provided or on retry
+    if (!noInvoice || attempts > 0) {
+      noInvoice = await generateInvoiceNumber();
+    }
+    if (!noNpb || attempts > 0) {
+      noNpb = await generateNPBNumber();
+    }
+    if (data.metode_pengambilan === "Diantar") {
+      if (!noDo || attempts > 0) {
+        noDo = await generateDONumber();
+      }
+      if (!noTandaTerima || attempts > 0) {
+        noTandaTerima = await generateTandaTerimaNumber();
+      }
+    }
 
-  if (penjualanError) {
-    console.error(
-      "Error creating penjualan. Data payload:",
-      JSON.stringify(penjualanData, null, 2),
-    );
-    console.error("Supabase Error details:", penjualanError);
-    throw penjualanError;
+    const penjualanData = {
+      tanggal: data.tanggal,
+      pelanggan_id: data.pelanggan_id,
+      catatan: data.catatan,
+      no_invoice: noInvoice,
+      no_npb: noNpb,
+      no_do: noDo,
+      no_tanda_terima: noTandaTerima,
+      metode_pengambilan: data.metode_pengambilan,
+      total: Number(data.total),
+      total_dibayar: Number(data.total_dibayar || 0),
+      status: data.status,
+      metode_pembayaran: data.metode_pembayaran,
+      nomor_rekening: data.nomor_rekening,
+      nama_bank: data.nama_bank,
+      nama_pemilik_rekening: data.nama_pemilik_rekening,
+      tanggal_jatuh_tempo: tanggalJatuhTempo,
+      diskon: Number(data.diskon || 0),
+      pajak_enabled: data.pajak_enabled || false,
+      pajak: Number(data.pajak || 0),
+      total_akhir: Number(data.total_akhir || 0),
+      created_by: user.id,
+    };
+
+    const result = await supabase
+      .from("penjualan")
+      .insert(penjualanData)
+      .select("id")
+      .single();
+
+    penjualan = result.data;
+    penjualanError = result.error;
+
+    if (!penjualanError) {
+      break; // Success
+    }
+
+    // Check if it's a unique violation
+    if (penjualanError.code === '23505') {
+      attempts++;
+      if (attempts >= maxAttempts) {
+        console.error(
+          "Error creating penjualan after retries. Data payload:",
+          JSON.stringify(penjualanData, null, 2),
+        );
+        console.error("Supabase Error details:", penjualanError);
+        throw new Error("Failed to create penjualan due to duplicate numbers after retries.");
+      }
+      // Wait a bit before retry
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } else {
+      // Other error, don't retry
+      console.error(
+        "Error creating penjualan. Data payload:",
+        JSON.stringify(penjualanData, null, 2),
+      );
+      console.error("Supabase Error details:", penjualanError);
+      throw penjualanError;
+    }
   }
 
   // 2. Create penjualan_detail records and update stock
@@ -128,8 +174,8 @@ export const createPenjualan = async (data: PenjualanFormData) => {
   if (data.metode_pengambilan === "Diantar") {
     const { error: doError } = await supabase.from("delivery_orders").insert({
       penjualan_id: penjualan.id,
-      no_do: data.no_do,
-      no_tanda_terima: data.no_tanda_terima,
+      no_do: noDo,
+      no_tanda_terima: noTandaTerima,
       status: "Draft",
       tanggal_kirim: data.tanggal,
     });
@@ -1119,108 +1165,40 @@ const increaseStock = async (supplierProdukId: string, qty: number) => {
 
 // --- existing generateInvoiceNumber function ---
 export const generateInvoiceNumber = async (): Promise<string> => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-
-  const { count, error } = await supabase
-    .from("penjualan")
-    .select("*", { count: "exact", head: true })
-    .gte(
-      "created_at",
-      new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
-    )
-    .lt(
-      "created_at",
-      new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString(),
-    );
-
+  const { data, error } = await supabase.rpc('generate_invoice_number');
   if (error) {
-    console.error("Error counting invoices:", error);
-    return `INV/${year}/${month}/ERR`;
+    console.error("Error generating invoice number:", error);
+    return `INV/ERR/${Date.now()}`;
   }
-
-  const nextNumber = (count || 0) + 1;
-  return `INV/S32/${year}/${month}/${String(nextNumber).padStart(4, "0")}`;
+  return data;
 };
 
 // --- NEW generateNPBNumber function ---
 export const generateNPBNumber = async (): Promise<string> => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  const { count, error } = await supabase
-    .from("penjualan")
-    .select("*", { count: "exact", head: true })
-    .not("no_npb", "is", null)
-    .gte("created_at", new Date(date.setHours(0, 0, 0, 0)).toISOString())
-    .lt("created_at", new Date(date.setHours(23, 59, 59, 999)).toISOString());
-
+  const { data, error } = await supabase.rpc('generate_npb_number');
   if (error) {
-    console.error("Error counting NPB:", error);
-    return `NPB/G001/${year}/${month}/${day}/ERR`;
+    console.error("Error generating NPB number:", error);
+    return `NPB/ERR/${Date.now()}`;
   }
-
-  const nextNumber = (count || 0) + 1;
-  return `NPB/G001/${year}/${month}/${day}/${String(nextNumber).padStart(
-    4,
-    "0",
-  )}`;
+  return data;
 };
 
 // --- NEW generateDONumber function ---
 export const generateDONumber = async (): Promise<string> => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-
-  const { count, error } = await supabase
-    .from("delivery_orders")
-    .select("*", { count: "exact", head: true })
-    .gte(
-      "created_at",
-      new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
-    )
-    .lt(
-      "created_at",
-      new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString(),
-    );
-
+  const { data, error } = await supabase.rpc('generate_do_number');
   if (error) {
-    console.error("Error counting DO:", error);
-    return `DO/${year}/${month}/ERR`;
+    console.error("Error generating DO number:", error);
+    return `DO/ERR/${Date.now()}`;
   }
-
-  const nextNumber = (count || 0) + 1;
-  return `DO/S32/${year}/${month}/${String(nextNumber).padStart(4, "0")}`;
+  return data;
 };
 
 // --- NEW generate Tanda Terima number function ---
 export const generateTandaTerimaNumber = async (): Promise<string> => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-
-  const { count, error } = await supabase
-    .from("penjualan")
-    .select("*", { count: "exact", head: true })
-    .not("no_tanda_terima", "is", null)
-    .gte(
-      "created_at",
-      new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
-    )
-    .lt(
-      "created_at",
-      new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString(),
-    );
-
+  const { data, error } = await supabase.rpc('generate_tanda_terima_number');
   if (error) {
-    console.error("Error counting Tanda Terima:", error);
-    return `ERR/S32/${month}/${year}`;
+    console.error("Error generating Tanda Terima number:", error);
+    return `ERR/${Date.now()}`;
   }
-
-  const nextNumber = (count || 0) + 1;
-  return `${String(nextNumber).padStart(4, "0")}/S32/${month}/${year}`;
+  return data;
 };

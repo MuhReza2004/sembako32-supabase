@@ -4,6 +4,12 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Sequences for atomic numbering
+CREATE SEQUENCE IF NOT EXISTS invoice_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS npb_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS do_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS tanda_terima_seq START 1;
+
 -- Users table (extends Supabase auth.users)
 CREATE TABLE users (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
@@ -258,6 +264,125 @@ SELECT
 FROM produk p
 LEFT JOIN supplier_produk sp ON sp.produk_id = p.id
 GROUP BY p.id, p.nama, p.kode;
+
+-- Function to generate atomic invoice number
+CREATE OR REPLACE FUNCTION public.generate_invoice_number()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  current_year INTEGER;
+  current_month INTEGER;
+  next_num INTEGER;
+  invoice_number TEXT;
+BEGIN
+  current_year := EXTRACT(YEAR FROM NOW());
+  current_month := EXTRACT(MONTH FROM NOW());
+  
+  -- Get next number for this month/year
+  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_invoice, '/', 5) AS INTEGER)), 0) + 1
+  INTO next_num
+  FROM penjualan
+  WHERE EXTRACT(YEAR FROM tanggal) = current_year
+    AND EXTRACT(MONTH FROM tanggal) = current_month;
+  
+  invoice_number := 'INV/S32/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
+  
+  RETURN invoice_number;
+END;
+$$;
+
+-- Function to generate atomic NPB number
+CREATE OR REPLACE FUNCTION public.generate_npb_number()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  current_year INTEGER;
+  current_month INTEGER;
+  current_day INTEGER;
+  next_num INTEGER;
+  npb_number TEXT;
+BEGIN
+  current_year := EXTRACT(YEAR FROM NOW());
+  current_month := EXTRACT(MONTH FROM NOW());
+  current_day := EXTRACT(DAY FROM NOW());
+  
+  -- Get next number for this day
+  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_npb, '/', 5) AS INTEGER)), 0) + 1
+  INTO next_num
+  FROM penjualan
+  WHERE EXTRACT(YEAR FROM tanggal) = current_year
+    AND EXTRACT(MONTH FROM tanggal) = current_month
+    AND EXTRACT(DAY FROM tanggal) = current_day;
+  
+  npb_number := 'NPB/G001/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(current_day::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
+  
+  RETURN npb_number;
+END;
+$$;
+
+-- Function to generate atomic DO number
+CREATE OR REPLACE FUNCTION public.generate_do_number()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  current_year INTEGER;
+  current_month INTEGER;
+  next_num INTEGER;
+  do_number TEXT;
+BEGIN
+  current_year := EXTRACT(YEAR FROM NOW());
+  current_month := EXTRACT(MONTH FROM NOW());
+  
+  -- Get next number for this month/year
+  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_do, '/', 4) AS INTEGER)), 0) + 1
+  INTO next_num
+  FROM penjualan
+  WHERE EXTRACT(YEAR FROM tanggal) = current_year
+    AND EXTRACT(MONTH FROM tanggal) = current_month;
+  
+  do_number := 'DO/S32/' || current_year || '/' || LPAD(current_month::TEXT, 2, '0') || '/' || LPAD(next_num::TEXT, 4, '0');
+  
+  RETURN do_number;
+END;
+$$;
+
+-- Function to generate atomic tanda terima number
+CREATE OR REPLACE FUNCTION public.generate_tanda_terima_number()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  current_year INTEGER;
+  current_month INTEGER;
+  next_num INTEGER;
+  tt_number TEXT;
+BEGIN
+  current_year := EXTRACT(YEAR FROM NOW());
+  current_month := EXTRACT(MONTH FROM NOW());
+  
+  -- Get next number for this month/year
+  SELECT COALESCE(MAX(CAST(SPLIT_PART(no_tanda_terima, '/', 1) AS INTEGER)), 0) + 1
+  INTO next_num
+  FROM penjualan
+  WHERE EXTRACT(YEAR FROM tanggal) = current_year
+    AND EXTRACT(MONTH FROM tanggal) = current_month;
+  
+  tt_number := LPAD(next_num::TEXT, 4, '0') || '/S32/' || LPAD(current_month::TEXT, 2, '0') || '/' || current_year;
+  
+  RETURN tt_number;
+END;
+$$;
 
 -- Stock adjustment helpers (atomic)
 CREATE OR REPLACE FUNCTION public.decrease_stock(
