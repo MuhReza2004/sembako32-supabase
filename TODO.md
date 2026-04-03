@@ -1,14 +1,21 @@
-# TODO: Implement Piutang Feature
+# Pembelian Report Fix Progress
 
-## Current Status
+## [x] Diagnosis Complete
 
-- Services: getPiutang and addPiutangPayment functions added to penjualan.service.ts
-- Components: PiutangTable.tsx and DialogBayarPiutang.tsx created
-- Page: app/dashboard/admin/transaksi/piutang/page.tsx updated to fetch and display piutang data
+- Confirmed UUID quoting bug in dynamic .or()
 
-## Remaining Tasks
+## [ ] 1. Hotfix page.tsx (5min)
 
-- [x] Update app/dashboard/admin/transaksi/piutang/page.tsx to fetch and display piutang data
-- [x] Add state management for piutang data and refresh on payment success
-- [ ] Ensure Firebase index is created for the query (status == "Belum Lunas", orderBy createdAt desc)
-- [ ] Test the payment flow and status update logic
+- Remove quotes from supplier_id.in.(ids)
+- Add detailed error logging
+
+## [ ] 2. Test
+
+- npm run dev
+- Test search supplier names
+
+## [ ] 3. Refactor to service (optional)
+
+- Move to pembelian.service.ts
+
+## [ ] 4. Complete

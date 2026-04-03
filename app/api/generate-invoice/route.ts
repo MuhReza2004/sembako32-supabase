@@ -129,6 +129,11 @@ async function generatePdf(
   const totalAkhir = penjualan.total_akhir ?? totalSetelahDiskon + pajakAmount;
   const displayTotalAkhir = penjualan.status === "Lunas" ? 0 : totalAkhir;
   const totalDibayar = penjualan.total_dibayar ?? 0;
+  const printedDate = new Date().toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 
   const launchOptions = await getPuppeteerLaunchOptions();
   const browser = await puppeteer.launch({
@@ -356,7 +361,7 @@ async function generatePdf(
 
       .invoice-section {
         text-align: left;
-        min-width: 280px;
+        min-width: 300px;
       }
 
       .invoice-section h1 {
@@ -655,24 +660,28 @@ async function generatePdf(
             <h2>RPK SEMBAKO 32</h2>
           </div>
           <div class="company-details">
-            <div class="company-item">
-            <span class="label">Alamat</span>
-            <span class="value">Jl. Soekarno Hatta Pasangkayu</span>
+          <div class="company-item">
+          <span class="label">Alamat</span>
+          <span class="value">Jl. Soekarno Hatta Pasangkayu</span>
           </div>
-            <div class="company-item">
-            <span class="label">Kontak</span>
-            <span class="value">0821-9927-7377</span>
+          <div class="company-item">
+          <span class="label">Kontak</span>
+          <span class="value">0821-9927-7377</span>
           </div>
-            <div class="company-item">
-            <span class="label">Email</span>
-            <span class="value">sembako32@gmail.com</span>
+          <div class="company-item">
+          <span class="label">Email</span>
+          <span class="value">sembako32@gmail.com</span>
           </div>
-            </div>
-        </div>
+          </div>
+          </div>
 
         <div class="invoice-section">
         <h1 class="${invoiceTitle ? "custom-title" : ""}">${safe(invoiceTitle || "INVOICE")}</h1>
           <div class="invoice-meta">
+        <div class="invoice-item">
+<span class="label">Tanggal Cetak</span>
+            <span class="value">${safe(printedDate)}</span>
+        </div>
         <div class="invoice-item">
           <span class="label">No Invoice</span>
           <span class="value">${safe(penjualan.no_invoice)}</span>

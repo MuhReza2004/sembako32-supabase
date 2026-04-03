@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Penjualan, PenjualanDetail } from "@/app/types/penjualan";
 import { supabase } from "@/app/lib/supabase";
 import { DialogDetailPenjualan } from "@/components/penjualan/DialogDetailPenjualan";
@@ -35,6 +36,7 @@ export default function PenjualanReportPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "Lunas" | "Belum Lunas" | "Batal"
   >("all");
@@ -56,7 +58,34 @@ export default function PenjualanReportPage() {
       setError(null);
 
       try {
-        const term = searchTerm.trim();
+        const term = debouncedSearchTerm.trim();
+
+        // if term is provided, we look up matching pelanggan IDs first and then apply OR clause
+        let pelangganIds: string[] = [];
+        if (term) {
+          const { data: pelangganData, error: pelangganError } = await supabase
+            .from("pelanggan")
+            .select("id")
+            .ilike("nama_pelanggan", `%${term}%`);
+          if (pelangganError) {
+            console.error("Error fetching pelanggan IDs:", pelangganError);
+          } else {
+            pelangganIds = pelangganData?.map((p) => p.id) || [];
+          }
+        }
+
+        const buildOrClause = () => {
+          if (!term) return null;
+          const orParts = [`no_invoice.ilike.%${term}%`];
+          if (pelangganIds.length > 0) {
+            const plainIds = pelangganIds.join(",");
+            orParts.push(`pelanggan_id.in.(${plainIds})`);
+          }
+          return orParts.join(",");
+        };
+
+        const orClause = buildOrClause();
+
         const summaryQuery = () => {
           let q = supabase
             .from("penjualan")
@@ -71,10 +100,8 @@ export default function PenjualanReportPage() {
           if (statusFilter !== "all") {
             q = q.eq("status", statusFilter);
           }
-          if (term) {
-            q = q.or(
-              `no_invoice.ilike.%${term}%,pelanggan.nama_pelanggan.ilike.%${term}%`,
-            );
+          if (orClause) {
+            q = q.or(orClause);
           }
           return q;
         };
@@ -99,10 +126,8 @@ export default function PenjualanReportPage() {
         if (statusFilter !== "all") {
           query = query.eq("status", statusFilter);
         }
-        if (term) {
-          query = query.or(
-            `no_invoice.ilike.%${term}%,pelanggan.nama_pelanggan.ilike.%${term}%`,
-          );
+        if (orClause) {
+          query = query.or(orClause);
         }
 
         const from = pageIndex * PAGE_SIZE;
@@ -127,8 +152,7 @@ export default function PenjualanReportPage() {
           items: (item.items || []).map((detail: PenjualanDetailRow) => ({
             ...detail,
             namaProduk:
-              detail.supplier_produk?.produk?.nama ||
-              "Produk tidak ditemukan",
+              detail.supplier_produk?.produk?.nama || "Produk tidak ditemukan",
             hargaJual: detail.harga,
             qty: detail.qty,
           })),
@@ -144,7 +168,9 @@ export default function PenjualanReportPage() {
             Penjualan,
             "total" | "total_akhir" | "pajak" | "status"
           >[]) || [];
-        const activeSales = summaryRows.filter((sale) => sale.status !== "Batal");
+        const activeSales = summaryRows.filter(
+          (sale) => sale.status !== "Batal",
+        );
         const totalRevenue = activeSales.reduce(
           (sum, sale) => sum + (sale.total_akhir ?? sale.total ?? 0),
           0,
@@ -180,13 +206,13 @@ export default function PenjualanReportPage() {
         setIsLoading(false);
       }
     },
-    [startDate, endDate, searchTerm, statusFilter],
+    [startDate, endDate, debouncedSearchTerm, statusFilter],
   );
 
   useEffect(() => {
     setPage(0); // Reset page when filters change
     fetchPenjualan(0, false);
-  }, [startDate, endDate, searchTerm, statusFilter, fetchPenjualan]);
+  }, [startDate, endDate, debouncedSearchTerm, statusFilter, fetchPenjualan]);
 
   const fetchNext = () => {
     if (hasMore) {
@@ -323,10 +349,7 @@ export default function PenjualanReportPage() {
         </div>
       </div>
 
-      <PenjualanTable
-        data={data}
-        onViewDetails={handleViewDetails}
-      />
+      <PenjualanTable data={data} onViewDetails={handleViewDetails} />
 
       <div className="flex items-center justify-end space-x-2 py-4">
         <Button

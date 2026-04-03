@@ -56,8 +56,44 @@ export default function PembelianReportPage() {
     async (pageIndex: number) => {
       setIsLoading(true);
       setError(null);
+
+      let supplierIds: string[] = [];
+      let orClause: string | null = null;
+
       try {
         const term = searchTerm.trim();
+        if (term) {
+          const { data: supplierRows, error: supplierError } = await supabase
+            .from("suppliers")
+            .select("id")
+            .ilike("nama", `%${term}%`);
+
+          if (supplierError) {
+            throw supplierError;
+          }
+
+          supplierIds = (supplierRows || [])
+            .map((supplier) => supplier?.id)
+            .filter((id): id is string => !!id);
+        }
+
+        const buildOrClause = () => {
+          if (!term) return null;
+          const orParts = [`invoice.ilike.%${term}%`];
+          if (supplierIds.length > 0) {
+            const plainIds = supplierIds.join(",");
+            orParts.push(`supplier_id.in.(${plainIds})`);
+          }
+          return orParts.join(",");
+        };
+
+        const orClause = buildOrClause();
+        console.log("Report query debug:", {
+          searchTerm: term,
+          supplierIds,
+          orClause,
+        });
+
         const summaryQuery = () => {
           let q = supabase
             .from("pembelian")
@@ -72,10 +108,8 @@ export default function PembelianReportPage() {
           if (statusFilter !== "all") {
             q = q.eq("status", statusFilter);
           }
-          if (term) {
-            q = q.or(
-              `invoice.ilike.%${term}%,supplier.nama.ilike.%${term}%`,
-            );
+          if (orClause) {
+            q = q.or(orClause);
           }
           return q;
         };
@@ -100,10 +134,8 @@ export default function PembelianReportPage() {
         if (statusFilter !== "all") {
           query = query.eq("status", statusFilter);
         }
-        if (term) {
-          query = query.or(
-            `invoice.ilike.%${term}%,supplier.nama.ilike.%${term}%`,
-          );
+        if (orClause) {
+          query = query.or(orClause);
         }
 
         const from = pageIndex * PAGE_SIZE;
@@ -131,8 +163,7 @@ export default function PembelianReportPage() {
           items: (item.items || []).map((detail: PembelianDetailRow) => ({
             ...detail,
             namaProduk:
-              detail.supplier_produk?.produk?.nama ||
-              "Produk tidak ditemukan",
+              detail.supplier_produk?.produk?.nama || "Produk tidak ditemukan",
             satuan: detail.supplier_produk?.produk?.satuan || "",
             harga: detail.harga,
             qty: detail.qty,
@@ -162,9 +193,19 @@ export default function PembelianReportPage() {
           unpaidPurchases,
         });
       } catch (err: unknown) {
+        const supabaseError = err as any;
         const errorMessage =
           err instanceof Error ? err.message : "An unknown error occurred";
-        console.error("Error fetching purchases:", err);
+        console.error("Error fetching purchases:", {
+          message: supabaseError?.message,
+          code: supabaseError?.code,
+          details: supabaseError?.details,
+          hint: supabaseError?.hint,
+          searchTerm,
+          supplierIds,
+          orClause,
+          fullError: err,
+        });
         setError("Gagal memuat data pembelian: " + errorMessage);
       } finally {
         setIsLoading(false);
