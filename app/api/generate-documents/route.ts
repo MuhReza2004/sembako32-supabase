@@ -52,7 +52,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const requestUrl = new URL(request.url);
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      requestUrl.origin ||
+      "http://localhost:3000";
+
     const authHeader = request.headers.get("authorization") || "";
     const cookieHeader = request.headers.get("cookie") || "";
 
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (authHeader) commonHeaders.Authorization = authHeader;
     if (cookieHeader) commonHeaders.Cookie = cookieHeader;
 
-    const invoiceResp = await fetch(`${baseUrl}/api/generate-invoice`, {
+    const invoiceResp = await fetch(new URL("/api/generate-invoice", baseUrl).toString(), {
       method: "POST",
       headers: commonHeaders,
       body: JSON.stringify(penjualan),
@@ -104,7 +109,7 @@ export async function POST(request: NextRequest) {
         },
       };
 
-      const doResp = await fetch(`${baseUrl}/api/generate-delivery-order`, {
+      const doResp = await fetch(new URL("/api/generate-delivery-order", baseUrl).toString(), {
         method: "POST",
         headers: commonHeaders,
         body: JSON.stringify(doPayload),
@@ -122,7 +127,7 @@ export async function POST(request: NextRequest) {
         penjualan.nama_pelanggan || penjualan.namaPelanggan || "",
       nama_toko: penjualan.nama_toko || "",
     };
-    const receiptResp = await fetch(`${baseUrl}/api/generate-receipt`, {
+    const receiptResp = await fetch(new URL("/api/generate-receipt", baseUrl).toString(), {
       method: "POST",
       headers: commonHeaders,
       body: JSON.stringify(receiptPayload),
