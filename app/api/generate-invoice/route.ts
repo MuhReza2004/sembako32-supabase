@@ -127,7 +127,7 @@ async function generatePdf(
   const totalSetelahDiskon = subTotal - appliedDiskon;
   const pajakAmount = penjualan.pajak_enabled ? totalSetelahDiskon * 0.11 : 0;
   const totalAkhir = penjualan.total_akhir ?? totalSetelahDiskon + pajakAmount;
-  const displayTotalAkhir = penjualan.status === "Lunas" ? 0 : totalAkhir;
+  const displayTotalAkhir = totalAkhir;
   const totalDibayar = penjualan.total_dibayar ?? 0;
   const printedDate = new Date().toLocaleDateString("id-ID", {
     day: "2-digit",
