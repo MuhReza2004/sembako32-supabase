@@ -1,15 +1,7 @@
 import { supabase } from "../lib/supabase";
 
-export const register = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({ email, password });
-
-  if (error) {
-    console.error("Error registering user:", error);
-    throw error;
-  }
-  return data;
-};
-
+// Registrasi publik sengaja tidak disediakan (lihat docs/FINDINGS.md F-02).
+// Akun baru dibuat admin lewat Supabase Dashboard → Authentication → Add user.
 export const login = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

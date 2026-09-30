@@ -11,7 +11,6 @@ type AuthSession = Awaited<
 
 type UserWithRoleMeta = {
   app_metadata?: { role?: UserRole };
-  user_metadata?: { role?: UserRole };
 };
 
 export function useUserRole() {
@@ -33,7 +32,8 @@ export function useUserRole() {
         }
 
         const user = session.user as UserWithRoleMeta;
-        const tokenRole = user.app_metadata?.role ?? user.user_metadata?.role;
+        // user_metadata sengaja tidak dipakai: bisa diubah oleh user sendiri.
+        const tokenRole = user.app_metadata?.role;
 
         if (tokenRole) {
           if (isActive) setRole(tokenRole);

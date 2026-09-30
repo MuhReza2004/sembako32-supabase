@@ -35,19 +35,18 @@ export default function LoginForm() {
       // Ensure session is persisted in storage/cookies
       await supabase.auth.setSession(res.session);
 
-      const metaRole =
-        res.user.app_metadata?.role ?? res.user.user_metadata?.role ?? null;
+      // Hanya app_metadata yang tepercaya (user_metadata bisa diubah user).
+      const metaRole: string | null = res.user.app_metadata?.role ?? null;
 
-      // Sync role into JWT metadata for faster middleware checks (only if missing)
-      let role: string | null = metaRole;
+      // Selalu sinkronkan role dari tabel users ke app_metadata agar token
+      // mengikuti role terbaru (mis. setelah promosi/penurunan role).
+      let role: string | null = null;
       let needsRefresh = false;
-      if (!role) {
-        const syncRes = await fetch("/api/auth/sync-role", { method: "POST" });
-        if (syncRes.ok) {
-          const data = await syncRes.json();
-          role = data?.role ?? null;
-          needsRefresh = !!role;
-        }
+      const syncRes = await fetch("/api/auth/sync-role", { method: "POST" });
+      if (syncRes.ok) {
+        const data = await syncRes.json();
+        role = data?.role ?? null;
+        needsRefresh = !!role && role !== metaRole;
       }
 
       if (!role) {
