@@ -20,6 +20,8 @@ export interface RiwayatPembayaran {
   jumlah: number;
   metode_pembayaran: string;
   atas_nama: string;
+  /** 'refund' = pengembalian dana saat penjualan dibatalkan */
+  tipe?: "pembayaran" | "refund";
   created_at: string;
 }
 

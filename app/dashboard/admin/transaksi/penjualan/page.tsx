@@ -199,7 +199,7 @@ export default function PenjualanPage() {
     const confirmed = await confirm({
       title: "Konfirmasi Pembatalan Transaksi",
       message:
-        "Apakah Anda yakin ingin membatalkan transaksi ini? Status akan diubah menjadi 'Batal' dan stok produk akan dikembalikan.",
+        "Apakah Anda yakin ingin membatalkan transaksi ini? Status akan diubah menjadi 'Batal' dan stok produk akan dikembalikan. Jika sudah ada pembayaran, jumlahnya otomatis dicatat sebagai refund (pengembalian dana ke pelanggan).",
       confirmText: "Batalkan",
       cancelText: "Tidak",
     });
@@ -213,7 +213,7 @@ export default function PenjualanPage() {
       await serviceCancelPenjualan(id);
       showStatus({
         message:
-          "Transaksi berhasil dibatalkan. Status diubah menjadi 'Batal' dan stok telah dikembalikan.",
+          "Transaksi berhasil dibatalkan. Status diubah menjadi 'Batal', stok dikembalikan, dan pembayaran (jika ada) dicatat sebagai refund.",
         success: true,
         refresh: true,
       });

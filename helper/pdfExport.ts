@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { Penjualan, RiwayatPembayaran } from "@/app/types/penjualan";
 import { formatRupiah, formatTanggal } from "./format";
+import { todayWIB } from "@/helper/format";
 
 let logoDataUrlPromise: Promise<string | null> | null = null;
 
@@ -298,7 +299,7 @@ export const exportPiutangTableToPDF = async (piutang: Penjualan[]) => {
 
   // Save the PDF
   pdf.save(
-    `laporan_piutang_${formatTanggal(new Date().toISOString().split("T")[0])}.pdf`,
+    `laporan_piutang_${formatTanggal(todayWIB())}.pdf`,
   );
 };
 
@@ -498,6 +499,6 @@ export const exportPiutangDetailToPDF = async (piutang: Penjualan) => {
 
   // Save the PDF
   pdf.save(
-    `detail_piutang_${toText(invoiceNo)}_${formatTanggal(new Date().toISOString().split("T")[0])}.pdf`,
+    `detail_piutang_${toText(invoiceNo)}_${formatTanggal(todayWIB())}.pdf`,
   );
 };

@@ -33,7 +33,8 @@ Dokumen acuan detail:
 | `app/services/*.service.ts` | Fungsi akses data Supabase **sisi client** (browser client `app/lib/supabase.ts`) |
 | `app/types/*.ts` | Tipe domain (snake_case = kolom DB, camelCase = field turunan/tampilan) |
 | `app/lib/` | `supabase.ts` (browser client), `api-guard.ts` (requireAuth/requireAdmin), `rate-limit.ts`, `auth-client.ts` |
-| `lib/` | `supabase-admin.ts` (service role — **server only**), util Puppeteer/font PDF |
+| `lib/` | `supabase-admin.ts` (service role — **server only**), `supabase-server.ts`, util Puppeteer/font PDF |
+| `lib/pdf/` | Render PDF dokumen penjualan + loader data dari DB (`penjualan-data.ts`) + helper route |
 | `components/<fitur>/` | Tabel + Dialog per fitur (`TabelX`, `DialogTambahX`, `DialogEditX`, `DialogDetailX`) |
 | `hooks/` | `useDebounce`, `useBatchedRefresh`, `useCachedList`, `useUserRole`, `useAuth` |
 | `constants/menu.ts` | Menu sidebar per role — **wajib diupdate saat menambah halaman** |
@@ -67,3 +68,6 @@ Dokumen acuan detail:
    delivery_orders `Draft | Dikirim | Diterima | Batal`; `metode_pengambilan` `Ambil Langsung | Diantar`.
 8. Sebelum mengubah alur transaksi/stok/role, baca [docs/FINDINGS.md](docs/FINDINGS.md) — banyak alur belum atomik.
 9. Jangan menyentuh `.env*`, jangan commit tanpa diminta.
+10. **Tanggal**: pakai `todayWIB()` / `toDateWIB()` dari `helper/format.ts`, jangan `toISOString().split("T")[0]` (UTC).
+11. **PDF baru**: route menerima ID saja dan memuat data dari DB (lihat `lib/pdf/`); jangan merender data dari body request.
+12. **Nomor dokumen** hanya dibuat di dalam RPC saat simpan. Padding angka di SQL pakai `pad_number()`, bukan `LPAD` (memotong).

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
 import { useStatus } from "@/components/ui/StatusProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
+import { cancelPenjualan } from "@/app/services/penjualan.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAccessToken } from "@/app/lib/auth-client";
@@ -21,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatRupiah, formatTanggal } from "@/helper/format";
+import { formatRupiah, formatTanggal, todayWIB } from "@/helper/format";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -100,6 +102,7 @@ type DeliveryOrderRowRaw = {
 
 export default function DeliveryOrderPage() {
   const { showStatus } = useStatus();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DeliveryOrderRow[]>([]);
   const [search, setSearch] = useState("");
@@ -284,11 +287,11 @@ export default function DeliveryOrderPage() {
     };
     if (status === "Dikirim") {
       payload.tanggal_kirim =
-        row.tanggal_kirim || new Date().toISOString().split("T")[0];
+        row.tanggal_kirim || todayWIB();
     }
     if (status === "Diterima") {
       payload.tanggal_terima =
-        row.tanggal_terima || new Date().toISOString().split("T")[0];
+        row.tanggal_terima || todayWIB();
     }
 
     const { error } = await supabase
@@ -310,6 +313,33 @@ export default function DeliveryOrderPage() {
       refresh: true,
     });
     fetchDO();
+  };
+
+  // F-21: membatalkan DO = membatalkan penjualannya (stok kembali, DO Batal,
+  // pembayaran dicatat sebagai refund). Status DO tidak lagi diubah sendiri.
+  const handleCancelDO = async (row: DeliveryOrderRow) => {
+    const confirmed = await confirm({
+      title: "Batalkan Pengiriman & Penjualan",
+      message: `Membatalkan DO ${row.no_do} akan MEMBATALKAN penjualan ${row.penjualan.no_invoice}: stok dikembalikan dan pembayaran (jika ada) dicatat sebagai refund. Lanjutkan?`,
+      confirmText: "Batalkan",
+      cancelText: "Tidak",
+    });
+    if (!confirmed) return;
+
+    try {
+      await cancelPenjualan(row.penjualan.id);
+      showStatus({
+        message: "Penjualan dan Delivery Order berhasil dibatalkan.",
+        success: true,
+        refresh: true,
+      });
+      fetchDO();
+    } catch (err: unknown) {
+      showStatus({
+        message: err instanceof Error ? err.message : "Gagal membatalkan DO",
+        success: false,
+      });
+    }
   };
 
   const handleOpenDetail = (row: DeliveryOrderRow) => {
@@ -548,7 +578,7 @@ export default function DeliveryOrderPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => updateStatus(row, "Batal")}
+                          onClick={() => handleCancelDO(row)}
                         >
                           Batal
                         </Button>

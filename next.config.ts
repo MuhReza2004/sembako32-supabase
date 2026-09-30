@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
@@ -6,10 +7,11 @@ const nextConfig: NextConfig = {
   },
   turbopack: {},
 };
-const withBundleAnalyzer = require("@next/bundle-analyzer")({
+
+const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-module.exports = withBundleAnalyzer({});
-
-export default nextConfig;
+// Satu ekspor saja (F-24): sebelumnya module.exports = withBundleAnalyzer({})
+// menimpa config di atas sehingga outputFileTracingIncludes diabaikan.
+export default withBundleAnalyzer(nextConfig);

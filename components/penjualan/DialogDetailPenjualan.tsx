@@ -19,12 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Penjualan } from "@/app/types/penjualan";
+import { Penjualan, RiwayatPembayaran } from "@/app/types/penjualan";
 import { Pelanggan } from "@/app/types/pelanggan";
-import { formatRupiah } from "@/helper/format";
+import { formatRupiah, formatTanggal } from "@/helper/format";
 import { getPelangganById } from "@/app/services/pelanggan.service";
 import { FileText, Printer, Loader2, Truck } from "lucide-react";
 import { getAccessToken } from "@/app/lib/auth-client";
+import { supabase } from "@/app/lib/supabase";
 
 interface DialogDetailPenjualanProps {
   open: boolean;
@@ -42,6 +43,33 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const [isLoadingDO, setIsLoadingDO] = useState(false);
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
   const [isLoadingAll, setIsLoadingAll] = useState(false);
+  const [riwayat, setRiwayat] = useState<RiwayatPembayaran[]>([]);
+
+  // Riwayat pembayaran & refund (halaman Piutang tidak menampilkan penjualan Batal).
+  useEffect(() => {
+    if (!open || !penjualan?.id) {
+      setRiwayat([]);
+      return;
+    }
+    let active = true;
+    supabase
+      .from("riwayat_pembayaran")
+      .select("id, penjualan_id, tanggal, jumlah, metode_pembayaran, atas_nama, tipe, created_at")
+      .eq("penjualan_id", penjualan.id)
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error("Error fetching riwayat pembayaran:", error);
+          setRiwayat([]);
+          return;
+        }
+        setRiwayat((data as RiwayatPembayaran[]) || []);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, penjualan?.id]);
 
   useEffect(() => {
     const fetchPelanggan = async () => {
@@ -371,12 +399,51 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
                     Total Akhir
                   </span>
                   <span className="text-3xl font-bold text-green-600">
-                    {formatRupiah(penjualan.total)}
+                    {formatRupiah(penjualan.total_akhir ?? penjualan.total)}
                   </span>
                 </div>
               </div>
             </div>
           </div>
+
+          {riwayat.length > 0 && (
+            <div className="pt-4 border-t">
+              <h3 className="font-semibold mb-2">Riwayat Pembayaran</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Jenis</TableHead>
+                    <TableHead>Metode</TableHead>
+                    <TableHead>Atas Nama</TableHead>
+                    <TableHead className="text-right">Jumlah</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {riwayat.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{formatTanggal(r.tanggal)}</TableCell>
+                      <TableCell>
+                        {r.tipe === "refund" ? (
+                          <Badge variant="destructive">Refund</Badge>
+                        ) : (
+                          <Badge variant="secondary">Pembayaran</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{r.metode_pembayaran}</TableCell>
+                      <TableCell>{r.atas_nama}</TableCell>
+                      <TableCell
+                        className={`text-right ${r.tipe === "refund" ? "text-red-600" : ""}`}
+                      >
+                        {r.tipe === "refund" ? "-" : ""}
+                        {formatRupiah(Number(r.jumlah))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

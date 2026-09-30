@@ -90,7 +90,8 @@ Catatan kolom:
 - View: `inventory_report` (stok = SUM supplier_produk.stok, masuk = pembelian Completed, keluar = penjualan ≠ Batal),
   `produk_stock_summary` (low stock di dashboard, ambang 10).
 
-Penomoran dokumen (RPC + sequence global, tidak reset per bulan):
+Penomoran dokumen (sequence global, tidak reset per bulan; tanggal WIB; dibuat **hanya** di dalam `create_penjualan`,
+fungsi `generate_*_number` tidak bisa dipanggil dari browser; padding lewat `pad_number()` agar ≥10000 tidak terpotong):
 | Dokumen | Format | RPC |
 |---|---|---|
 | Invoice | `INV/S32/YYYY/MM/NNNN` | `generate_invoice_number` |
@@ -98,7 +99,7 @@ Penomoran dokumen (RPC + sequence global, tidak reset per bulan):
 | Delivery Order | `DO/S32/YYYY/MM/NNNN` | `generate_do_number` |
 | Tanda Terima | `TT/S32/YYYY/MM/NNNN` | `generate_tanda_terima_number` |
 | Kode produk / pelanggan | `SKU-xxxxxxxx`, `PLG-…`, `KDP-…` (potongan UUID, client) | — |
-| Kode supplier | `SUP-001` (max+1 di client) | — |
+| Kode supplier | `SUP-001` … `SUP-1000` … (sequence `supplier_kode_seq`) | `generate_supplier_code` (admin) |
 
 ## 4. Alur bisnis
 
@@ -126,37 +127,43 @@ File: `components/pembelian/*`, `app/services/pembelian.service.ts`, halaman `ad
 ### 4.3 Penjualan (barang keluar) — admin & staff
 ```
 PenjualanForm (components/penjualan/PenjualanForm.tsx)
-  on mount / ganti metode_pengambilan: pre-generate no_invoice, no_npb, no_tanda_terima (+ no_do jika Diantar)
+  (nomor dokumen TIDAK dibuat di form; ditampilkan sebagai "dibuat otomatis saat disimpan")
   hitung: subTotal = Σ item.subtotal; diskon ≤ subTotal; pajak = 11% × (subTotal−diskon); total_akhir
   konfirmasi → createPenjualan(finalData)
 createPenjualan (penjualan.service.ts) → supabase.rpc("create_penjualan", { p_data })   ← SATU transaksi DB
-  RPC (sql/migrations/20260930_fix_critical_security.sql):
+  RPC (versi terbaru: sql/migrations/20260930d_remaining_findings.sql):
   0. cek auth.uid() + role admin/staff di tabel users; validasi header & items (qty > 0)
-  1. insert penjualan (nomor dari form atau generate; retry 3× bila nomor bentrok)
+  1. generate no_invoice, no_npb, no_tanda_terima (+ no_do jika Diantar) → insert penjualan (retry 3× bila bentrok)
   2. per item: SELECT supplier_produk FOR UPDATE → cek stok → harga = harga_jual_normal/grosir sesuai harga_tipe
      (harga/subtotal dari client DIABAIKAN) → kurangi stok → insert penjualan_detail
-  3. hitung total, diskon (≤ total), pajak 11%, total_akhir → update header
+  3. hitung total, diskon (≤ total), pajak 11%, total_akhir; status Lunas ⇒ total_dibayar = total_akhir → update header
   4. jika 'Diantar': insert delivery_orders(status 'Draft', tanggal_kirim = tanggal)
   Gagal di langkah mana pun → seluruh transaksi di-rollback.
-  → router.push('/dashboard/admin/transaksi/penjualan')
+  → router.push(redirectTo)   (admin: /dashboard/admin/transaksi/penjualan, staff: /dashboard/staff/transaksi/penjualan)
 ```
 - Harga per item dipilih dari `harga_jual_normal` / `harga_jual_grosir` supplier_produk yang dipilih.
 - List: admin `getPenjualanPage` (semua), staff `getPenjualanPageForCurrentUser` (+ filter `created_by`).
-- Detail & dokumen: `DialogDetailPenjualan` → `/api/generate-invoice | generate-delivery-order | generate-receipt | generate-documents` (gabungan via pdf-lib).
+- Detail & dokumen: `DialogDetailPenjualan` (menampilkan juga riwayat pembayaran & refund) → `/api/generate-invoice | generate-delivery-order |
+  generate-receipt | generate-documents` dengan body `{ penjualan_id }` (lihat §5).
 - **Batal**: `cancelPenjualan` → `rpc cancel_penjualan` [atomik; admin atau staff pemilik; `FOR UPDATE`]: stok dikembalikan
-  → status `Batal` → DO terkait `Batal`. Sudah Batal = no-op (stok tidak dikembalikan dua kali).
-- `updatePenjualan` / `deletePenjualan` ada di service tetapi tidak ada UI yang memanggil edit (`tambah?id=`) — lihat FINDINGS.
+  → bila `total_dibayar > 0` catat `riwayat_pembayaran` tipe `refund` lalu `total_dibayar = 0` → status `Batal` → DO terkait `Batal`.
+  Sudah Batal = no-op (stok tidak dikembalikan dua kali).
+- **Tidak ada edit/hapus penjualan.** Koreksi = batalkan lalu buat ulang. (Jalur edit lama yang rusak dihapus — FINDINGS F-14.)
 
 ### 4.4 Piutang — admin
 - Halaman `admin/transaksi/piutang` mengambil penjualan ≠ Batal, menurunkan status dari `total_dibayar` vs `total_akhir`.
 - `DialogBayarPiutang` → validasi 0 < jumlah ≤ sisa → `addPiutangPayment` → `rpc add_penjualan_payment` [atomik, admin,
   `FOR UPDATE`; validasi ulang di server; tolak Batal/lunas]: insert `riwayat_pembayaran`, update `total_dibayar` & status.
-- Export PDF tabel/detail piutang: client-side jsPDF (`helper/pdfExport.ts`).
+- `riwayat_pembayaran.tipe`: `pembayaran` (default) | `refund` (dibuat `cancel_penjualan`). Penjualan Batal tidak tampil di Piutang;
+  refund terlihat di dialog detail penjualan.
+- Export PDF tabel/detail piutang: client-side jsPDF (`helper/pdfExport.ts`). "Cetak Lunas" = `/api/generate-invoice` dengan
+  `{ penjualan_id, variant: "pembayaran" }` (judul, nominal, watermark ditentukan server).
 
 ### 4.5 Delivery Order — admin
 - `admin/transaksi/delivery-order`: list + filter; transisi status `Draft → Dikirim (tanggal_kirim) → Diterima (tanggal_terima)`;
-  tombol `Batal` hanya mengubah status DO (tidak membatalkan penjualan/stok).
-- Cetak: `/api/generate-delivery-order` (surat jalan) dan `/api/generate-bast` (berita acara serah terima, saat Diterima).
+  tombol `Batal` = **batalkan penjualannya** (`cancel_penjualan`, dengan konfirmasi): stok kembali, DO Batal, refund bila sudah dibayar.
+- Cetak: `/api/generate-delivery-order` (surat jalan) dan `/api/generate-bast` (berita acara serah terima, saat Diterima),
+  body `{ delivery_order_id }`.
 
 ### 4.6 Laporan — admin
 - `admin/laporan/penjualan` & `admin/laporan/pembelian`: list + ringkasan di client; export PDF via
@@ -164,6 +171,9 @@ createPenjualan (penjualan.service.ts) → supabase.rpc("create_penjualan", { p_
 
 ### 4.7 Dashboard
 - Admin (`app/dashboard/admin/page.tsx`): `useDashboardData` (React Query) → `dashboard.service.ts` (count + RPC `sum_*`, `piutang_summary`, `produk_stock_summary`), realtime refresh.
+- **Definisi angka (sama dengan halaman laporan)**: omzet = Σ `COALESCE(total_akhir,total)` penjualan ≠ Batal; pengeluaran = Σ `total`
+  pembelian ≠ Decline; piutang = Σ (tagihan − `total_dibayar`) > 0 penjualan ≠ Batal; semua difilter kolom `tanggal` (tanggal WIB).
+  RPC `sum_*`/`piutang_summary` khusus admin.
 - Staff (`app/dashboard/staff/page.tsx`): `getPenjualanSummaryForCurrentUser` (hitung di client).
 
 ## 5. Pembuatan PDF (server)
@@ -171,13 +181,17 @@ createPenjualan (penjualan.service.ts) → supabase.rpc("create_penjualan", { p_
 Pola seragam di setiap `app/api/generate-*/route.ts`:
 1. `export const runtime = "nodejs"; export const maxDuration = 60;`
 2. `requireAuth`/`requireAdmin` → `rateLimit(key, n, 60_000)` (in-memory per instance).
-3. Body JSON dari client. Untuk non-admin: cek kepemilikan berdasarkan nomor dokumen (no_invoice / no_do) via `supabaseAdmin`.
-4. Bangun HTML string (semua nilai lewat `safe()` = `escapeHtml`), font Verdana base64 (`lib/pdf-fonts.ts`), logo `public/logo.svg` base64.
+3. Body JSON hanya berisi **ID** (`penjualan_id` atau `delivery_order_id`; invoice boleh `variant: "pembayaran"`). Data dimuat dari DB
+   oleh `lib/pdf/penjualan-data.ts` (`loadPenjualanForPdf` / `loadDeliveryOrderForPdf`) dengan cek admin atau staff pembuat.
+   Helper route: `lib/pdf/route-helpers.ts` (`guardPdfRequest`, `pdfResponse`, `pdfError`).
+4. Render di `lib/pdf/{invoice,receipt,delivery-order,bast}.ts` (`render*Pdf`): HTML string (nilai lewat `safe()` = `escapeHtml`),
+   font Verdana base64 (`lib/pdf-fonts.ts`), logo `public/logo.svg` base64.
 5. `puppeteer.launch(await getPuppeteerLaunchOptions())` (`lib/puppeteer.ts`: Chromium sparticuz di Vercel, Chrome/Edge lokal di dev)
    → `setContent` → `waitForPdfFonts` → `page.pdf` → `browser.close()` di `finally`.
 6. Response `application/pdf` + `Content-Disposition`.
 
-Laporan (sales/purchase) mengambil data dari DB; invoice/receipt/DO/BAST **merender data dari body request**.
+Semua dokumen mengambil data dari DB. `generate-documents` memanggil `render*Pdf` langsung (tanpa HTTP ke route lain) lalu
+menggabungkan dengan pdf-lib. Laporan (sales/purchase) masih memakai pola lama di route-nya sendiri (data dari DB, `requireAdmin`).
 Dokumen debugging PDF lama: `SOLUTION-SUMMARY.md`, `PDF-FIXES.md`, `FIX-IMPLEMENTATION.md`, `MAINTENANCE.md`.
 
 ## 6. Pola UI yang dipakai berulang

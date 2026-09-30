@@ -11,13 +11,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-async function TambahPenjualanDataLoader({
-  searchParams,
-}: {
-  searchParams: { id?: string };
-}) {
-  const editId = searchParams.id;
-
+async function TambahPenjualanDataLoader() {
   const { data: products, error: productsError } = await supabaseAdmin
     .from("produk")
     .select("id, nama, satuan")
@@ -34,20 +28,6 @@ async function TambahPenjualanDataLoader({
     .from("pelanggan")
     .select("id, nama_pelanggan, kode_pelanggan, nama_toko");
 
-  let editingPenjualan = null;
-  if (editId) {
-    const { data, error } = await supabaseAdmin
-      .from("penjualan")
-      .select("*, penjualan_detail(*)")
-      .eq("id", editId)
-      .single();
-    if (error) {
-      console.error("Error fetching penjualan for edit:", error);
-    } else {
-      editingPenjualan = data;
-    }
-  }
-
   if (productsError || supplierProduksError || pelError) {
     return (
       <div className="p-8 text-center text-red-500">
@@ -61,23 +41,17 @@ async function TambahPenjualanDataLoader({
       products={products || []}
       supplierProduks={supplierProduks || []}
       pelangganList={pelangganList || []}
-      editingPenjualan={editingPenjualan}
     />
   );
 }
 
-export default async function PageTambahPenjualan({
-  searchParams,
-}: {
-  searchParams: Promise<{ id?: string }>;
-}) {
+export default async function PageTambahPenjualan() {
   // Halaman ini membaca data dengan service role (bypass RLS), jadi role
   // diverifikasi ulang di server, tidak hanya mengandalkan middleware.
   const auth = await getServerUserRole();
   if (!auth) redirect("/auth/login");
   if (auth.role !== "admin") redirect("/dashboard/staff?error=not_admin");
 
-  const params = await searchParams;
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
@@ -89,13 +63,9 @@ export default async function PageTambahPenjualan({
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">
-              {params.id ? "Edit" : "Tambah"} Transaksi Penjualan
-            </h1>
+            <h1 className="text-3xl font-bold">Tambah Transaksi Penjualan</h1>
             <p className="text-muted-foreground mt-1">
-              {params.id
-                ? "Perbarui detail transaksi penjualan."
-                : "Buat transaksi penjualan baru."}
+              Buat transaksi penjualan baru.
             </p>
           </div>
         </div>
@@ -104,7 +74,7 @@ export default async function PageTambahPenjualan({
           <Suspense
             fallback={<div className="p-8 text-center">Loading form...</div>}
           >
-            <TambahPenjualanDataLoader searchParams={params} />
+            <TambahPenjualanDataLoader />
           </Suspense>
         </div>
       </div>

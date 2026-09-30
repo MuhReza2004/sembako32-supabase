@@ -1,4 +1,5 @@
 import { supabase } from "@/app/lib/supabase";
+import { todayWIB } from "@/helper/format";
 import {
   Penjualan,
   PenjualanDetail,
@@ -53,16 +54,12 @@ export const createPenjualan = async (data: PenjualanFormData) => {
   }
 
   // Header, detail, pengurangan stok, dan delivery order dibuat dalam satu
-  // transaksi DB oleh RPC create_penjualan. Harga & total dihitung ulang di
-  // server dari supplier_produk (lihat sql/migrations/20260930_fix_critical_security.sql).
+  // transaksi DB oleh RPC create_penjualan. Harga, total, dan nomor dokumen
+  // dibuat di server (sql/migrations/20260930d_remaining_findings.sql).
   const payload = {
     tanggal: data.tanggal,
     pelanggan_id: data.pelanggan_id,
     catatan: data.catatan,
-    no_invoice: data.no_invoice,
-    no_npb: data.no_npb,
-    no_do: data.no_do,
-    no_tanda_terima: data.no_tanda_terima,
     metode_pengambilan: data.metode_pengambilan,
     total_dibayar: Number(data.total_dibayar || 0),
     status: data.status,
@@ -92,133 +89,6 @@ export const createPenjualan = async (data: PenjualanFormData) => {
   return penjualanId as string;
 };
 
-// --- existing getAllPenjualan function ---
-export const getAllPenjualan = async (): Promise<Penjualan[]> => {
-  // First fetch penjualan dengan pelanggan
-  const { data: penjualanData, error: penjualanError } = await supabase
-    .from("penjualan")
-    .select(
-      `
-      *,
-      pelanggan (
-        id,
-        nama_pelanggan,
-        alamat
-      )
-    `,
-    )
-    .order("created_at", { ascending: false });
-
-  if (penjualanError) {
-    console.error("Error fetching penjualan:", penjualanError);
-    throw penjualanError;
-  }
-
-  const createdByIds = Array.from(
-    new Set(
-      (penjualanData as PenjualanRow[])
-        .map((item) => item.created_by)
-        .filter((id): id is string => !!id),
-    ),
-  );
-
-  let usersMap = new Map<string, { email?: string; role?: string }>();
-  if (createdByIds.length > 0) {
-    const { data: usersData, error: usersError } = await supabase
-      .from("users")
-      .select("id, email, role")
-      .in("id", createdByIds);
-
-    if (usersError) {
-      console.error("Error fetching users:", usersError);
-    } else {
-      usersMap = new Map(
-        (usersData || []).map((u) => [
-          u.id as string,
-          { email: u.email as string, role: u.role as string },
-        ]),
-      );
-    }
-  }
-
-  // Then fetch penjualan_detail dengan supplier_produk
-  const { data: detailsData, error: detailsError } = await supabase.from(
-    "penjualan_detail",
-  ).select(`
-      *,
-      supplier_produk (
-          id,
-          harga_jual,
-          harga_jual_normal,
-          harga_jual_grosir,
-          produk (
-          id,
-          nama,
-          satuan
-        )
-      )
-    `);
-
-  if (detailsError) {
-    console.error("Error fetching penjualan_detail:", detailsError);
-    throw detailsError;
-  }
-
-  // Join penjualan dengan penjualan_detail
-  const mappedData = (penjualanData as PenjualanRow[]).map((item) => ({
-    id: item.id,
-    tanggal: item.tanggal,
-    pelanggan_id: item.pelanggan_id,
-    catatan: item.catatan,
-    no_invoice: item.no_invoice,
-    no_npb: item.no_npb,
-    no_do: item.no_do,
-    no_tanda_terima: item.no_tanda_terima,
-    metode_pengambilan: item.metode_pengambilan,
-    total: item.total,
-    total_dibayar: item.total_dibayar,
-    status: item.status,
-    metode_pembayaran: item.metode_pembayaran,
-    nomor_rekening: item.nomor_rekening,
-    nama_bank: item.nama_bank,
-    nama_pemilik_rekening: item.nama_pemilik_rekening,
-    tanggal_jatuh_tempo: item.tanggal_jatuh_tempo,
-    diskon: item.diskon,
-    pajak_enabled: item.pajak_enabled,
-    pajak: item.pajak,
-    total_akhir: item.total_akhir,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-    created_by: item.created_by,
-    createdByEmail: usersMap.get(item.created_by || "")?.email,
-    createdByRole: usersMap.get(item.created_by || "")?.role,
-    namaPelanggan: item.pelanggan?.nama_pelanggan || "Unknown",
-    alamatPelanggan: item.pelanggan?.alamat || "",
-    // Get items from detailsData that belong to this penjualan
-    items:
-      (detailsData as PenjualanDetailRow[])
-        .filter((detail) => detail.penjualan_id === item.id)
-        .map((detail) => ({
-          id: detail.id,
-          penjualan_id: detail.penjualan_id,
-          supplier_produk_id: detail.supplier_produk_id,
-          qty: detail.qty,
-          harga: detail.harga,
-          subtotal: detail.subtotal,
-          created_at: detail.created_at,
-          namaProduk:
-            detail.supplier_produk?.produk?.nama || "Produk Tidak Ditemukan",
-          satuan: detail.supplier_produk?.produk?.satuan || "",
-          hargaJual:
-            detail.harga ||
-            detail.supplier_produk?.harga_jual_normal ||
-            detail.supplier_produk?.harga_jual,
-        })) || [],
-  }));
-
-  return mappedData;
-};
-
 export const getPenjualanPage = async (params: {
   page: number;
   perPage: number;
@@ -245,6 +115,7 @@ export const getPenjualanPage = async (params: {
       metode_pengambilan,
       total,
       total_akhir,
+      total_dibayar,
       status,
       created_at,
       updated_at,
@@ -806,8 +677,7 @@ export const getPenjualanPageForCurrentUser = async (params: {
 
 export const getPenjualanSummaryForCurrentUser = async () => {
   const list = await getPenjualanForCurrentUser();
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = todayWIB();
 
   const todayItems = list.filter((p) => p.tanggal === todayStr);
   const totalHariIni = todayItems.reduce(
@@ -825,30 +695,6 @@ export const getPenjualanSummaryForCurrentUser = async () => {
     belumLunas,
     batal,
   };
-};
-
-// --- NEW getPiutang function ---
-export const getPiutang = async (): Promise<Penjualan[]> => {
-  const { data, error } = await supabase
-    .from("penjualan")
-    .select(
-      `
-      *,
-      pelanggan (
-        id,
-        nama_pelanggan,
-        alamat
-      )
-    `,
-    )
-    .eq("status", "Belum Lunas")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching piutang:", error);
-    throw error;
-  }
-  return data as Penjualan[];
 };
 
 // --- addPiutangPayment: atomik di DB (kunci baris, validasi sisa) ---
@@ -877,125 +723,6 @@ export const addPiutangPayment = async (
   }
 };
 
-// --- existing updatePenjualanStatus function ---
-export const updatePenjualanStatus = async (
-  id: string,
-  status: "Lunas" | "Belum Lunas" | "Batal",
-): Promise<void> => {
-  const { error } = await supabase
-    .from("penjualan")
-    .update({
-      status: status,
-    })
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error updating penjualan status:", error);
-    throw error;
-  }
-};
-
-// --- existing updatePenjualan function ---
-export const updatePenjualan = async (
-  id: string,
-  data: Partial<PenjualanFormData>,
-) => {
-  if (data.total !== undefined) {
-    assertValidMoney("Total penjualan", Number(data.total));
-  }
-  if (data.total_dibayar !== undefined) {
-    assertValidMoney("Total dibayar", Number(data.total_dibayar));
-  }
-  if (data.diskon !== undefined) {
-    assertValidMoney("Diskon", Number(data.diskon));
-  }
-  if (data.pajak !== undefined) {
-    assertValidMoney("Pajak", Number(data.pajak));
-  }
-  if (data.total_akhir !== undefined) {
-    assertValidMoney("Total akhir", Number(data.total_akhir));
-  }
-  if (data.items) {
-    for (const item of data.items) {
-      assertValidMoney("Harga item", Number(item.harga));
-      assertValidMoney("Subtotal item", Number(item.subtotal));
-    }
-  }
-
-  const { data: currentPenjualan, error: fetchError } = await supabase
-    .from("penjualan")
-    .select("*, penjualan_detail(id, supplier_produk_id, qty)")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !currentPenjualan) {
-    throw new Error("Transaksi penjualan tidak ditemukan.");
-  }
-
-  if (data.items) {
-    // Restore old stock
-    const currentDetails =
-      (
-        currentPenjualan as {
-          penjualan_detail?: { supplier_produk_id: string; qty: number }[];
-        }
-      ).penjualan_detail || [];
-    for (const item of currentDetails) {
-      await increaseStock(item.supplier_produk_id, Number(item.qty));
-    }
-
-    // Delete old details
-    await supabase.from("penjualan_detail").delete().eq("penjualan_id", id);
-
-    // Create new details and deduct new stock
-    for (const item of data.items) {
-      await decreaseStock(item.supplier_produk_id, Number(item.qty));
-      const { error: detailError } = await supabase
-        .from("penjualan_detail")
-        .insert({
-          penjualan_id: id,
-          supplier_produk_id: item.supplier_produk_id,
-          qty: item.qty,
-          harga: item.harga,
-          subtotal: item.subtotal,
-        });
-      if (detailError) {
-        await increaseStock(item.supplier_produk_id, Number(item.qty));
-        throw detailError;
-      }
-    }
-  }
-
-  // Update the main penjualan document
-  const { items: _items, ...updateData } = data; // Exclude items from the main update
-  void _items;
-  const { error: updateError } = await supabase
-    .from("penjualan")
-    .update(updateData)
-    .eq("id", id);
-
-  if (updateError) {
-    console.error("Error updating penjualan:", updateError);
-    throw updateError;
-  }
-};
-
-// --- existing deletePenjualan function ---
-export const deletePenjualan = async (id: string) => {
-  const { data: penjualanDetails, error: fetchDetailsError } = await supabase
-    .from("penjualan_detail")
-    .select("supplier_produk_id, qty")
-    .eq("penjualan_id", id);
-  if (fetchDetailsError) throw fetchDetailsError;
-
-  for (const item of penjualanDetails || []) {
-    await increaseStock(item.supplier_produk_id, Number(item.qty));
-  }
-
-  await supabase.from("penjualan_detail").delete().eq("penjualan_id", id);
-  await supabase.from("penjualan").delete().eq("id", id);
-};
-
 // --- cancelPenjualan: atomik & idempoten di DB (admin, atau staff pemilik) ---
 export const cancelPenjualan = async (id: string) => {
   const { error } = await supabase.rpc("cancel_penjualan", {
@@ -1006,68 +733,4 @@ export const cancelPenjualan = async (id: string) => {
     console.error("Error cancelling penjualan:", error);
     throw new Error(`Gagal membatalkan transaksi: ${error.message}`);
   }
-};
-
-const decreaseStock = async (supplierProdukId: string, qty: number) => {
-  const { data, error } = await supabase.rpc("decrease_stock", {
-    p_supplier_produk_id: supplierProdukId,
-    p_qty: qty,
-  });
-  if (error) {
-    console.error("Error decreasing stock:", error);
-    throw error;
-  }
-  return data as number;
-};
-
-const increaseStock = async (supplierProdukId: string, qty: number) => {
-  const { data, error } = await supabase.rpc("increase_stock", {
-    p_supplier_produk_id: supplierProdukId,
-    p_qty: qty,
-  });
-  if (error) {
-    console.error("Error increasing stock:", error);
-    throw error;
-  }
-  return data as number;
-};
-
-// --- existing generateInvoiceNumber function ---
-export const generateInvoiceNumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc("generate_invoice_number");
-  if (error) {
-    console.error("Error generating invoice number:", error);
-    return `INV/ERR/${Date.now()}`;
-  }
-  return data;
-};
-
-// --- NEW generateNPBNumber function ---
-export const generateNPBNumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc("generate_npb_number");
-  if (error) {
-    console.error("Error generating NPB number:", error);
-    return `NPB/ERR/${Date.now()}`;
-  }
-  return data;
-};
-
-// --- NEW generateDONumber function ---
-export const generateDONumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc("generate_do_number");
-  if (error) {
-    console.error("Error generating DO number:", error);
-    return `DO/ERR/${Date.now()}`;
-  }
-  return data;
-};
-
-// --- NEW generate Tanda Terima number function ---
-export const generateTandaTerimaNumber = async (): Promise<string> => {
-  const { data, error } = await supabase.rpc("generate_tanda_terima_number");
-  if (error) {
-    console.error("Error generating Tanda Terima number:", error);
-    return `ERR/${Date.now()}`;
-  }
-  return data;
 };

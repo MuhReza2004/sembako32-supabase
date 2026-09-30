@@ -98,11 +98,13 @@ export default function AdminDashboardPage() {
       const channel = supabase.channel('dashboard-changes');
       const tables = ['penjualan', 'pembelian', 'produk', 'pelanggan', 'suppliers', 'supplier_produk'];
 
+      // Daftarkan semua listener dulu, lalu subscribe SEKALI (F-15).
       tables.forEach(table => {
         channel.on('postgres_changes', { event: '*', schema: 'public', table: table }, () => {
           scheduleRefresh();
-        }).subscribe();
+        });
       });
+      channel.subscribe();
 
       return () => {
         supabase.removeChannel(channel);

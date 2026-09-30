@@ -1,4 +1,15 @@
 import { supabase } from "../lib/supabase";
+import { toDateWIB } from "@/helper/format";
+
+// Definisi angka dashboard = halaman laporan (F-18): filter berdasarkan kolom
+// `tanggal` (tanggal transaksi, WIB), nominal penjualan = total_akhir.
+const dateBounds = (dateRange?: {
+  startDate: Date | null;
+  endDate: Date | null;
+}) =>
+  dateRange?.startDate && dateRange?.endDate
+    ? { from: toDateWIB(dateRange.startDate), to: toDateWIB(dateRange.endDate) }
+    : null;
 
 export interface DashboardData {
   totalProducts: number;
@@ -129,10 +140,9 @@ const getTotalSales = async (dateRange?: {
 }): Promise<number> => {
   let query = supabase.from("penjualan").select("id", { count: "exact", head: true });
 
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
+  const bounds = dateBounds(dateRange);
+  if (bounds) {
+    query = query.gte("tanggal", bounds.from).lte("tanggal", bounds.to);
   }
 
   const { count, error } = await query;
@@ -151,10 +161,9 @@ const getTotalPurchases = async (dateRange?: {
 }): Promise<number> => {
   let query = supabase.from("pembelian").select("id", { count: "exact", head: true });
 
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
+  const bounds = dateBounds(dateRange);
+  if (bounds) {
+    query = query.gte("tanggal", bounds.from).lte("tanggal", bounds.to);
   }
 
   const { count, error } = await query;
@@ -252,8 +261,10 @@ const getRecentSales = async (dateRange?: {
       `
       id,
       no_invoice,
+      tanggal,
       created_at,
       total,
+      total_akhir,
       status,
       pelanggan (
         nama_pelanggan,
@@ -263,10 +274,9 @@ const getRecentSales = async (dateRange?: {
     )
     .order("created_at", { ascending: false });
 
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
+  const bounds = dateBounds(dateRange);
+  if (bounds) {
+    query = query.gte("tanggal", bounds.from).lte("tanggal", bounds.to);
   } else {
     query = query.limit(3);
   }
@@ -285,8 +295,8 @@ const getRecentSales = async (dateRange?: {
     return {
       id: sale.id,
       kode: sale.no_invoice || `SL-${sale.id.slice(-6)}`,
-      tanggal: sale.created_at,
-      total: sale.total || 0,
+      tanggal: sale.tanggal || sale.created_at,
+      total: Number(sale.total_akhir ?? sale.total ?? 0),
       status: sale.status || "Belum Lunas",
       pelanggan:
         pelangganRaw?.nama_toko ||
@@ -306,6 +316,7 @@ const getRecentPurchases = async (dateRange?: {
       `
       id,
       invoice,
+      tanggal,
       created_at,
       total,
       status,
@@ -316,10 +327,9 @@ const getRecentPurchases = async (dateRange?: {
     )
     .order("created_at", { ascending: false });
 
-  if (dateRange && dateRange.startDate && dateRange.endDate) {
-    query = query
-      .gte("created_at", dateRange.startDate.toISOString())
-      .lte("created_at", dateRange.endDate.toISOString());
+  const bounds = dateBounds(dateRange);
+  if (bounds) {
+    query = query.gte("tanggal", bounds.from).lte("tanggal", bounds.to);
   } else {
     query = query.limit(3);
   }
@@ -338,7 +348,7 @@ const getRecentPurchases = async (dateRange?: {
     return {
       id: purchase.id,
       kode: purchase.invoice || `PB-${purchase.id.slice(-6)}`,
-      tanggal: purchase.created_at,
+      tanggal: purchase.tanggal || purchase.created_at,
       total: purchase.total || 0,
       status: purchase.status || "Pending",
       supplier: supplierRaw?.nama || "Unknown",

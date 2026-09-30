@@ -58,7 +58,7 @@ export default function PembelianReportPage() {
       setError(null);
 
       let supplierIds: string[] = [];
-      let orClause: string | null = null;
+      const orClause: string | null = null;
 
       try {
         const term = searchTerm.trim();
@@ -175,10 +175,11 @@ export default function PembelianReportPage() {
 
         const summaryRows =
           (summaryRes.data as Pick<Pembelian, "total" | "status">[]) || [];
-        const totalCost = summaryRows.reduce(
-          (sum, purchase) => sum + purchase.total,
-          0,
-        );
+        // Pembelian yang ditolak (Decline) tidak dihitung sebagai pengeluaran,
+        // sama dengan dashboard (F-18).
+        const totalCost = summaryRows
+          .filter((purchase) => purchase.status !== "Decline")
+          .reduce((sum, purchase) => sum + Number(purchase.total || 0), 0);
         const paidPurchases = summaryRows.filter(
           (purchase) => purchase.status === "Completed",
         ).length;
@@ -193,7 +194,12 @@ export default function PembelianReportPage() {
           unpaidPurchases,
         });
       } catch (err: unknown) {
-        const supabaseError = err as any;
+        const supabaseError = err as {
+          message?: string;
+          code?: string;
+          details?: string;
+          hint?: string;
+        } | null;
         const errorMessage =
           err instanceof Error ? err.message : "An unknown error occurred";
         console.error("Error fetching purchases:", {

@@ -7,7 +7,7 @@ import { createPembelian } from "@/app/services/pembelian.service";
 import { PembelianFormData } from "@/app/types/pembelian";
 import { Produk } from "@/app/types/produk";
 import { Supplier, SupplierProduk } from "@/app/types/supplier";
-import { formatRupiah } from "@/helper/format";
+import { formatRupiah, todayWIB } from "@/helper/format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,7 @@ export default function PembelianForm({
     formState: { errors, isSubmitting },
   } = useForm<PembelianFormData>({
     defaultValues: {
-      tanggal: new Date().toISOString().split("T")[0],
+      tanggal: todayWIB(),
       status: "Pending",
       metode_pembayaran: "Tunai",
       items: [],

@@ -3,19 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, Controller, useWatch } from "react-hook-form";
-import {
-  createPenjualan,
-  updatePenjualan,
-  generateInvoiceNumber,
-  generateNPBNumber,
-  generateDONumber,
-  generateTandaTerimaNumber,
-} from "@/app/services/penjualan.service";
-import {
-  Penjualan,
-  PenjualanFormData,
-  PenjualanFormItem,
-} from "@/app/types/penjualan";
+import { createPenjualan } from "@/app/services/penjualan.service";
+import { todayWIB } from "@/helper/format";
+import { PenjualanFormData, PenjualanFormItem } from "@/app/types/penjualan";
 import { Produk } from "@/app/types/produk";
 import { Pelanggan } from "@/app/types/pelanggan";
 import { SupplierProduk } from "@/app/types/supplier";
@@ -73,7 +63,6 @@ interface PenjualanFormProps {
   products: ProdukOption[];
   supplierProduks: SupplierProdukOption[];
   pelangganList: PelangganOption[];
-  editingPenjualan?: Penjualan | null;
   /** Halaman tujuan setelah simpan (default: daftar penjualan admin). */
   redirectTo?: string;
 }
@@ -82,7 +71,6 @@ export function PenjualanForm({
   pelangganList,
   supplierProduks,
   products,
-  editingPenjualan,
   redirectTo = "/dashboard/admin/transaksi/penjualan",
 }: PenjualanFormProps) {
   const router = useRouter();
@@ -94,19 +82,16 @@ export function PenjualanForm({
     setValue,
     formState: { isSubmitting },
   } = useForm<PenjualanFormData>({
-    defaultValues: editingPenjualan
-      ? {
-          ...editingPenjualan,
-          items: editingPenjualan.items || [],
-        }
-      : {
-          tanggal: new Date().toISOString().split("T")[0],
-          status: "Lunas",
-          items: [],
-          metode_pengambilan: "Ambil Langsung",
-          pajak_enabled: false,
-          diskon: 0,
-        },
+    // Edit penjualan tidak didukung: koreksi = batalkan lalu buat ulang
+    // (stok & nomor dokumen tetap konsisten). Lihat docs/FINDINGS.md F-14.
+    defaultValues: {
+      tanggal: todayWIB(),
+      status: "Lunas",
+      items: [],
+      metode_pengambilan: "Ambil Langsung",
+      pajak_enabled: false,
+      diskon: 0,
+    },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -120,37 +105,6 @@ export function PenjualanForm({
     name: "metode_pengambilan",
   });
 
-  useEffect(() => {
-    const generateNumbers = async () => {
-      if (!editingPenjualan) {
-        try {
-          const [invoiceNum, npbNum, ttNum] = await Promise.all([
-            generateInvoiceNumber(),
-            generateNPBNumber(),
-            generateTandaTerimaNumber(),
-          ]);
-          setValue("no_invoice", invoiceNum);
-          setValue("no_npb", npbNum);
-          setValue("no_tanda_terima", ttNum);
-          if (watchMetodePengambilan === "Diantar") {
-            const doNum = await generateDONumber();
-            setValue("no_do", doNum);
-          } else {
-            setValue("no_do", "");
-          }
-        } catch (error: unknown) {
-          console.error("Error generating document numbers:", error);
-          showStatus({
-            message:
-              "Gagal membuat nomor dokumen otomatis: " +
-              (error instanceof Error ? error.message : "Unknown error"),
-            success: false,
-          });
-        }
-      }
-    };
-    generateNumbers();
-  }, [editingPenjualan, setValue, showStatus, watchMetodePengambilan]);
 
   const watchItems = useWatch({ control, name: "items" }) || [];
   const watchPajakEnabled = useWatch({ control, name: "pajak_enabled" });
@@ -191,21 +145,12 @@ export function PenjualanForm({
     try {
       const finalData = buildFinalData(data);
 
-      if (editingPenjualan?.id) {
-        await updatePenjualan(editingPenjualan.id, finalData);
-        showStatus({
-          message: "Penjualan berhasil diperbarui!",
-          success: true,
-          refresh: true,
-        });
-      } else {
-        await createPenjualan(finalData);
-        showStatus({
-          message: "Penjualan berhasil disimpan!",
-          success: true,
-          refresh: true,
-        });
-      }
+      await createPenjualan(finalData);
+      showStatus({
+        message: "Penjualan berhasil disimpan!",
+        success: true,
+        refresh: true,
+      });
       router.push(redirectTo);
     } catch (error: unknown) {
       console.error("Error during submit:", error);
@@ -290,141 +235,13 @@ export function PenjualanForm({
               <CardHeader>
                 <CardTitle>1. Nomor Dokumen</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="no_invoice">No. Invoice</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="no_invoice"
-                        {...register("no_invoice", {
-                          required: "No. Invoice wajib diisi",
-                        })}
-                        placeholder="INV/S32/2026/04/0001"
-                        readOnly
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            const num = await generateInvoiceNumber();
-                            setValue("no_invoice", num);
-                          } catch (error) {
-                            showStatus({
-                              message: "Gagal generate nomor invoice",
-                              success: false,
-                            });
-                          }
-                        }}
-                      >
-                        Generate
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="no_npb">No. NPB</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="no_npb"
-                        {...register("no_npb", {
-                          required: "No. NPB wajib diisi",
-                        })}
-                        placeholder="NPB/G001/2026/04/03/0001"
-                        readOnly
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            const num = await generateNPBNumber();
-                            setValue("no_npb", num);
-                          } catch (error) {
-                            showStatus({
-                              message: "Gagal generate nomor NPB",
-                              success: false,
-                            });
-                          }
-                        }}
-                      >
-                        Generate
-                      </Button>
-                    </div>
-                  </div>
-                  {watchMetodePengambilan === "Diantar" && (
-                    <>
-                      <div>
-                        <Label htmlFor="no_do">No. DO</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="no_do"
-                            {...register("no_do", {
-                              required:
-                                watchMetodePengambilan === "Diantar"
-                                  ? "No. DO wajib diisi"
-                                  : false,
-                            })}
-                            placeholder="DO/S32/2026/04/0001"
-                            readOnly
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                const num = await generateDONumber();
-                                setValue("no_do", num);
-                              } catch (error) {
-                                showStatus({
-                                  message: "Gagal generate nomor DO",
-                                  success: false,
-                                });
-                              }
-                            }}
-                          >
-                            Generate
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="no_tanda_terima">
-                          No. Tanda Terima
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="no_tanda_terima"
-                            {...register("no_tanda_terima", {
-                              required:
-                                watchMetodePengambilan === "Diantar"
-                                  ? "No. Tanda Terima wajib diisi"
-                                  : false,
-                            })}
-                            placeholder="0001/S32/04/2026"
-                            readOnly
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                const num = await generateTandaTerimaNumber();
-                                setValue("no_tanda_terima", num);
-                              } catch (error) {
-                                showStatus({
-                                  message: "Gagal generate nomor Tanda Terima",
-                                  success: false,
-                                });
-                              }
-                            }}
-                          >
-                            Generate
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  No. Invoice, NPB, Tanda Terima
+                  {watchMetodePengambilan === "Diantar" ? ", dan DO" : ""} dibuat
+                  otomatis oleh sistem saat penjualan disimpan, sehingga nomor
+                  selalu berurutan.
+                </p>
               </CardContent>
             </Card>
 
@@ -709,7 +526,7 @@ export function PenjualanForm({
               className="w-full h-12 text-lg"
             >
               <Save className="h-5 w-5 mr-2" />
-              {editingPenjualan ? "Perbarui Transaksi" : "Simpan Transaksi"}
+              Simpan Transaksi
             </Button>
           </div>
         </div>
