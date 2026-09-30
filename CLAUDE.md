@@ -48,7 +48,7 @@ Dokumen acuan detail:
 2. **Stok ada di `supplier_produk.stok`**, bukan `produk.stok` (kolom lama, tidak ikut transaksi). Ubah stok hanya
    lewat RPC. `increase_stock`/`decrease_stock` **hanya untuk admin/service role** (qty > 0). Alur yang dipakai staff
    harus lewat RPC tingkat tinggi yang atomik, contoh `create_penjualan(p_data jsonb)`.
-3. **Setiap perubahan DB** = file baru `sql/migrations/YYYYMMDD_<nama>.sql` (idempoten: `CREATE OR REPLACE`,
+3. **Setiap perubahan DB** = file baru `sql/migrations/YYYYMMDD[b|c…]_<nama>.sql` (urut alfabetis = urut eksekusi; beberapa migrasi di hari yang sama pakai sufiks `b`, `c`) (idempoten: `CREATE OR REPLACE`,
    `IF NOT EXISTS`). Tabel baru wajib RLS + policy (pola `is_admin()`), trigger `updated_at`, index FK.
    RPC `SECURITY DEFINER` wajib cek role di dalam fungsi dan `REVOKE ... FROM PUBLIC, anon`.
    Uji SQL bisa dengan Docker `postgres:15-alpine` + stub skema `auth` (lihat docs/FEATURE-GUIDE.md §6).

@@ -83,6 +83,10 @@ Catatan kolom:
 - `penjualan`: `total` (subtotal item), `diskon`, `pajak_enabled`, `pajak`, `total_akhir` (yang ditagih), `total_dibayar`,
   nomor dokumen `no_invoice`, `no_npb`, `no_do`, `no_tanda_terima`, `tanggal_jatuh_tempo`, `metode_pembayaran` + data rekening.
 - `produk.stok`, tabel `inventory`, `stock_adjustments`: **tidak dipakai alur transaksi** (sisa migrasi Firebase).
+- Aturan hapus (FK): pelanggan/supplier/harga produk yang **sudah dipakai transaksi tidak bisa dihapus** (`ON DELETE RESTRICT`,
+  error `23503` → pesan "nonaktifkan"). `supplier_produk` yang belum dipakai ikut terhapus bersama supplier/produknya.
+  Menghapus penjualan/pembelian tetap menghapus detail, pembayaran, dan DO-nya (CASCADE).
+- Semua kolom uang `DECIMAL(14,2)`.
 - View: `inventory_report` (stok = SUM supplier_produk.stok, masuk = pembelian Completed, keluar = penjualan ≠ Batal),
   `produk_stock_summary` (low stock di dashboard, ambang 10).
 
@@ -109,11 +113,12 @@ Penomoran dokumen (RPC + sequence global, tidak reset per bulan):
 ```
 pembelianForm → createPembelian(status 'Pending')
    insert pembelian → loop insert pembelian_detail   (stok BELUM bertambah karena Pending)
-DialogEditPembelian "Terima" → updatePembelianAndStock
-   update pembelian (no_do/no_npb/invoice, status 'Completed')
-   loop: increase_stock(qty) + update supplier_produk.harga_beli = harga pembelian
-DialogEditPembelian "Tolak" → updatePembelianStatus('Decline')
-   jika sebelumnya Completed → decrease_stock untuk semua detail
+DialogEditPembelian "Terima" (hanya aktif untuk Pending) → updatePembelianAndStock → rpc receive_pembelian
+   [atomik, admin] kunci baris; tolak bila status ≠ Pending; set no_do/no_npb/invoice + 'Completed';
+   per produk: stok += qty, harga_beli = harga pembelian terakhir
+DialogEditPembelian "Tolak" → updatePembelianStatus('Decline') → rpc decline_pembelian
+   [atomik, admin] Pending → Decline; Completed → stok -= qty (gagal utuh bila stok sudah terpakai) → Decline;
+   Decline → no-op
 ```
 File: `components/pembelian/*`, `app/services/pembelian.service.ts`, halaman `admin/transaksi/pembelian`.
 

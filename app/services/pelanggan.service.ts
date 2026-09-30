@@ -143,6 +143,12 @@ export const deletePelanggan = async (id: string): Promise<void> => {
 
   if (error) {
     console.error("Error deleting pelanggan:", error);
+    // 23503 = foreign_key_violation: data masih dirujuk transaksi (FK RESTRICT).
+    if (error.code === "23503") {
+      throw new Error(
+        "Pelanggan ini sudah memiliki transaksi penjualan sehingga tidak bisa dihapus. Ubah statusnya menjadi nonaktif.",
+      );
+    }
     throw error;
   }
   invalidatePelangganCache();

@@ -371,8 +371,8 @@ $$;
 
 -- Set sequences to current max values
 SELECT setval('invoice_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_invoice, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_invoice IS NOT NULL AND no_invoice != ''), 0) + 1);
-SELECT setval('npb_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_npb, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_npb IS NOT NULL AND no_npb != ''), 0) + 1);
-SELECT setval('do_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_do, '/', 4), '') AS INTEGER)) FROM penjualan WHERE no_do IS NOT NULL AND no_do != ''), 0) + 1);
+SELECT setval('npb_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_npb, '/', 6), '') AS INTEGER)) FROM penjualan WHERE no_npb IS NOT NULL AND no_npb != ''), 0) + 1);
+SELECT setval('do_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_do, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_do IS NOT NULL AND no_do != ''), 0) + 1);
 SELECT setval('tanda_terima_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_tanda_terima, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_tanda_terima IS NOT NULL AND no_tanda_terima != ''), 0) + 1);
 
 -- Stock adjustment helpers (atomic)

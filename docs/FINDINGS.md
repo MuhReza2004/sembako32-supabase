@@ -1,7 +1,7 @@
 # Temuan Audit Codebase — Sembako32
 
 > Hasil analisis statis pada commit `9b98b3e` (2026-09-30). `npx tsc --noEmit` lulus.
-> Status tiap temuan: **Open** kecuali ditandai lain. Perbaikan 2026-09-30: F-01, F-02, F-03, F-10 (lihat catatan **Status** tiap temuan).
+> Status tiap temuan: **Open** kecuali ditandai lain. Perbaikan 2026-09-30: F-01, F-02, F-03, F-10, lalu F-05, F-06, F-11, F-12, F-19 (lihat catatan **Status** tiap temuan).
 > Migrasi DB terkait: `sql/migrations/20260930_fix_critical_security.sql` (**harus dijalankan manual di Supabase**).
 > Tingkat: 🔴 Kritis · 🟠 Tinggi · 🟡 Sedang · ⚪ Rendah/kebersihan.
 
@@ -13,21 +13,21 @@
 | F-02 | ✅* | Keamanan | Registrasi publik → siapa saja jadi `staff` (*perlu setting Supabase) |
 | F-03 | ✅* | Keamanan/Stok | RPC `increase_stock`/`decrease_stock` terbuka untuk semua user login (*perlu migrasi) |
 | F-04 | 🟠 | Integritas | Transaksi multi-langkah tidak atomik (create penjualan sudah atomik) |
-| F-05 | 🟠 | Stok | Pembelian `Completed` bisa "diterima" ulang → stok ganda |
-| F-06 | 🟠 | Data | `ON DELETE CASCADE` menghapus histori transaksi |
+| F-05 | ✅ | Stok | Pembelian `Completed` bisa "diterima" ulang → stok ganda |
+| F-06 | ✅ | Data | `ON DELETE CASCADE` menghapus histori transaksi |
 | F-07 | 🟠 | Integritas | Staff bisa ubah status/total/pembayaran penjualannya sendiri langsung via API (sebagian) |
 | F-08 | 🟠 | Integritas | PDF invoice/kwitansi/DO merender data dari body request |
 | F-09 | 🟡 | Keamanan | `generate-documents` meneruskan cookie/token ke origin dari header Host |
 | F-10 | ✅ | Keamanan | Middleware memakai `getSession()` (tidak diverifikasi) |
-| F-11 | 🟠 | Bug DB | `setval` sequence NPB & DO memakai bagian nomor yang salah |
-| F-12 | 🟠 | Bug | Staff diarahkan ke halaman admin setelah simpan penjualan |
+| F-11 | ✅ | Bug DB | `setval` sequence NPB & DO memakai bagian nomor yang salah |
+| F-12 | ✅ | Bug | Staff diarahkan ke halaman admin setelah simpan penjualan |
 | F-13 | 🟡 | Bug | Nomor dokumen di-generate saat form dibuka → nomor lompat; fallback `INV/ERR/...` |
 | F-14 | 🟡 | Bug laten | Jalur edit penjualan (`tambah?id=`) rusak dan destruktif |
 | F-15 | 🟡 | Bug | Realtime dashboard admin hanya mendengar tabel `penjualan` |
 | F-16 | 🟡 | Bug | Tanggal "hari ini" pakai UTC (`toISOString`) bukan WIB |
 | F-17 | ⚪ | Keamanan | Input search disisipkan mentah ke filter `.or()` PostgREST |
 | F-18 | 🟡 | Laporan | Angka omzet/piutang tidak konsisten (`total` vs `total_akhir`, `created_at` vs `tanggal`) |
-| F-19 | 🟡 | DB | Kolom uang `DECIMAL(10,2)` vs validasi aplikasi `14,2` |
+| F-19 | ✅ | DB | Kolom uang `DECIMAL(10,2)` vs validasi aplikasi `14,2` |
 | F-20 | 🟡 | Piutang | Pembayaran piutang rawan race & overpay |
 | F-21 | 🟡 | Alur | Batal DO tidak membatalkan penjualan/stok |
 | F-22 | 🟡 | Alur | Cancel penjualan bisa mengembalikan stok dua kali (race) |
@@ -76,11 +76,13 @@
 - **Lokasi**: [components/pembelian/pembelianTabel.tsx:160-170](../components/pembelian/pembelianTabel.tsx#L160-L170) (tombol Edit hanya disable untuk `Decline`), [components/pembelian/DialogEditPembelian.tsx:100-105](../components/pembelian/DialogEditPembelian.tsx#L100-L105), `updatePembelianAndStock`.
 - **Masalah**: pembelian yang sudah `Completed` masih bisa dibuka dan disubmit lagi; service tidak memeriksa status sebelumnya → `increase_stock` dijalankan ulang.
 - **Perbaikan**: di service, update bersyarat `.eq("status","Pending")` dan hentikan jika 0 baris; di UI, disable tombol untuk `Completed`. Idealnya RPC atomik (F-04).
+- **Status: ✅ Diperbaiki** lewat RPC atomik `receive_pembelian` (hanya admin, menolak status selain Pending, `FOR UPDATE`) dan `decline_pembelian` (Completed → stok dikurangi kembali, gagal utuh bila stok sudah terpakai; Decline ulang = no-op) di `sql/migrations/20260930b_fix_high_priority_data.sql`. Tombol **Terima** di `DialogEditPembelian` nonaktif untuk non-Pending; pesan konfirmasi Tolak menjelaskan pengurangan stok.
 
 ### F-06 — Cascade delete menghapus histori
 - **Lokasi**: `supabase-schema.sql` — `penjualan.pelanggan_id`, `pembelian.supplier_id`, `supplier_produk.*`, `penjualan_detail.supplier_produk_id`, `pembelian_detail.supplier_produk_id` semuanya `ON DELETE CASCADE`.
 - **Masalah**: menghapus pelanggan di UI menghapus **semua penjualan, pembayaran, dan DO** pelanggan itu. Menghapus supplier/produk/harga produk menghapus detail penjualan & pembelian historis (total di header tidak lagi cocok, stok tidak dikembalikan). `TODO-supplier-delete-fix.md` bahkan mengandalkan perilaku ini.
 - **Perbaikan**: ganti ke `ON DELETE RESTRICT` untuk FK transaksi; gunakan soft delete (`status = 'nonaktif'` / `status=false`) untuk master data; beri pesan jelas di UI saat data masih dipakai.
+- **Status: ✅ Diperbaiki** di `sql/migrations/20260930b_fix_high_priority_data.sql`: `penjualan.pelanggan_id`, `pembelian.supplier_id`, `penjualan_detail.supplier_produk_id`, `pembelian_detail.supplier_produk_id` → RESTRICT. `supplier_produk` → supplier/produk tetap CASCADE (harga yang belum dipakai ikut terhapus). Service `delete*` mengubah error `23503` menjadi pesan yang menyarankan menonaktifkan data.
 
 ### F-07 — Staff bisa memanipulasi penjualannya sendiri
 - **Lokasi**: policy `"Staff update own penjualan"`, `"Staff insert/update own riwayat_pembayaran"`, `"Staff update own penjualan_detail"`.
@@ -98,11 +100,13 @@
 - **Lokasi**: `supabase-schema.sql:371-374` dan `update-schema.sql:888-891`.
 - **Masalah**: format NPB `NPB/G001/YYYY/MM/DD/NNNN` → nomor urut di bagian **6**, tapi dipakai `SPLIT_PART(...,5)` (= hari). Format DO `DO/S32/YYYY/MM/NNNN` → nomor di bagian **5**, tapi dipakai `4` (= bulan). Sequence di-reset ke nilai kecil → nomor duplikat → insert gagal 23505 (lalu retry 3× dan bisa gagal total). Juga `no_do` sebaiknya dihitung dari `delivery_orders`.
 - **Perbaikan**: koreksi indeks ke 6 (NPB) dan 5 (DO) sebelum menjalankan skrip lagi.
+- **Status: ✅ Diperbaiki** di `supabase-schema.sql` dan `update-schema.sql`. `update-schema.sql` ditandai **usang** (digantikan migrasi `20260930_fix_critical_security.sql` yang aman terhadap nomor `ERR`).
 
 ### F-12 — Redirect staff salah setelah simpan penjualan
 - **Lokasi**: [components/penjualan/PenjualanForm.tsx:206](../components/penjualan/PenjualanForm.tsx#L206).
 - **Masalah**: selalu `router.push("/dashboard/admin/transaksi/penjualan")`; untuk staff middleware mengalihkan ke `/dashboard/staff?error=not_admin`.
 - **Perbaikan**: terima prop `redirectTo` (atau tentukan dari role) — staff ke `/dashboard/staff/transaksi/penjualan`.
+- **Status: ✅ Diperbaiki**: prop `redirectTo` di `PenjualanForm` (default admin); halaman staff mengirim `/dashboard/staff/transaksi/penjualan`.
 
 ## 🟡 Sedang
 
@@ -145,6 +149,7 @@
 - **Lokasi**: `penjualan_detail.harga/subtotal`, `riwayat_pembayaran.jumlah`, `supplier_produk.harga_*` = `DECIMAL(10,2)` (maks ±99.999.999,99), sedangkan aplikasi memvalidasi hingga `14,2`.
 - **Dampak**: baris penjualan/pembayaran ≥ Rp100 juta gagal disimpan (numeric overflow) — di tengah transaksi non-atomik (F-04).
 - **Perbaikan**: `ALTER COLUMN ... TYPE DECIMAL(14,2)`.
+- **Status: ✅ Diperbaiki** di `sql/migrations/20260930b_fix_high_priority_data.sql` (`penjualan_detail.harga/subtotal`, `riwayat_pembayaran.jumlah`, `supplier_produk.harga_*`).
 
 ### F-20 — Pembayaran piutang
 - **Lokasi**: `addPiutangPayment` ([penjualan.service.ts:954-1009](../app/services/penjualan.service.ts#L954-L1009)).

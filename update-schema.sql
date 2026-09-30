@@ -1,3 +1,9 @@
+-- ⚠️ USANG — JANGAN DIJALANKAN DI PRODUKSI.
+-- Digantikan oleh sql/migrations/20260930_fix_critical_security.sql (sequence &
+-- fungsi penomoran versi WIB, sinkronisasi sequence yang aman terhadap nomor ERR).
+-- Menjalankan file ini akan menimpa fungsi penomoran dan dapat gagal pada data lama.
+-- Disimpan hanya sebagai riwayat.
+--
 -- Update Script for Sembako32 Database Schema
 -- Run this SQL in your Supabase SQL Editor to apply the latest changes
 -- This script adds sequences for atomic numbering and updates generation functions
@@ -113,8 +119,8 @@ $$;
 -- Set sequences to current max values + 1 to avoid conflicts
 -- Handle cases where fields might be null or empty
 SELECT setval('invoice_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_invoice, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_invoice IS NOT NULL AND no_invoice != ''), 0) + 1);
-SELECT setval('npb_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_npb, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_npb IS NOT NULL AND no_npb != ''), 0) + 1);
-SELECT setval('do_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_do, '/', 4), '') AS INTEGER)) FROM penjualan WHERE no_do IS NOT NULL AND no_do != ''), 0) + 1);
+SELECT setval('npb_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_npb, '/', 6), '') AS INTEGER)) FROM penjualan WHERE no_npb IS NOT NULL AND no_npb != ''), 0) + 1);
+SELECT setval('do_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_do, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_do IS NOT NULL AND no_do != ''), 0) + 1);
 SELECT setval('tanda_terima_seq', COALESCE((SELECT MAX(CAST(NULLIF(SPLIT_PART(no_tanda_terima, '/', 5), '') AS INTEGER)) FROM penjualan WHERE no_tanda_terima IS NOT NULL AND no_tanda_terima != ''), 0) + 1);
 
 -- Grant execute permissions

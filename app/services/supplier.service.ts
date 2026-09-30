@@ -143,6 +143,12 @@ export const deleteSupplier = async (id: string): Promise<void> => {
 
   if (error) {
     console.error("Error deleting supplier:", error);
+    // 23503 = foreign_key_violation: data masih dirujuk transaksi (FK RESTRICT).
+    if (error.code === "23503") {
+      throw new Error(
+        "Supplier ini sudah dipakai di transaksi pembelian/penjualan sehingga tidak bisa dihapus. Nonaktifkan supplier ini.",
+      );
+    }
     throw error;
   }
   invalidateSupplierCache();
