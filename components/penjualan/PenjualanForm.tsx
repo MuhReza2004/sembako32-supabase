@@ -74,6 +74,8 @@ interface PenjualanFormProps {
   supplierProduks: SupplierProdukOption[];
   pelangganList: PelangganOption[];
   editingPenjualan?: Penjualan | null;
+  /** Halaman tujuan setelah simpan (default: daftar penjualan admin). */
+  redirectTo?: string;
 }
 
 export function PenjualanForm({
@@ -81,6 +83,7 @@ export function PenjualanForm({
   supplierProduks,
   products,
   editingPenjualan,
+  redirectTo = "/dashboard/admin/transaksi/penjualan",
 }: PenjualanFormProps) {
   const router = useRouter();
   const { showStatus } = useStatus();
@@ -203,7 +206,7 @@ export function PenjualanForm({
           refresh: true,
         });
       }
-      router.push("/dashboard/admin/transaksi/penjualan");
+      router.push(redirectTo);
     } catch (error: unknown) {
       console.error("Error during submit:", error);
       if (error instanceof Error) {

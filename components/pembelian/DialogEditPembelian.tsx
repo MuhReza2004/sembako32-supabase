@@ -129,7 +129,10 @@ export default function DialogEditPembelian({
 
     const confirmed = await confirm({
       title: "Konfirmasi Tolak Pembelian",
-      message: "Apakah Anda yakin ingin menolak transaksi ini? Stok tidak akan diperbarui.",
+      message:
+        pembelian.status === "Completed"
+          ? "Pembelian ini sudah diterima. Menolaknya akan MENGURANGI kembali stok yang sudah masuk. Lanjutkan?"
+          : "Apakah Anda yakin ingin menolak transaksi ini? Stok tidak akan diperbarui.",
       confirmText: "Tolak",
       cancelText: "Batal",
     });
@@ -306,7 +309,12 @@ export default function DialogEditPembelian({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={isLoading || pembelian?.status !== "Pending"}
+                title={
+                  pembelian?.status !== "Pending"
+                    ? "Hanya pembelian Pending yang bisa diterima"
+                    : undefined
+                }
                 className=" bg-green-600 hover:bg-green-700"
               >
                 {isLoading ? (

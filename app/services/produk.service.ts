@@ -157,6 +157,12 @@ export const deleteProduk = async (id: string): Promise<void> => {
 
   if (error) {
     console.error("Error deleting produk:", JSON.stringify(error, null, 2));
+    // 23503 = foreign_key_violation: data masih dirujuk transaksi (FK RESTRICT).
+    if (error.code === "23503") {
+      throw new Error(
+        "Produk ini sudah dipakai di transaksi pembelian/penjualan sehingga tidak bisa dihapus. Ubah statusnya menjadi nonaktif.",
+      );
+    }
     throw error;
   }
   invalidateProdukCache();

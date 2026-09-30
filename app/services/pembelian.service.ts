@@ -40,18 +40,6 @@ const increaseStock = async (supplierProdukId: string, qty: number) => {
   return data as number;
 };
 
-const decreaseStock = async (supplierProdukId: string, qty: number) => {
-  const { data, error } = await supabase.rpc("decrease_stock", {
-    p_supplier_produk_id: supplierProdukId,
-    p_qty: qty,
-  });
-  if (error) {
-    console.error("Error decreasing stock:", error);
-    throw error;
-  }
-  return data as number;
-};
-
 export const createPembelian = async (data: {
   supplier_id: string;
   tanggal: string;
@@ -209,95 +197,41 @@ export const updatePembelianAndStock = async (
     invoice?: string;
   },
 ) => {
-  // First, update the purchase document
-  const { error: updateError } = await supabase
-    .from("pembelian")
-    .update({
-      ...data,
-      status: "Completed",
-    })
-    .eq("id", pembelianId);
+  // Atomik di DB: hanya pembelian Pending yang bisa diterima, sehingga stok
+  // tidak bertambah dua kali (lihat sql/migrations/20260930b_fix_high_priority_data.sql).
+  const { error } = await supabase.rpc("receive_pembelian", {
+    p_pembelian_id: pembelianId,
+    p_no_do: data.no_do ?? null,
+    p_no_npb: data.no_npb ?? null,
+    p_invoice: data.invoice ?? null,
+  });
 
-  if (updateError) {
-    const errorMessage = updateError?.message || "Gagal memperbarui pembelian";
-    console.error("Error updating pembelian:", errorMessage);
+  if (error) {
+    const errorMessage = error.message || "Gagal memperbarui pembelian";
+    console.error("Error receiving pembelian:", errorMessage);
     throw new Error(errorMessage);
   }
-
-  // Then, fetch the purchase details to update stock
-    const { data: details, error: detailError } = await supabase
-      .from("pembelian_detail")
-      .select("supplier_produk_id, qty, harga")
-      .eq("pembelian_id", pembelianId);
-
-  if (detailError) {
-    const errorMessage = detailError?.message || "Gagal mengambil detail pembelian untuk update stok";
-    console.error("Error fetching pembelian details:", errorMessage);
-    throw new Error(errorMessage);
-  }
-
-    for (const detail of details) {
-      await increaseStock(detail.supplier_produk_id, Number(detail.qty));
-      if (detail.harga !== null && detail.harga !== undefined) {
-        const { error: hargaError } = await supabase
-          .from("supplier_produk")
-          .update({ harga_beli: detail.harga })
-          .eq("id", detail.supplier_produk_id);
-        if (hargaError) {
-          console.error("Error updating harga_beli:", hargaError);
-        }
-      }
-    }
-  };
+};
 
 export const updatePembelianStatus = async (
   pembelianId: string,
   status: "Pending" | "Completed" | "Decline",
 ) => {
-  const { data: current, error: currentError } = await supabase
-    .from("pembelian")
-    .select("id, status")
-    .eq("id", pembelianId)
-    .single();
-  if (currentError) {
-    const errorMessage =
-      currentError?.message || "Gagal mengambil status pembelian";
-    console.error("Error fetching pembelian status:", errorMessage);
-    throw new Error(errorMessage);
+  if (status === "Completed") {
+    return updatePembelianAndStock(pembelianId, {});
+  }
+  if (status === "Pending") {
+    throw new Error("Status pembelian tidak bisa dikembalikan ke Pending.");
   }
 
-  const currentStatus = current?.status as
-    | "Pending"
-    | "Completed"
-    | "Decline"
-    | undefined;
-
-  if (status === "Decline" && currentStatus === "Completed") {
-    const { data: details, error: detailError } = await supabase
-      .from("pembelian_detail")
-      .select("supplier_produk_id, qty")
-      .eq("pembelian_id", pembelianId);
-    if (detailError) {
-      const errorMessage =
-        detailError?.message || "Gagal mengambil detail pembelian";
-      console.error("Error fetching pembelian details:", errorMessage);
-      throw new Error(errorMessage);
-    }
-    for (const detail of details || []) {
-      await decreaseStock(detail.supplier_produk_id, Number(detail.qty));
-    }
-  }
-
-  const { error } = await supabase
-    .from("pembelian")
-    .update({
-      status: status,
-    })
-    .eq("id", pembelianId);
+  // Decline: bila sebelumnya Completed, stok dikurangi kembali secara atomik.
+  const { error } = await supabase.rpc("decline_pembelian", {
+    p_pembelian_id: pembelianId,
+  });
 
   if (error) {
-    const errorMessage = error?.message || "Gagal memperbarui status pembelian";
-    console.error("Error updating pembelian status:", errorMessage);
+    const errorMessage = error.message || "Gagal memperbarui status pembelian";
+    console.error("Error declining pembelian:", errorMessage);
     throw new Error(errorMessage);
   }
 };

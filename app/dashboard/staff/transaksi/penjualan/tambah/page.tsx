@@ -94,6 +94,7 @@ export default function PageTambahPenjualanStaff() {
               products={products}
               supplierProduks={supplierProduks}
               pelangganList={pelangganList}
+              redirectTo="/dashboard/staff/transaksi/penjualan"
             />
           )}
         </div>
