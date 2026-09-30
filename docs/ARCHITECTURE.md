@@ -21,7 +21,7 @@ middleware.ts  → proteksi /dashboard/* dan redirect /auth/* berdasar role
 Karakteristik penting:
 - **Logika bisnis ada di client** (`app/services/*.service.ts`) dan dieksekusi sebagai beberapa request terpisah
   (tidak ada transaksi DB). Lihat FINDINGS untuk konsekuensinya.
-- Server hanya dipakai untuk: PDF, pembatalan penjualan (`/api/penjualan/cancel`), laporan inventory,
+- Server hanya dipakai untuk: PDF, laporan inventory,
   sinkronisasi role, cron keepalive, dan satu halaman server (`admin/transaksi/penjualan/tambah`).
 - React Query hanya dipakai di dashboard admin (`app/hooks/useDashboard.ts`). Halaman lain memakai `useState`
   + fetch manual + cache modul (`produkCache`, `supplierCache`, dst. TTL 5 menit di service).
@@ -61,8 +61,8 @@ lalu `fetch('/api/...', { headers: { Authorization: 'Bearer ' + token } })`.
 | users | ALL | baca/ubah profil sendiri (tanpa ubah role) |
 | produk, pelanggan, supplier_produk | ALL | SELECT semua |
 | suppliers, inventory, stock_adjustments, pembelian, pembelian_detail | ALL | — |
-| penjualan | ALL | SELECT/INSERT/UPDATE milik sendiri (`created_by = auth.uid()`) |
-| penjualan_detail, riwayat_pembayaran, delivery_orders | ALL | via penjualan milik sendiri |
+| penjualan | ALL | **SELECT** milik sendiri saja (tulis hanya via RPC) |
+| penjualan_detail, riwayat_pembayaran, delivery_orders | ALL | **SELECT** via penjualan milik sendiri |
 | RPC `increase_stock`, `decrease_stock` | ✔ (qty > 0) | ✖ (ditolak di dalam fungsi; juga boleh service role) |
 | RPC `create_penjualan(p_data jsonb)` | ✔ | ✔ (atomik; harga & total dihitung server) |
 | RPC `generate_*_number`, `sum_*`, `piutang_summary` | ✔ | ✔ (SECURITY DEFINER; anon dicabut) |
@@ -111,8 +111,9 @@ Penomoran dokumen (RPC + sequence global, tidak reset per bulan):
 
 ### 4.2 Pembelian (barang masuk) — admin
 ```
-pembelianForm → createPembelian(status 'Pending')
-   insert pembelian → loop insert pembelian_detail   (stok BELUM bertambah karena Pending)
+pembelianForm → createPembelian(status 'Pending') → rpc create_pembelian
+   [atomik, admin] validasi (Transfer wajib data rekening; produk harus milik supplier) →
+   insert header + detail; subtotal/total dihitung server   (stok BELUM bertambah karena Pending)
 DialogEditPembelian "Terima" (hanya aktif untuk Pending) → updatePembelianAndStock → rpc receive_pembelian
    [atomik, admin] kunci baris; tolak bila status ≠ Pending; set no_do/no_npb/invoice + 'Completed';
    per produk: stok += qty, harga_beli = harga pembelian terakhir
@@ -142,14 +143,14 @@ createPenjualan (penjualan.service.ts) → supabase.rpc("create_penjualan", { p_
 - Harga per item dipilih dari `harga_jual_normal` / `harga_jual_grosir` supplier_produk yang dipilih.
 - List: admin `getPenjualanPage` (semua), staff `getPenjualanPageForCurrentUser` (+ filter `created_by`).
 - Detail & dokumen: `DialogDetailPenjualan` → `/api/generate-invoice | generate-delivery-order | generate-receipt | generate-documents` (gabungan via pdf-lib).
-- **Batal**: `cancelPenjualan` → `POST /api/penjualan/cancel` (service role): cek pemilik/admin → `increase_stock` per detail
-  → status `Batal` → DO terkait `Batal`.
+- **Batal**: `cancelPenjualan` → `rpc cancel_penjualan` [atomik; admin atau staff pemilik; `FOR UPDATE`]: stok dikembalikan
+  → status `Batal` → DO terkait `Batal`. Sudah Batal = no-op (stok tidak dikembalikan dua kali).
 - `updatePenjualan` / `deletePenjualan` ada di service tetapi tidak ada UI yang memanggil edit (`tambah?id=`) — lihat FINDINGS.
 
 ### 4.4 Piutang — admin
 - Halaman `admin/transaksi/piutang` mengambil penjualan ≠ Batal, menurunkan status dari `total_dibayar` vs `total_akhir`.
-- `DialogBayarPiutang` → validasi 0 < jumlah ≤ sisa → `addPiutangPayment`: insert `riwayat_pembayaran`,
-  update `penjualan.total_dibayar` & status (`Lunas` bila sisa ≤ 0).
+- `DialogBayarPiutang` → validasi 0 < jumlah ≤ sisa → `addPiutangPayment` → `rpc add_penjualan_payment` [atomik, admin,
+  `FOR UPDATE`; validasi ulang di server; tolak Batal/lunas]: insert `riwayat_pembayaran`, update `total_dibayar` & status.
 - Export PDF tabel/detail piutang: client-side jsPDF (`helper/pdfExport.ts`).
 
 ### 4.5 Delivery Order — admin

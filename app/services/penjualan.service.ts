@@ -851,7 +851,7 @@ export const getPiutang = async (): Promise<Penjualan[]> => {
   return data as Penjualan[];
 };
 
-// --- NEW addPiutangPayment function ---
+// --- addPiutangPayment: atomik di DB (kunci baris, validasi sisa) ---
 export const addPiutangPayment = async (
   penjualanId: string,
   payment: {
@@ -861,51 +861,19 @@ export const addPiutangPayment = async (
     atas_nama: string;
   },
 ): Promise<void> => {
-  // First, get current penjualan data
-  const { data: penjualanData, error: fetchError } = await supabase
-    .from("penjualan")
-    .select("*")
-    .eq("id", penjualanId)
-    .single();
+  assertValidMoney("Jumlah bayar", Number(payment.jumlah));
 
-  if (fetchError || !penjualanData) {
-    throw new Error("Transaksi penjualan tidak ditemukan.");
-  }
+  const { error } = await supabase.rpc("add_penjualan_payment", {
+    p_penjualan_id: penjualanId,
+    p_tanggal: payment.tanggal,
+    p_jumlah: Number(payment.jumlah),
+    p_metode_pembayaran: payment.metode_pembayaran,
+    p_atas_nama: payment.atas_nama,
+  });
 
-  const currentTotalDibayar = penjualanData.total_dibayar || 0;
-  const newTotalDibayar = currentTotalDibayar + payment.jumlah;
-  const sisaUtang = penjualanData.total_akhir - newTotalDibayar;
-
-  const newStatus = sisaUtang <= 0 ? "Lunas" : "Belum Lunas";
-
-  // Insert payment record
-  const { error: paymentError } = await supabase
-    .from("riwayat_pembayaran")
-    .insert({
-      penjualan_id: penjualanId,
-      tanggal: payment.tanggal,
-      jumlah: payment.jumlah,
-      metode_pembayaran: payment.metode_pembayaran,
-      atas_nama: payment.atas_nama,
-    });
-
-  if (paymentError) {
-    console.error("Error adding payment:", paymentError);
-    throw paymentError;
-  }
-
-  // Update penjualan status and total paid
-  const { error: updateError } = await supabase
-    .from("penjualan")
-    .update({
-      total_dibayar: newTotalDibayar,
-      status: newStatus,
-    })
-    .eq("id", penjualanId);
-
-  if (updateError) {
-    console.error("Error updating penjualan:", updateError);
-    throw updateError;
+  if (error) {
+    console.error("Error adding payment:", error);
+    throw new Error(error.message || "Gagal mencatat pembayaran");
   }
 };
 
@@ -1028,17 +996,15 @@ export const deletePenjualan = async (id: string) => {
   await supabase.from("penjualan").delete().eq("id", id);
 };
 
-// --- NEW cancelPenjualan function ---
+// --- cancelPenjualan: atomik & idempoten di DB (admin, atau staff pemilik) ---
 export const cancelPenjualan = async (id: string) => {
-  const response = await fetch("/api/penjualan/cancel", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id }),
+  const { error } = await supabase.rpc("cancel_penjualan", {
+    p_penjualan_id: id,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gagal membatalkan transaksi: ${errorText}`);
+  if (error) {
+    console.error("Error cancelling penjualan:", error);
+    throw new Error(`Gagal membatalkan transaksi: ${error.message}`);
   }
 };
 

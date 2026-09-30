@@ -28,18 +28,6 @@ const assertValidMoney = (label: string, value: number) => {
   }
 };
 
-const increaseStock = async (supplierProdukId: string, qty: number) => {
-  const { data, error } = await supabase.rpc("increase_stock", {
-    p_supplier_produk_id: supplierProdukId,
-    p_qty: qty,
-  });
-  if (error) {
-    console.error("Error increasing stock:", error);
-    throw error;
-  }
-  return data as number;
-};
-
 export const createPembelian = async (data: {
   supplier_id: string;
   tanggal: string;
@@ -67,58 +55,35 @@ export const createPembelian = async (data: {
     }
   }
 
-  // Create pembelian record
-  const pembelianData = {
-    supplier_id: data.supplier_id,
-    tanggal: data.tanggal,
-    no_do: data.no_do,
-    no_npb: data.no_npb,
-    invoice: data.invoice,
-    metode_pembayaran: data.metode_pembayaran,
-    nama_bank: data.nama_bank,
-    nama_pemilik_rekening: data.nama_pemilik_rekening,
-    nomor_rekening: data.nomor_rekening,
-    total: totalAmount,
-    status: data.status,
-  };
+  // Header + detail dalam satu transaksi DB; subtotal & total dihitung ulang
+  // di server (lihat sql/migrations/20260930c_atomic_transactions.sql).
+  const { data: pembelianId, error } = await supabase.rpc("create_pembelian", {
+    p_data: {
+      supplier_id: data.supplier_id,
+      tanggal: data.tanggal,
+      no_do: data.no_do,
+      no_npb: data.no_npb,
+      invoice: data.invoice,
+      metode_pembayaran: data.metode_pembayaran,
+      nama_bank: data.nama_bank,
+      nama_pemilik_rekening: data.nama_pemilik_rekening,
+      nomor_rekening: data.nomor_rekening,
+      status: data.status,
+      items: data.items.map((item) => ({
+        supplier_produk_id: item.supplier_produk_id,
+        qty: Number(item.qty),
+        harga: Number(item.harga),
+      })),
+    },
+  });
 
-  const { data: pembelian, error: pembelianError } = await supabase
-    .from("pembelian")
-    .insert(pembelianData)
-    .select("id")
-    .single();
-
-  if (pembelianError) {
-    const errorMessage = pembelianError?.message || "Gagal membuat pembelian";
+  if (error) {
+    const errorMessage = error.message || "Gagal membuat pembelian";
     console.error("Error creating pembelian:", errorMessage);
     throw new Error(errorMessage);
   }
 
-  // Create pembelian_detail records
-  for (const item of data.items) {
-    const { error: detailError } = await supabase
-      .from("pembelian_detail")
-      .insert({
-        pembelian_id: pembelian.id,
-        supplier_produk_id: item.supplier_produk_id,
-        qty: Number(item.qty),
-        harga: Number(item.harga),
-        subtotal: Number(item.subtotal),
-      });
-
-    if (detailError) {
-      const errorMessage = detailError?.message || "Gagal membuat detail pembelian";
-      console.error("Error creating pembelian detail:", errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    // Only update stock if status is not 'Pending'
-    if (data.status !== "Pending") {
-      await increaseStock(item.supplier_produk_id, Number(item.qty));
-    }
-  }
-
-  return pembelian.id;
+  return pembelianId as string;
 };
 
 export const getAllPembelian = async (): Promise<Pembelian[]> => {

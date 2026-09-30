@@ -29,7 +29,7 @@ Dokumen acuan detail:
 |---|---|
 | `app/dashboard/admin/**` | Halaman admin (client components, kecuali `transaksi/penjualan/tambah` = server component) |
 | `app/dashboard/staff/**` | Halaman staff (hanya penjualan milik sendiri) |
-| `app/api/**` | Route handler: PDF generator, cancel penjualan, inventory report, sync-role, cron |
+| `app/api/**` | Route handler: PDF generator, inventory report, sync-role, cron |
 | `app/services/*.service.ts` | Fungsi akses data Supabase **sisi client** (browser client `app/lib/supabase.ts`) |
 | `app/types/*.ts` | Tipe domain (snake_case = kolom DB, camelCase = field turunan/tampilan) |
 | `app/lib/` | `supabase.ts` (browser client), `api-guard.ts` (requireAuth/requireAdmin), `rate-limit.ts`, `auth-client.ts` |
@@ -47,7 +47,9 @@ Dokumen acuan detail:
    Feedback via `useStatus().showStatus(...)` dan konfirmasi via `useConfirm()`.
 2. **Stok ada di `supplier_produk.stok`**, bukan `produk.stok` (kolom lama, tidak ikut transaksi). Ubah stok hanya
    lewat RPC. `increase_stock`/`decrease_stock` **hanya untuk admin/service role** (qty > 0). Alur yang dipakai staff
-   harus lewat RPC tingkat tinggi yang atomik, contoh `create_penjualan(p_data jsonb)`.
+   harus lewat RPC tingkat tinggi yang atomik. RPC transaksi yang ada: `create_penjualan`, `cancel_penjualan`,
+   `add_penjualan_payment`, `create_pembelian`, `receive_pembelian`, `decline_pembelian`. Staff **tidak punya akses
+   tulis langsung** ke `penjualan`/`penjualan_detail`/`riwayat_pembayaran`/`delivery_orders` (RLS hanya SELECT).
 3. **Setiap perubahan DB** = file baru `sql/migrations/YYYYMMDD[b|c…]_<nama>.sql` (urut alfabetis = urut eksekusi; beberapa migrasi di hari yang sama pakai sufiks `b`, `c`) (idempoten: `CREATE OR REPLACE`,
    `IF NOT EXISTS`). Tabel baru wajib RLS + policy (pola `is_admin()`), trigger `updated_at`, index FK.
    RPC `SECURITY DEFINER` wajib cek role di dalam fungsi dan `REVOKE ... FROM PUBLIC, anon`.

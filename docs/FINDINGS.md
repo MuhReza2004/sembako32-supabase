@@ -1,7 +1,7 @@
 # Temuan Audit Codebase — Sembako32
 
 > Hasil analisis statis pada commit `9b98b3e` (2026-09-30). `npx tsc --noEmit` lulus.
-> Status tiap temuan: **Open** kecuali ditandai lain. Perbaikan 2026-09-30: F-01, F-02, F-03, F-10, lalu F-05, F-06, F-11, F-12, F-19 (lihat catatan **Status** tiap temuan).
+> Status tiap temuan: **Open** kecuali ditandai lain. Perbaikan 2026-09-30: F-01, F-02, F-03, F-10, lalu F-05, F-06, F-11, F-12, F-19, lalu F-04, F-07, F-20, F-22 (lihat catatan **Status** tiap temuan).
 > Migrasi DB terkait: `sql/migrations/20260930_fix_critical_security.sql` (**harus dijalankan manual di Supabase**).
 > Tingkat: 🔴 Kritis · 🟠 Tinggi · 🟡 Sedang · ⚪ Rendah/kebersihan.
 
@@ -12,10 +12,10 @@
 | F-01 | ✅ | Keamanan | Role dibaca dari `user_metadata` (bisa diubah user sendiri) |
 | F-02 | ✅* | Keamanan | Registrasi publik → siapa saja jadi `staff` (*perlu setting Supabase) |
 | F-03 | ✅* | Keamanan/Stok | RPC `increase_stock`/`decrease_stock` terbuka untuk semua user login (*perlu migrasi) |
-| F-04 | 🟠 | Integritas | Transaksi multi-langkah tidak atomik (create penjualan sudah atomik) |
+| F-04 | ✅* | Integritas | Transaksi multi-langkah tidak atomik (*sisa: jalur edit/hapus penjualan admin yang tidak dipakai UI) |
 | F-05 | ✅ | Stok | Pembelian `Completed` bisa "diterima" ulang → stok ganda |
 | F-06 | ✅ | Data | `ON DELETE CASCADE` menghapus histori transaksi |
-| F-07 | 🟠 | Integritas | Staff bisa ubah status/total/pembayaran penjualannya sendiri langsung via API (sebagian) |
+| F-07 | ✅ | Integritas | Staff bisa ubah status/total/pembayaran penjualannya sendiri langsung via API |
 | F-08 | 🟠 | Integritas | PDF invoice/kwitansi/DO merender data dari body request |
 | F-09 | 🟡 | Keamanan | `generate-documents` meneruskan cookie/token ke origin dari header Host |
 | F-10 | ✅ | Keamanan | Middleware memakai `getSession()` (tidak diverifikasi) |
@@ -28,9 +28,9 @@
 | F-17 | ⚪ | Keamanan | Input search disisipkan mentah ke filter `.or()` PostgREST |
 | F-18 | 🟡 | Laporan | Angka omzet/piutang tidak konsisten (`total` vs `total_akhir`, `created_at` vs `tanggal`) |
 | F-19 | ✅ | DB | Kolom uang `DECIMAL(10,2)` vs validasi aplikasi `14,2` |
-| F-20 | 🟡 | Piutang | Pembayaran piutang rawan race & overpay |
+| F-20 | ✅ | Piutang | Pembayaran piutang rawan race & overpay |
 | F-21 | 🟡 | Alur | Batal DO tidak membatalkan penjualan/stok |
-| F-22 | 🟡 | Alur | Cancel penjualan bisa mengembalikan stok dua kali (race) |
+| F-22 | ✅ | Alur | Cancel penjualan bisa mengembalikan stok dua kali (race) |
 | F-23 | ⚪ | Infra | Rate limiter in-memory tidak efektif di serverless |
 | F-24 | 🟡 | Config | `next.config.ts` mengekspor dua config berbeda |
 | F-25 | 🟡 | Data | Generator kode supplier rusak setelah `SUP-999` & rawan race |
@@ -70,7 +70,7 @@
 - **Lokasi**: [app/services/penjualan.service.ts](../app/services/penjualan.service.ts) (`createPenjualan` L43-192, `updatePenjualan` L1030-1112, `deletePenjualan` L1115-1128, `addPiutangPayment` L954-1009), [app/services/pembelian.service.ts](../app/services/pembelian.service.ts) (`createPembelian`, `updatePembelianAndStock`, `updatePembelianStatus`), [app/api/penjualan/cancel/route.ts](../app/api/penjualan/cancel/route.ts).
 - **Masalah**: tiap langkah adalah request HTTP terpisah dari browser. Contoh `createPenjualan`: header penjualan sudah tersimpan, item 1–2 sudah mengurangi stok, item 3 gagal (stok kurang) → error dilempar, **header + item 1–2 tetap ada** tanpa rollback. Tab ditutup di tengah proses juga meninggalkan data setengah jadi. `deletePenjualan` mengabaikan error delete.
 - **Perbaikan**: implementasikan sebagai fungsi PL/pgSQL (satu transaksi) dan panggil sekali via `supabase.rpc`. Sekaligus hitung ulang `subtotal/total/pajak/total_akhir` di server dari harga `supplier_produk`.
-- **Status: sebagian.** `createPenjualan` → RPC `create_penjualan` (selesai). Yang tersisa: `updatePenjualan`, `deletePenjualan`, `addPiutangPayment`, pembelian, cancel.
+- **Status: hampir selesai.** Sudah atomik lewat RPC: `create_penjualan`, `cancel_penjualan`, `add_penjualan_payment`, `create_pembelian`, `receive_pembelian`, `decline_pembelian`. **Sisa:** `updatePenjualan` & `deletePenjualan` (khusus admin, tidak dipanggil UI mana pun — lihat F-14). Jangan aktifkan sebelum dijadikan RPC.
 
 ### F-05 — Stok bertambah ganda pada pembelian
 - **Lokasi**: [components/pembelian/pembelianTabel.tsx:160-170](../components/pembelian/pembelianTabel.tsx#L160-L170) (tombol Edit hanya disable untuk `Decline`), [components/pembelian/DialogEditPembelian.tsx:100-105](../components/pembelian/DialogEditPembelian.tsx#L100-L105), `updatePembelianAndStock`.
@@ -88,7 +88,7 @@
 - **Lokasi**: policy `"Staff update own penjualan"`, `"Staff insert/update own riwayat_pembayaran"`, `"Staff update own penjualan_detail"`.
 - **Masalah**: RLS mengizinkan staff meng-update kolom apa pun pada penjualan miliknya (`status='Lunas'`, `total_dibayar`, `total_akhir`, harga item), menambah pembayaran, dan insert penjualan dengan harga bebas — tidak ada validasi server.
 - **Perbaikan**: batasi staff hanya INSERT via RPC `create_penjualan` (harga dihitung server); cabut UPDATE langsung; pembayaran/pelunasan hanya admin atau via RPC.
-- **Status: sebagian.** RPC `create_penjualan` sudah ada dan dipakai UI. Policy INSERT/UPDATE langsung untuk staff **belum** dicabut.
+- **Status: ✅ Diperbaiki** di `sql/migrations/20260930c_atomic_transactions.sql`: semua policy non-SELECT pada `penjualan`, `penjualan_detail`, `riwayat_pembayaran`, `delivery_orders` dihapus dan diganti satu policy tulis khusus admin. Staff hanya bisa **membaca** miliknya; menulis hanya lewat RPC `create_penjualan` & `cancel_penjualan`. Diuji: UPDATE langsung staff = 0 baris, INSERT langsung ditolak RLS.
 
 ### F-08 — Dokumen PDF dapat dipalsukan isinya
 - **Lokasi**: [app/api/generate-invoice/route.ts:930-1012](../app/api/generate-invoice/route.ts#L930-L1012), `generate-receipt`, `generate-delivery-order`, `generate-bast`, `generate-documents`.
@@ -155,15 +155,17 @@
 - **Lokasi**: `addPiutangPayment` ([penjualan.service.ts:954-1009](../app/services/penjualan.service.ts#L954-L1009)).
 - **Masalah**: read-modify-write di client (dua admin membayar bersamaan → `total_dibayar` saling timpa); validasi "tidak melebihi sisa" hanya di dialog; jika `total_akhir` null perhitungan sisa salah; pembayaran untuk penjualan `Batal` tidak dicegah di service.
 - **Perbaikan**: RPC `add_payment(penjualan_id, ...)` dengan `SELECT ... FOR UPDATE`, hitung ulang `total_dibayar = SUM(riwayat_pembayaran)`.
+- **Status: ✅ Diperbaiki**: RPC `add_penjualan_payment` (admin, `FOR UPDATE`, jumlah > 0 dan ≤ sisa, tolak penjualan Batal/sudah lunas, tagihan = `COALESCE(total_akhir, total)`). `total_dibayar` = nilai lama + jumlah (bukan SUM riwayat, karena pembayaran awal saat transaksi dibuat tidak tercatat di `riwayat_pembayaran`).
 
 ### F-21 — Batal DO berdiri sendiri
 - **Lokasi**: [app/dashboard/admin/transaksi/delivery-order/page.tsx:552-558](../app/dashboard/admin/transaksi/delivery-order/page.tsx#L552-L558).
 - **Masalah**: status DO menjadi `Batal` tetapi penjualan tetap aktif dan stok tidak kembali. Sebaliknya `cancelPenjualan` membatalkan DO. Perlu keputusan bisnis: DO batal = kirim ulang (buat DO baru) atau batal penjualan.
 
 ### F-22 — Cancel penjualan tidak idempoten
-- **Lokasi**: [app/api/penjualan/cancel/route.ts](../app/api/penjualan/cancel/route.ts).
+- **Lokasi**: `app/api/penjualan/cancel/route.ts` (sudah dihapus).
 - **Masalah**: cek `status === 'Batal'` lalu kembalikan stok lalu update status — dua request bersamaan sama-sama lolos cek → stok dikembalikan 2×. Jika update status gagal setelah stok dikembalikan, request ulang mengembalikan stok lagi.
 - **Perbaikan**: update bersyarat `update ... set status='Batal' where id=? and status<>'Batal' returning` terlebih dahulu, baru kembalikan stok — atau RPC atomik.
+- **Status: ✅ Diperbaiki**: RPC `cancel_penjualan` (admin, atau staff pemilik; `FOR UPDATE`; sudah Batal = no-op). Rute API service-role dihapus. Catatan terbuka: membatalkan penjualan yang sudah dibayar tidak mencatat pengembalian dana (`riwayat_pembayaran` tetap ada).
 
 ### F-24 — `next.config.ts` ganda
 - **Lokasi**: [next.config.ts](../next.config.ts).
