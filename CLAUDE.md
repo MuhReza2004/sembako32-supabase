@@ -5,6 +5,7 @@ transaksi (pembelian, penjualan, piutang, delivery order) dan laporan PDF.
 Bahasa domain & UI: **Bahasa Indonesia**. Pertahankan penamaan Indonesia (penjualan, pembelian, pelanggan, dll).
 
 Dokumen acuan detail:
+- **[docs/STATUS.md](docs/STATUS.md) — BACA PERTAMA: status pekerjaan terkini, apa yang sudah live/dimigrasi, dan langkah berikutnya.**
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — arsitektur, skema DB, auth, alur bisnis end-to-end.
 - [docs/FEATURE-GUIDE.md](docs/FEATURE-GUIDE.md) — langkah baku menambah fitur/halaman/tabel/API/PDF.
 - [docs/FINDINGS.md](docs/FINDINGS.md) — temuan bug, risiko keamanan, dan utang teknis (dengan prioritas).
