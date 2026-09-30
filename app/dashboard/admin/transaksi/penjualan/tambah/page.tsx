@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getServerUserRole } from "@/lib/supabase-server";
 import { PenjualanForm } from "@/components/penjualan/PenjualanForm";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -69,6 +71,12 @@ export default async function PageTambahPenjualan({
 }: {
   searchParams: Promise<{ id?: string }>;
 }) {
+  // Halaman ini membaca data dengan service role (bypass RLS), jadi role
+  // diverifikasi ulang di server, tidak hanya mengandalkan middleware.
+  const auth = await getServerUserRole();
+  if (!auth) redirect("/auth/login");
+  if (auth.role !== "admin") redirect("/dashboard/staff?error=not_admin");
+
   const params = await searchParams;
   return (
     <div className="min-h-screen bg-background">

@@ -52,143 +52,44 @@ export const createPenjualan = async (data: PenjualanFormData) => {
     assertValidMoney("Subtotal item", Number(item.subtotal));
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    throw new Error("User tidak terautentikasi.");
+  // Header, detail, pengurangan stok, dan delivery order dibuat dalam satu
+  // transaksi DB oleh RPC create_penjualan. Harga & total dihitung ulang di
+  // server dari supplier_produk (lihat sql/migrations/20260930_fix_critical_security.sql).
+  const payload = {
+    tanggal: data.tanggal,
+    pelanggan_id: data.pelanggan_id,
+    catatan: data.catatan,
+    no_invoice: data.no_invoice,
+    no_npb: data.no_npb,
+    no_do: data.no_do,
+    no_tanda_terima: data.no_tanda_terima,
+    metode_pengambilan: data.metode_pengambilan,
+    total_dibayar: Number(data.total_dibayar || 0),
+    status: data.status,
+    metode_pembayaran: data.metode_pembayaran,
+    nomor_rekening: data.nomor_rekening,
+    nama_bank: data.nama_bank,
+    nama_pemilik_rekening: data.nama_pemilik_rekening,
+    tanggal_jatuh_tempo: data.tanggal_jatuh_tempo || null,
+    diskon: Number(data.diskon || 0),
+    pajak_enabled: data.pajak_enabled || false,
+    items: (data.items || []).map((item) => ({
+      supplier_produk_id: item.supplier_produk_id,
+      qty: Number(item.qty),
+      harga_tipe: item.harga_tipe || "normal",
+    })),
+  };
+
+  const { data: penjualanId, error } = await supabase.rpc("create_penjualan", {
+    p_data: payload,
+  });
+
+  if (error) {
+    console.error("Error creating penjualan:", error);
+    throw new Error(error.message || "Gagal menyimpan penjualan");
   }
 
-  // 1. Create the sale record with retry logic
-  const tanggalJatuhTempo = data.tanggal_jatuh_tempo || null;
-  let noDo = data.no_do || null;
-  let noTandaTerima = data.no_tanda_terima || null;
-  let noInvoice = data.no_invoice;
-  let noNpb = data.no_npb;
-
-  let penjualan: any = null;
-  let penjualanError: any = null;
-  let attempts = 0;
-  const maxAttempts = 3;
-
-  while (attempts < maxAttempts) {
-    // Regenerate numbers if not provided or on retry
-    if (!noInvoice || attempts > 0) {
-      noInvoice = await generateInvoiceNumber();
-    }
-    if (!noNpb || attempts > 0) {
-      noNpb = await generateNPBNumber();
-    }
-    if (data.metode_pengambilan === "Diantar") {
-      if (!noDo || attempts > 0) {
-        noDo = await generateDONumber();
-      }
-      if (!noTandaTerima || attempts > 0) {
-        noTandaTerima = await generateTandaTerimaNumber();
-      }
-    }
-
-    const penjualanData = {
-      tanggal: data.tanggal,
-      pelanggan_id: data.pelanggan_id,
-      catatan: data.catatan,
-      no_invoice: noInvoice,
-      no_npb: noNpb,
-      no_do: noDo,
-      no_tanda_terima: noTandaTerima,
-      metode_pengambilan: data.metode_pengambilan,
-      total: Number(data.total),
-      total_dibayar: Number(data.total_dibayar || 0),
-      status: data.status,
-      metode_pembayaran: data.metode_pembayaran,
-      nomor_rekening: data.nomor_rekening,
-      nama_bank: data.nama_bank,
-      nama_pemilik_rekening: data.nama_pemilik_rekening,
-      tanggal_jatuh_tempo: tanggalJatuhTempo,
-      diskon: Number(data.diskon || 0),
-      pajak_enabled: data.pajak_enabled || false,
-      pajak: Number(data.pajak || 0),
-      total_akhir: Number(data.total_akhir || 0),
-      created_by: user.id,
-    };
-
-    const result = await supabase
-      .from("penjualan")
-      .insert(penjualanData)
-      .select("id")
-      .single();
-
-    penjualan = result.data;
-    penjualanError = result.error;
-
-    if (!penjualanError) {
-      break; // Success
-    }
-
-    // Check if it's a unique violation
-    if (penjualanError.code === "23505") {
-      attempts++;
-      if (attempts >= maxAttempts) {
-        console.error(
-          "Error creating penjualan after retries. Data payload:",
-          JSON.stringify(penjualanData, null, 2),
-        );
-        console.error("Supabase Error details:", penjualanError);
-        throw new Error(
-          "Failed to create penjualan due to duplicate numbers after retries.",
-        );
-      }
-      // Wait a bit before retry
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    } else {
-      // Other error, don't retry
-      console.error(
-        "Error creating penjualan. Data payload:",
-        JSON.stringify(penjualanData, null, 2),
-      );
-      console.error("Supabase Error details:", penjualanError);
-      throw penjualanError;
-    }
-  }
-
-  // 2. Create penjualan_detail records and update stock
-  for (const item of data.items || []) {
-    await decreaseStock(item.supplier_produk_id, Number(item.qty));
-    const { error: detailError } = await supabase
-      .from("penjualan_detail")
-      .insert({
-        penjualan_id: penjualan.id,
-        supplier_produk_id: item.supplier_produk_id,
-        qty: Number(item.qty),
-        harga: Number(item.harga),
-        subtotal: Number(item.subtotal),
-      });
-
-    if (detailError) {
-      console.error("Error creating penjualan detail:", detailError);
-      await increaseStock(item.supplier_produk_id, Number(item.qty));
-      throw detailError;
-    }
-  }
-
-  // 3. Create delivery order record for "Diantar"
-  if (data.metode_pengambilan === "Diantar") {
-    const { error: doError } = await supabase.from("delivery_orders").insert({
-      penjualan_id: penjualan.id,
-      no_do: noDo,
-      no_tanda_terima: noTandaTerima,
-      status: "Draft",
-      tanggal_kirim: data.tanggal,
-    });
-
-    if (doError) {
-      console.error("Error creating delivery order:", doError);
-      throw doError;
-    }
-  }
-
-  return penjualan.id;
+  return penjualanId as string;
 };
 
 // --- existing getAllPenjualan function ---

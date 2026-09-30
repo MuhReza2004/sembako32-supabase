@@ -1,5 +1,7 @@
 -- Supabase Database Schema for Sembako32
 -- Run this SQL in your Supabase SQL Editor
+-- SETELAH file ini, jalankan semua file di sql/migrations/ berurutan (nama = tanggal).
+-- Migrasi menimpa beberapa fungsi di bawah (mis. increase_stock/decrease_stock).
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

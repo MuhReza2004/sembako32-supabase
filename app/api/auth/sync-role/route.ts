@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const metaRole =
-    user.app_metadata?.role ?? user.user_metadata?.role ?? null;
+  // Hanya app_metadata (tidak bisa diubah user); user_metadata diabaikan.
+  const metaRole = user.app_metadata?.role ?? null;
 
   const { data: userProfile, error: profileError } = await supabaseAdmin
     .from("users")

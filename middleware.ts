@@ -2,92 +2,63 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options) {
-          request.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
         },
       },
     },
   );
 
+  // getUser() memverifikasi JWT ke Supabase Auth (getSession() tidak).
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const userMeta = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  } | null;
-  const tokenRole = userMeta?.app_metadata?.role ?? userMeta?.user_metadata?.role;
+
+  // Hanya app_metadata yang tepercaya; user_metadata bisa diubah user sendiri.
+  const tokenRole = user?.app_metadata?.role as string | undefined;
+
+  const resolveRole = async (): Promise<string | null> => {
+    if (!user) return null;
+    if (tokenRole) return tokenRole;
+    const { data: userProfile, error } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (error) {
+      console.error("Middleware DB Error:", error);
+      return null;
+    }
+    return userProfile?.role ?? null;
+  };
 
   // If user is not logged in and tries to access protected routes, redirect to login
   if (!user && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  // If user is logged in and tries to access login/register, redirect to dashboard
-  if (user && (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/register"))) {
-    if (tokenRole === "admin") {
-      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-    }
-    if (tokenRole && tokenRole !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard/staff", request.url));
-    }
-
-    // Fallback to DB lookup only if role isn't available in token
-    const { data: userProfile } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (userProfile?.role === "admin") {
+  // If user is logged in and tries to access login, redirect to dashboard
+  if (user && pathname.startsWith("/auth/login")) {
+    const role = await resolveRole();
+    if (role === "admin") {
       return NextResponse.redirect(new URL("/dashboard/admin", request.url));
     }
     return NextResponse.redirect(new URL("/dashboard/staff", request.url));
@@ -95,31 +66,16 @@ export async function middleware(request: NextRequest) {
 
   // If user is trying to access admin dashboard, check their role
   if (user && pathname.startsWith("/dashboard/admin")) {
-    if (tokenRole && tokenRole !== "admin") {
-      return NextResponse.redirect(new URL(`/dashboard/staff?error=not_admin&role=${tokenRole}`, request.url));
+    const role = await resolveRole();
+    if (!role) {
+      return NextResponse.redirect(
+        new URL("/dashboard/staff?error=no_profile", request.url),
+      );
     }
-
-    if (!tokenRole) {
-      const { data: userProfile, error } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (error) {
-        console.error("Middleware DB Error:", error);
-        return NextResponse.redirect(new URL("/dashboard/staff?error=db_error", request.url));
-      }
-
-      if (!userProfile) {
-        return NextResponse.redirect(new URL("/dashboard/staff?error=no_profile", request.url));
-      }
-
-      if (userProfile.role !== "admin") {
-        return NextResponse.redirect(
-          new URL(`/dashboard/staff?error=not_admin&role=${userProfile.role}`, request.url),
-        );
-      }
+    if (role !== "admin") {
+      return NextResponse.redirect(
+        new URL(`/dashboard/staff?error=not_admin&role=${role}`, request.url),
+      );
     }
   }
 
@@ -127,5 +83,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/auth/login", "/auth/register"],
+  matcher: ["/dashboard/:path*", "/auth/login"],
 };
