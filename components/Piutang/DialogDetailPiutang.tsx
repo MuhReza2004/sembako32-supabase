@@ -33,11 +33,11 @@ export default function DialogDetailPiutang({
   onClose,
   piutang,
 }: DialogDetailPiutangProps) {
-  if (!piutang) return null;
   const [isPrintingLunas, setIsPrintingLunas] = useState(false);
+  if (!piutang) return null;
 
   const totalDibayar = piutang.total_dibayar ?? 0;
-  const sisaUtang = piutang.total - totalDibayar;
+  const sisaUtang = (piutang.total_akhir ?? piutang.total) - totalDibayar;
   const invoiceNumber = piutang.no_invoice || piutang.nomorInvoice || "-";
   const namaPelanggan = piutang.namaPelanggan || "-";
 
@@ -56,14 +56,8 @@ export default function DialogDetailPiutang({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...piutang,
-          namaPelanggan,
-          watermarkText: "LUNAS",
-          invoiceTitle: "INVOICE PEMBAYARAN PIUTANG",
-          amountLabel: "Total yang Dibayar",
-          amountValue: piutang.total_dibayar ?? 0,
-        }),
+        // Judul, nominal, dan watermark ditentukan server dari data DB.
+        body: JSON.stringify({ penjualan_id: piutang.id, variant: "pembayaran" }),
       });
 
       if (!response.ok) {
@@ -138,7 +132,7 @@ export default function DialogDetailPiutang({
                     Total Tagihan:
                   </span>
                   <span className="text-md font-bold ">
-                    {formatRupiah(piutang.total)}
+                    {formatRupiah(piutang.total_akhir ?? piutang.total)}
                   </span>
                 </div>
               </div>

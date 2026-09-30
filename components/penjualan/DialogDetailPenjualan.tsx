@@ -84,12 +84,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_toko: pelanggan?.nama_toko,
-          no_telp: pelanggan?.no_telp,
-          watermarkText: penjualan.status === "Lunas" ? "LUNAS" : undefined,
-        }),
+        body: JSON.stringify({ penjualan_id: penjualan.id }),
       });
 
       if (!response.ok) {
@@ -122,33 +117,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
     setIsLoadingDO(true);
     try {
       const token = await getAccessToken();
-      const payload = {
-        deliveryOrder: {
-          no_do: penjualan.no_do,
-          no_tanda_terima: penjualan.no_tanda_terima,
-          penjualan: {
-            no_invoice: penjualan.no_invoice,
-            no_npb: penjualan.no_npb,
-            tanggal: penjualan.tanggal,
-            pelanggan: {
-              nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
-              alamat: pelanggan?.alamat || penjualan.alamatPelanggan,
-            },
-            items: (penjualan.items || []).map((item) => ({
-              qty: item.qty,
-              harga: item.hargaJual || item.harga || 0,
-              subtotal: item.subtotal || 0,
-              satuan: item.satuan || undefined,
-              supplier_produk: {
-                produk: {
-                  nama: item.namaProduk || "Produk",
-                  satuan: item.satuan || undefined,
-                },
-              },
-            })),
-          },
-        },
-      };
+      const payload = { penjualan_id: penjualan.id };
 
       const response = await fetch("/api/generate-delivery-order", {
         method: "POST",
@@ -187,11 +156,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
-          nama_toko: pelanggan?.nama_toko,
-        }),
+        body: JSON.stringify({ penjualan_id: penjualan.id }),
       });
 
       if (!response.ok) {
@@ -221,14 +186,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_toko: pelanggan?.nama_toko || penjualan.nama_toko || "",
-          no_telp: pelanggan?.no_telp || penjualan.no_telp || "",
-          alamatPelanggan: pelanggan?.alamat || penjualan.alamatPelanggan,
-          nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
-          watermarkText: penjualan.status === "Lunas" ? "LUNAS" : undefined,
-        }),
+        body: JSON.stringify({ penjualan_id: penjualan.id }),
       });
 
       if (!response.ok) {

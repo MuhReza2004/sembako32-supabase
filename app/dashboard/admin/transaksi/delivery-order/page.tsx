@@ -324,7 +324,6 @@ export default function DeliveryOrderPage() {
 
   const handlePrintDO = async (row: DeliveryOrderRow) => {
     try {
-      console.log("DO payload:", row);
       const token = await getAccessToken();
       const response = await fetch("/api/generate-delivery-order", {
         method: "POST",
@@ -333,9 +332,7 @@ export default function DeliveryOrderPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          deliveryOrder: row,
-        }),
+        body: JSON.stringify({ delivery_order_id: row.id }),
       });
       if (!response.ok) {
         const errorText = await response.text();
@@ -364,9 +361,7 @@ export default function DeliveryOrderPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          deliveryOrder: row,
-        }),
+        body: JSON.stringify({ delivery_order_id: row.id }),
       });
       if (!response.ok) {
         const errorText = await response.text();
