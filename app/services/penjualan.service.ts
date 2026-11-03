@@ -734,3 +734,16 @@ export const cancelPenjualan = async (id: string) => {
     throw new Error(`Gagal membatalkan transaksi: ${error.message}`);
   }
 };
+
+export const updateTanggalPenjualan = async (id: string, tanggal: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal) ||
+      !Number.isFinite(Date.parse(tanggal)) ||
+      new Date(tanggal).toISOString().slice(0, 10) !== tanggal) {
+    throw new Error("Tanggal transaksi tidak valid");
+  }
+  const { error } = await supabase.rpc("update_tanggal_penjualan", {
+    p_penjualan_id: id,
+    p_tanggal: tanggal,
+  });
+  if (error) throw new Error(error.message || "Gagal mengubah tanggal transaksi");
+};

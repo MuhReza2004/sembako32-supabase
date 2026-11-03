@@ -353,6 +353,10 @@ export default function PenjualanPage() {
         open={dialogDetailOpen}
         onOpenChange={setDialogDetailOpen}
         penjualan={selectedPenjualan}
+        onTanggalUpdated={(updated) => {
+          setSelectedPenjualan(updated);
+          void fetchData();
+        }}
       />
     </div>
   );

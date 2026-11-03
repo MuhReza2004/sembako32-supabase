@@ -375,6 +375,10 @@ export default function PenjualanReportPage() {
         open={dialogDetailOpen}
         onOpenChange={setDialogDetailOpen}
         penjualan={selectedPenjualan}
+        onTanggalUpdated={(updated) => {
+          setSelectedPenjualan(updated);
+          void fetchPenjualan(page, false);
+        }}
       />
     </div>
   );

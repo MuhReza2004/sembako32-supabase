@@ -27,16 +27,22 @@ import { FileText, Printer, Loader2, Truck } from "lucide-react";
 import { getAccessToken } from "@/app/lib/auth-client";
 import { supabase } from "@/app/lib/supabase";
 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { updateTanggalPenjualan } from "@/app/services/penjualan.service";
+
 interface DialogDetailPenjualanProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   penjualan: Penjualan | null;
+  onTanggalUpdated?: (penjualan: Penjualan) => void;
 }
 
 export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   open,
   onOpenChange,
   penjualan,
+  onTanggalUpdated,
 }) => {
   const [pelanggan, setPelanggan] = useState<Pelanggan | null>(null);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
@@ -44,6 +50,30 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
   const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [riwayat, setRiwayat] = useState<RiwayatPembayaran[]>([]);
+
+  const [tanggal, setTanggal] = useState("");
+  const [isSavingTanggal, setIsSavingTanggal] = useState(false);
+  const [tanggalError, setTanggalError] = useState("");
+
+  useEffect(() => {
+    setTanggal(penjualan?.tanggal || "");
+    setTanggalError("");
+  }, [open, penjualan?.id, penjualan?.tanggal]);
+
+  const handleSaveTanggal = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!penjualan || !onTanggalUpdated) return;
+    setIsSavingTanggal(true);
+    setTanggalError("");
+    try {
+      await updateTanggalPenjualan(penjualan.id, tanggal);
+      onTanggalUpdated({ ...penjualan, tanggal });
+    } catch (error) {
+      setTanggalError(error instanceof Error ? error.message : "Gagal mengubah tanggal transaksi");
+    } finally {
+      setIsSavingTanggal(false);
+    }
+  };
 
   // Riwayat pembayaran & refund (halaman Piutang tidak menampilkan penjualan Batal).
   useEffect(() => {
@@ -243,6 +273,24 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           </DialogDescription>
         </DialogHeader>
 
+        {onTanggalUpdated && (
+          <form onSubmit={handleSaveTanggal} className="space-y-2 rounded-lg border p-4">
+            <Label htmlFor="tanggal-transaksi">Tanggal transaksi</Label>
+            <div className="flex flex-wrap gap-2">
+              <Input id="tanggal-transaksi" type="date" required className="w-auto"
+                value={tanggal} onChange={(event) => setTanggal(event.target.value)}
+                disabled={isSavingTanggal} />
+              <Button type="submit" disabled={isSavingTanggal || !tanggal || tanggal === penjualan.tanggal}>
+                {isSavingTanggal ? "Menyimpan..." : "Simpan tanggal"}
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500">
+              Invoice, DO, tanda terima, dan BAST yang dicetak ulang mengikuti tanggal ini.
+              Nomor dokumen dan tanggal pembayaran/pengiriman tetap.
+            </p>
+            {tanggalError && <p role="alert" className="text-sm text-red-600">{tanggalError}</p>}
+          </form>
+        )}
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-gray-50 border">
             <div>
