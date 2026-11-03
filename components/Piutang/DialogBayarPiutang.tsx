@@ -20,7 +20,7 @@ import { Penjualan } from "@/app/types/penjualan";
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { addPiutangPayment } from "@/app/services/penjualan.service";
-import { formatRupiah } from "@/helper/format";
+import { formatRupiah, todayWIB } from "@/helper/format";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useStatus } from "@/components/ui/StatusProvider";
 
@@ -76,7 +76,7 @@ export default function DialogBayarPiutang({
   useEffect(() => {
     if (isOpen) {
       reset({
-        tanggal: new Date().toISOString().split("T")[0],
+        tanggal: todayWIB(),
         jumlah: 0,
         metode_pembayaran: "Transfer",
         atas_nama:

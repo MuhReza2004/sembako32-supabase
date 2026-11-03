@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import { formatRupiah } from "@/helper/format";
+import { formatRupiah, todayWIB } from "@/helper/format";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -410,7 +410,7 @@ export async function POST(request: NextRequest) {
 
     // Return PDF as response
     const filename =
-      "laporan_penjualan_" + new Date().toISOString().split("T")[0] + ".pdf";
+      "laporan_penjualan_" + todayWIB() + ".pdf";
     return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",

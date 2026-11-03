@@ -1,0 +1,259 @@
+import puppeteer from "puppeteer-core";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { escapeHtml } from "@/helper/escapeHtml";
+import { formatRupiah } from "@/helper/format";
+import { getPdfFontCss, waitForPdfFonts } from "@/lib/pdf-fonts";
+import { getPuppeteerLaunchOptions } from "@/lib/puppeteer";
+import type { DeliveryOrderPdfData, DOItem } from "@/lib/pdf/penjualan-data";
+
+export async function renderDeliveryOrderPdf(deliveryOrder: DeliveryOrderPdfData): Promise<Buffer> {
+  const safe = (value: string | number | null | undefined) =>
+    escapeHtml(String(value ?? ""));
+
+  const logoPath = path.join(process.cwd(), "public", "logo.svg");
+  const logoBuffer = await fs.readFile(logoPath);
+  const logoBase64 = logoBuffer.toString("base64");
+  const logoSrc = `data:image/svg+xml;base64,${logoBase64}`;
+
+  const svgGradient = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#fec335;" />
+          <stop offset="100%" style="stop-color:#ffd966;" />
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grad)" />
+    </svg>
+  `;
+  const gradientBg = `data:image/svg+xml;base64,${Buffer.from(svgGradient).toString("base64")}`;
+
+  const headerTemplate = `
+    <div style="
+      font-family: 'PdfFont', Arial, sans-serif;
+      width: 100%;
+      height: 100px;
+      -webkit-print-color-adjust: exact;
+      color: white;
+    ">
+      <div style="
+        background-image: url('${gradientBg}');
+        background-size: cover;
+        border-radius: 8px;
+        margin: 0 auto;
+        width: 85%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+      ">
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <img src="${logoSrc}" style="height: 55px; width: 55px; background: white; border-radius: 8px; padding: 6px;" />
+          <div>
+            <h1 style="font-size: 18px; color:#102853 ; margin: 0 0 10px 0; font-weight: 700; letter-spacing: 0.5px;">SEMBAKO 32</h1>
+            <div style="font-size: 9px; line-height: 1.7; color: #000000; opacity: 0.95;">
+              <div><strong style="display: inline-block; width: 45px;">Alamat</strong> : Jl. Soekarno Hatta Pasangkayu</div>
+              <div><strong style="display: inline-block; width: 45px;">Kontak</strong> : 0821-9030-9333</div>
+              <div><strong style="display: inline-block; width: 45px;">Email</strong> : sembako32@gmail.com</div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align: right; font-size: 9px; color: #000000; opacity: 0.9;">
+          <div style="margin-bottom: 4px; font-weight: 500;">Tanggal Cetak:</div>
+          <div style="font-weight: 600; font-size: 10px;">${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const footerTemplate = `
+    <div style="
+      font-family: 'PdfFont', Arial, sans-serif;
+      width: 100%;
+      text-align: center;
+      padding: 5px 20px;
+      font-size: 8px;
+      color: #6b7280;
+      border-top: 1px solid #e5e7eb;
+    ">
+      Halaman <span class="pageNumber"></span> dari <span class="totalPages"></span>
+    </div>
+  `;
+
+  const items: DOItem[] = deliveryOrder.penjualan.items || [];
+  const total = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+
+  const fontCss = await getPdfFontCss();
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Delivery Order ${deliveryOrder.no_do}</title>
+        <style>
+          ${fontCss}
+          body { font-family: 'PdfFont', Arial, sans-serif; margin: 20px; color: #111827; }
+          h2 { color: #111827; text-align: center; margin: 0; }
+          .meta-grid { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+          .meta-col { display: grid; grid-template-columns: 130px 10px auto; row-gap: 6px; }
+          .meta-col.compact { display: flex; flex-direction: column; gap: 4px; }
+          .meta-col.compact .meta-row { display: grid; grid-template-columns: 130px 15px auto; }
+          .meta-col.compact .meta-row span { line-height: 1; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+          th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+          th { background-color: #f9fafb; }
+          .total { font-weight: bold; }
+          .signature { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+          .signature .line { border-top: 1px solid #333; width: 160px; margin: 0 auto; }
+        </style>
+      </head>
+      <body>
+        <h2 style="text-decoration: underline;">DELIVERY ORDER</h2>
+        <h4 style="text-align: center;">NO: ${safe(deliveryOrder.no_do)}</h4>
+        <div class="meta-grid">
+          <div class="meta-col">
+            <span>NPB</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_npb || "-")}</span>
+            <span>Invoice</span><span>:</span><span>${safe(deliveryOrder.penjualan.no_invoice || "-")}</span>
+            <span>Tanggal</span><span>:</span><span>${safe(new Date(deliveryOrder.penjualan.tanggal).toLocaleDateString("id-ID"))}</span>
+            <span>Dikirim Kepada</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.nama_pelanggan || "-")}</span>
+            <span>Alamat</span><span>:</span><span>${safe(deliveryOrder.penjualan.pelanggan?.alamat || "-")}</span>
+          </div>
+          <div class="meta-col compact">
+            <div class="meta-row">
+              <span>Driver</span><span>:</span><span>...............</span>
+            </div>
+            <div class="meta-row">
+              <span>Tanggal Kirim</span><span>:</span><span>...............</span>
+            </div>
+
+            <div class="meta-row">
+              <span>Nomor Plat</span><span>:</span><span>...............</span>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Produk</th>
+              <th>Qty</th>
+              <th>Satuan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items
+              .map(
+                (item: DOItem, index: number) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${safe(item.supplier_produk?.produk?.nama || "Produk")}</td>
+                    <td>${safe(item.qty)}</td>
+                    <td>${safe(item.satuan || item.supplier_produk?.produk?.satuan || "-")}</td>
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 16px; text-align: right;">
+
+        </div>
+
+        <div class="signature">
+          <div style="text-align: center;">
+            <div style="margin-bottom: 60px;">Disetujui</div>
+            <div class="line"></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="margin-bottom: 60px;">Driver</div>
+            <div class="line"></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="margin-bottom: 60px;">Penerima</div>
+            <div class="line"></div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const launchOptions = await getPuppeteerLaunchOptions();
+  const browser = await puppeteer.launch({
+    ...launchOptions,
+    timeout: 60000,
+  });
+
+  const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
+  page.setDefaultNavigationTimeout(60000);
+
+  try {
+    await page.goto("about:blank", {
+      waitUntil: "domcontentloaded",
+      timeout: 10000,
+    });
+
+    await page.setContent(htmlContent, {
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
+    });
+
+    const elementWaits = Promise.allSettled([
+      page.waitForSelector("body", { timeout: 10000 }),
+      page.waitForSelector("table", { timeout: 10000 }).catch(() => null),
+      page.waitForFunction(
+        () => (document.body?.textContent?.length || 0) > 100,
+        { timeout: 10000 },
+      ),
+    ]);
+
+    await elementWaits;
+  } catch (error) {
+    throw new Error(
+      `Failed to set page content: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  try {
+    await waitForPdfFonts(page);
+  } catch (fontError) {
+    // ignore font readiness issues
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  await page.evaluate(() => {
+    document.body.offsetHeight;
+  });
+
+  let pdfBuffer: Uint8Array;
+  try {
+    pdfBuffer = await page.pdf({
+      format: "a4",
+      printBackground: true,
+      margin: {
+        top: "140px",
+        right: "20px",
+        bottom: "80px",
+        left: "20px",
+      },
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+  } finally {
+    try {
+      await browser.close();
+    } catch {
+      // ignore
+    }
+  }
+
+  return Buffer.from(pdfBuffer);
+}

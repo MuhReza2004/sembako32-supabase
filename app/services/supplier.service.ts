@@ -10,28 +10,14 @@ const invalidateSupplierCache = () => {
   supplierCacheAt = 0;
 };
 
+// Kode dari sequence DB (F-25): aman untuk >999 supplier dan dua admin
+// yang menambah bersamaan.
 const generateSupplierCode = async (): Promise<string> => {
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select("kode")
-    .order("kode", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (error && error.code !== "PGRST116") {
-    throw error;
+  const { data, error } = await supabase.rpc("generate_supplier_code");
+  if (error || !data) {
+    throw new Error(error?.message || "Gagal membuat kode supplier");
   }
-
-  if (!data) {
-    return "SUP-001";
-  }
-
-  const lastCode = data.kode;
-  const lastNumber = parseInt(lastCode.split("-")[1]);
-  const newNumber = lastNumber + 1;
-  const newCode = `SUP-${newNumber.toString().padStart(3, "0")}`;
-
-  return newCode;
+  return data as string;
 };
 
 /* ======================

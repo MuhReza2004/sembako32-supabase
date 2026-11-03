@@ -19,29 +19,87 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Penjualan } from "@/app/types/penjualan";
+import { Penjualan, RiwayatPembayaran } from "@/app/types/penjualan";
 import { Pelanggan } from "@/app/types/pelanggan";
-import { formatRupiah } from "@/helper/format";
+import { formatRupiah, formatTanggal } from "@/helper/format";
 import { getPelangganById } from "@/app/services/pelanggan.service";
 import { FileText, Printer, Loader2, Truck } from "lucide-react";
 import { getAccessToken } from "@/app/lib/auth-client";
+import { supabase } from "@/app/lib/supabase";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { updateTanggalPenjualan } from "@/app/services/penjualan.service";
 
 interface DialogDetailPenjualanProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   penjualan: Penjualan | null;
+  onTanggalUpdated?: (penjualan: Penjualan) => void;
 }
 
 export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
   open,
   onOpenChange,
   penjualan,
+  onTanggalUpdated,
 }) => {
   const [pelanggan, setPelanggan] = useState<Pelanggan | null>(null);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
   const [isLoadingDO, setIsLoadingDO] = useState(false);
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
   const [isLoadingAll, setIsLoadingAll] = useState(false);
+  const [riwayat, setRiwayat] = useState<RiwayatPembayaran[]>([]);
+
+  const [tanggal, setTanggal] = useState("");
+  const [isSavingTanggal, setIsSavingTanggal] = useState(false);
+  const [tanggalError, setTanggalError] = useState("");
+
+  useEffect(() => {
+    setTanggal(penjualan?.tanggal || "");
+    setTanggalError("");
+  }, [open, penjualan?.id, penjualan?.tanggal]);
+
+  const handleSaveTanggal = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!penjualan || !onTanggalUpdated) return;
+    setIsSavingTanggal(true);
+    setTanggalError("");
+    try {
+      await updateTanggalPenjualan(penjualan.id, tanggal);
+      onTanggalUpdated({ ...penjualan, tanggal });
+    } catch (error) {
+      setTanggalError(error instanceof Error ? error.message : "Gagal mengubah tanggal transaksi");
+    } finally {
+      setIsSavingTanggal(false);
+    }
+  };
+
+  // Riwayat pembayaran & refund (halaman Piutang tidak menampilkan penjualan Batal).
+  useEffect(() => {
+    if (!open || !penjualan?.id) {
+      setRiwayat([]);
+      return;
+    }
+    let active = true;
+    supabase
+      .from("riwayat_pembayaran")
+      .select("id, penjualan_id, tanggal, jumlah, metode_pembayaran, atas_nama, tipe, created_at")
+      .eq("penjualan_id", penjualan.id)
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error("Error fetching riwayat pembayaran:", error);
+          setRiwayat([]);
+          return;
+        }
+        setRiwayat((data as RiwayatPembayaran[]) || []);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, penjualan?.id]);
 
   useEffect(() => {
     const fetchPelanggan = async () => {
@@ -84,12 +142,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_toko: pelanggan?.nama_toko,
-          no_telp: pelanggan?.no_telp,
-          watermarkText: penjualan.status === "Lunas" ? "LUNAS" : undefined,
-        }),
+        body: JSON.stringify({ penjualan_id: penjualan.id }),
       });
 
       if (!response.ok) {
@@ -122,33 +175,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
     setIsLoadingDO(true);
     try {
       const token = await getAccessToken();
-      const payload = {
-        deliveryOrder: {
-          no_do: penjualan.no_do,
-          no_tanda_terima: penjualan.no_tanda_terima,
-          penjualan: {
-            no_invoice: penjualan.no_invoice,
-            no_npb: penjualan.no_npb,
-            tanggal: penjualan.tanggal,
-            pelanggan: {
-              nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
-              alamat: pelanggan?.alamat || penjualan.alamatPelanggan,
-            },
-            items: (penjualan.items || []).map((item) => ({
-              qty: item.qty,
-              harga: item.hargaJual || item.harga || 0,
-              subtotal: item.subtotal || 0,
-              satuan: item.satuan || undefined,
-              supplier_produk: {
-                produk: {
-                  nama: item.namaProduk || "Produk",
-                  satuan: item.satuan || undefined,
-                },
-              },
-            })),
-          },
-        },
-      };
+      const payload = { penjualan_id: penjualan.id };
 
       const response = await fetch("/api/generate-delivery-order", {
         method: "POST",
@@ -187,11 +214,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
-          nama_toko: pelanggan?.nama_toko,
-        }),
+        body: JSON.stringify({ penjualan_id: penjualan.id }),
       });
 
       if (!response.ok) {
@@ -221,14 +244,7 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...penjualan,
-          nama_toko: pelanggan?.nama_toko || penjualan.nama_toko || "",
-          no_telp: pelanggan?.no_telp || penjualan.no_telp || "",
-          alamatPelanggan: pelanggan?.alamat || penjualan.alamatPelanggan,
-          nama_pelanggan: pelanggan?.nama_pelanggan || penjualan.namaPelanggan,
-          watermarkText: penjualan.status === "Lunas" ? "LUNAS" : undefined,
-        }),
+        body: JSON.stringify({ penjualan_id: penjualan.id }),
       });
 
       if (!response.ok) {
@@ -257,6 +273,24 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
           </DialogDescription>
         </DialogHeader>
 
+        {onTanggalUpdated && (
+          <form onSubmit={handleSaveTanggal} className="space-y-2 rounded-lg border p-4">
+            <Label htmlFor="tanggal-transaksi">Tanggal transaksi</Label>
+            <div className="flex flex-wrap gap-2">
+              <Input id="tanggal-transaksi" type="date" required className="w-auto"
+                value={tanggal} onChange={(event) => setTanggal(event.target.value)}
+                disabled={isSavingTanggal} />
+              <Button type="submit" disabled={isSavingTanggal || !tanggal || tanggal === penjualan.tanggal}>
+                {isSavingTanggal ? "Menyimpan..." : "Simpan tanggal"}
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500">
+              Invoice, DO, tanda terima, dan BAST yang dicetak ulang mengikuti tanggal ini.
+              Nomor dokumen dan tanggal pembayaran/pengiriman tetap.
+            </p>
+            {tanggalError && <p role="alert" className="text-sm text-red-600">{tanggalError}</p>}
+          </form>
+        )}
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-gray-50 border">
             <div>
@@ -413,12 +447,51 @@ export const DialogDetailPenjualan: React.FC<DialogDetailPenjualanProps> = ({
                     Total Akhir
                   </span>
                   <span className="text-3xl font-bold text-green-600">
-                    {formatRupiah(penjualan.total)}
+                    {formatRupiah(penjualan.total_akhir ?? penjualan.total)}
                   </span>
                 </div>
               </div>
             </div>
           </div>
+
+          {riwayat.length > 0 && (
+            <div className="pt-4 border-t">
+              <h3 className="font-semibold mb-2">Riwayat Pembayaran</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Jenis</TableHead>
+                    <TableHead>Metode</TableHead>
+                    <TableHead>Atas Nama</TableHead>
+                    <TableHead className="text-right">Jumlah</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {riwayat.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{formatTanggal(r.tanggal)}</TableCell>
+                      <TableCell>
+                        {r.tipe === "refund" ? (
+                          <Badge variant="destructive">Refund</Badge>
+                        ) : (
+                          <Badge variant="secondary">Pembayaran</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{r.metode_pembayaran}</TableCell>
+                      <TableCell>{r.atas_nama}</TableCell>
+                      <TableCell
+                        className={`text-right ${r.tipe === "refund" ? "text-red-600" : ""}`}
+                      >
+                        {r.tipe === "refund" ? "-" : ""}
+                        {formatRupiah(Number(r.jumlah))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
